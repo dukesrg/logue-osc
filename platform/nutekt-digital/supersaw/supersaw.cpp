@@ -39,13 +39,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     for (i = 0; i < base * 2; i++)
       valf += x[i * 2 + 1];
     if (i < MAX_UNISON * 2)
-      valf += (x[i * 2 + 1] + x[i * 2 + 2]) * (s_unison - base);
+      valf += valf + (x[i * 2 + 1] + x[i * 2 + 2]) * (s_unison - base);
     for (i = 0; i < MAX_UNISON * 2 + 1; i++) {
       x[i] += delta[i];
       if (x[i] > .5f)
          x[i] = -.5f;
     }
-    *y = f32_to_q31(valf);
+    *y = f32_to_q31(clipminmaxf(-1.f, valf, 1.f));
   }
 }
 
