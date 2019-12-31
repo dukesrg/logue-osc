@@ -3,5 +3,8 @@
 This is a supersaw oscillator
 
 ## Parameters
-* Unison (shape / A knob) - 0...12 pairs, each pair detuned by additional +/- detune value
-* Detune (shift shape/ B knob) - detune value in 0...1 semitone
+* Unison level (shape / A knob)
+* Detune level (shift shape / B knob)
+* Unison (param 1) - maximum unison 1...12 pairs (shape sensitivity)
+* Detune (param 2) - maximum detune 1...100 cents (shift shape sensitivity)
+* Attenuate (param 3) - result wave attenuation 0...30dB

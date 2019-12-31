@@ -1,13 +1,18 @@
 {
-    "header" : 
+    "header" :
     {
         "platform" : "nutekt-digital",
         "module" : "osc",
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.2-0",
+        "version" : "0.3-0",
         "name" : "Supersaw",
-        "num_param" : 0
+        "num_param" : 3,
+        "params" : [
+            ["Unison", 0, 11, ""],
+            ["Detune", 1, 100, "%"],
+            ["Attenuate", 0, 30, "%"]
+        ]
     }
 }
