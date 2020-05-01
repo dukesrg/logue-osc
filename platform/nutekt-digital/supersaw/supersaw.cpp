@@ -56,9 +56,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
     float valf = osc_sawf(s_phase[0]);
-    for (i = 0; i < base * 2; i++)
-      valf += osc_sawf(s_phase[i * 2 + 1]);
-    if (i < MAX_UNISON * 2)
+    for (i = 0; i < base; i++)
+      valf += osc_sawf(s_phase[i * 2 + 1]) + osc_sawf(s_phase[i * 2 + 2]);
+    if (i < MAX_UNISON)
       valf += (osc_sawf(s_phase[i * 2 + 1]) + osc_sawf(s_phase[i * 2 + 2])) * (s_unison - base);
     *y = f32_to_q31(clipminmaxf(-1.f, valf * s_amp, 1.f));
     for (i = MAX_UNISON * 2 + 1; i--;) {
