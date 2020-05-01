@@ -3,7 +3,7 @@
  *
  * Supersaw
  * 
- * 2019 (c) Oleg Burdaev
+ * 2019-2020 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */
@@ -13,15 +13,35 @@
 
 #define MAX_UNISON 12 //maximum unison pairs
 #define MAX_DETUNE 1.f //maximum detune between neighbor unison voices in semitones
+#define MAX_POLY 8 //maximum polyphony
 
 static float s_unison;
 static float s_detune;
 static float s_amp;
 static uint32_t s_max_unison;
 static float s_max_detune;
+static uint32_t s_max_poly;
+static uint32_t s_voice_index;
 static float s_shape;
 static float s_shiftshape;
-static float s_phase[MAX_UNISON * 2 + 1];
+static uint16_t s_note_pitch;
+static uint16_t s_old_pitch;
+static uint16_t s_osc_pitch;
+static uint16_t s_pitch_wheel;
+
+typedef struct {
+  float phase[MAX_UNISON * 2 + 1];
+  float w0[MAX_UNISON * 2 + 1];
+  union {
+    uint16_t pitch;
+    struct {
+      uint8_t mod;
+      uint8_t note;
+    };
+  };
+} __attribute__((packed)) voice;
+
+static voice s_voices[MAX_POLY];
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
@@ -30,52 +50,91 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   s_amp = 1.f;
   s_max_unison = MAX_UNISON;
   s_max_detune = MAX_DETUNE;
+  s_max_poly = 1;
+  s_voice_index = 0;
+  for (uint32_t i = MAX_POLY; i--; s_voices[i].note = 0xFF);
   s_shape = 0.f;
   s_shiftshape = 0.f;
+  s_note_pitch = 0xFFFF;
+  s_old_pitch = 0xFFFF;
+  s_osc_pitch = 0xFFFF;
+}
+
+__fast_inline float osc_w0f_for_notef(uint8_t note, float mod) {
+  return clipmaxf(linintf(mod, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf;
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  uint8_t note = params->pitch >> 8;
-  uint8_t mod = params->pitch & 0xFF;
-  float n1, n2;
-  n1 = n2 = mod * k_note_mod_fscale + note;
-  uint32_t i;
-  float w0[MAX_UNISON * 2 + 1];
-  w0[0] = osc_w0f_for_note(note, mod);
-  for (i = 0; i < MAX_UNISON; i++) {
-    n1 += s_detune;
-    n2 -= s_detune;
-    uint32_t b1 = (uint32_t)n1;
-    uint32_t b2 = (uint32_t)n2;
-    w0[i * 2 + 1] = osc_w0f_for_note(b1, 255 * (n1 - b1));
-    w0[i * 2 + 2] = osc_w0f_for_note(b2, 255 * (n2 - b2));
+  uint32_t i, j;
+  if (s_note_pitch != s_old_pitch || params->pitch != s_osc_pitch) {
+    uint16_t noteoff = params->pitch - s_osc_pitch + s_old_pitch;
+    s_old_pitch = s_note_pitch;
+    for (i = 0; i < s_max_poly && s_voices[i].pitch != noteoff; i++);
+    if (i >= s_max_poly) {
+      s_osc_pitch = params->pitch;
+      s_pitch_wheel = params->pitch - s_note_pitch;
+    } else {
+      s_pitch_wheel = 0;
+    }
   }
-  
+
+  for (j = 0; s_voices[j].note != 0xFF && j < s_max_poly; j++) {
+    uint16_t pitch = s_voices[j].pitch + s_pitch_wheel;
+    uint8_t note = pitch >> 8;
+    uint8_t mod = pitch & 0xFF;
+    float n1, n2;
+    n1 = n2 = mod * k_note_mod_fscale + note;
+    s_voices[j].w0[0] = osc_w0f_for_note(note, mod);
+    for (i = 0; i < s_unison; i++) {
+      n1 += s_detune;
+      n2 -= s_detune;
+      uint32_t b1 = (uint32_t)n1;
+      uint32_t b2 = (uint32_t)n2;
+      s_voices[j].w0[i * 2 + 1] = osc_w0f_for_notef(b1, n1 - b1);
+      s_voices[j].w0[i * 2 + 2] = osc_w0f_for_notef(b2, n2 - b2);
+    }
+  }
+
   uint32_t base = (uint32_t)s_unison;
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    float valf = osc_sawf(s_phase[0]);
-    for (i = 0; i < base; i++)
-      valf += osc_sawf(s_phase[i * 2 + 1]) + osc_sawf(s_phase[i * 2 + 2]);
-    if (i < MAX_UNISON)
-      valf += (osc_sawf(s_phase[i * 2 + 1]) + osc_sawf(s_phase[i * 2 + 2])) * (s_unison - base);
-    *y = f32_to_q31(clipminmaxf(-1.f, valf * s_amp, 1.f));
-    for (i = MAX_UNISON * 2 + 1; i--;) {
-      s_phase[i] += w0[i];
-      s_phase[i] -= (uint32_t)s_phase[i];
+    float valf = .0f;
+    for (j = 0; s_voices[j].note != 0xFF && j < s_max_poly; j++) {
+      valf += osc_sawf(s_voices[j].phase[0]);
+      for (i = 0; i < base; i++)
+        valf += osc_sawf(s_voices[j].phase[i * 2 + 1]) + osc_sawf(s_voices[j].phase[i * 2 + 2]);
+      if (i < s_max_unison)
+        valf += (osc_sawf(s_voices[j].phase[i * 2 + 1]) + osc_sawf(s_voices[j].phase[i * 2 + 2])) * (s_unison - base);
+      for (i = 0; i < (base + 1) * 2 + 1 && i < s_max_unison * 2 + 1; i++) {
+        s_voices[j].phase[i] += s_voices[j].w0[i];
+        s_voices[j].phase[i] -= (uint32_t)s_voices[j].phase[i];
+      }
     }
+    *y = f32_to_q31(clipminmaxf(-1.f, valf * s_amp, 1.f));
   }
 }
 
-void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
+void OSC_NOTEON(const user_osc_param_t * const params)
 {
-  for (uint32_t i = MAX_UNISON * 2 + 1; i--; s_phase[i] = _osc_white());
+  s_note_pitch = params->pitch;
+  uint32_t i;
+  for (i = 0; i < s_max_poly && s_voices[i].pitch != s_note_pitch; i++);
+  if (i >= s_max_poly) {
+    s_voices[s_voice_index].pitch = s_note_pitch;
+    for (i = MAX_UNISON * 2 + 1; i--; s_voices[s_voice_index].phase[i] = _osc_white());
+    if (++s_voice_index >= s_max_poly)
+      s_voice_index = 0;
+  }
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
-
+  s_note_pitch = 0xFFFF;
+  s_osc_pitch = 0xFFFF;
+  s_old_pitch = 0xFFFF;
+  s_voice_index = 0;
+  for (uint32_t i = MAX_POLY; i--; s_voices[i].note = 0xFF);
 }
 
 void OSC_PARAM(uint16_t index, uint16_t value)
@@ -102,6 +161,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       s_amp = dbampf(-value);
       break;
     case k_user_osc_param_id4:
+      s_max_poly = value + 1;
+      break;
     case k_user_osc_param_id5:
     case k_user_osc_param_id6:
     default:
