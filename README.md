@@ -13,9 +13,9 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 * Supersaw - Saw with unison.
 
 ### Oscillator Parameters
-|Oscillator|Shape / A knob|Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
+|Oscillator|Shape / A knob|Shift-Shape / Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
 |-|-|-|-|-|-|-|-|-|
-|Supersaw|Unison level|Detune level|Unison range 1...12 pairs|Detune range 1...100 cents|Attenuate 0...30dB|Polyphony 1...8|-|-|
+|Supersaw|Unison level|Detune level|Unisonrange 1...12 pairs|Detune range 1...100 cents|Attenuate 0...30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1...12 voices|-|
 
 ### Notes
 * Supersaw polyphony is only for NTS-1 firmware 1.2.0 with legato switched off. Setting polyphony more than 1 in any other hardware configuration may result to unpredicted behaviour.

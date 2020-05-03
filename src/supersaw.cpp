@@ -21,6 +21,7 @@ static uint32_t s_max_unison;
 static float s_max_detune;
 static uint32_t s_max_poly;
 static uint32_t s_voice_index;
+static uint32_t s_lfo_route;
 static float s_shape;
 static float s_shiftshape;
 static uint16_t s_note_pitch;
@@ -40,6 +41,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   s_max_detune = MAX_DETUNE;
   s_max_poly = 1;
   s_voice_index = 0;
+  s_lfo_route = 1;
   for (uint32_t i = MAX_POLY; i--; s_pitch[i] = 0xFFFF);
   s_shape = 0.f;
   s_shiftshape = 0.f;
@@ -67,9 +69,18 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
   }
 
-  uint32_t base = (uint32_t)s_unison;
-  float frac = s_unison - base;
+  float lfo = (1.f - q31_to_f32(params->shape_lfo));
+
+  float frac = s_unison;
+  if (s_lfo_route & 0x1)
+    frac *= lfo;
+  uint32_t base = (uint32_t)frac;
+  frac -= base;
   base <<= 1;
+
+  float detune = s_detune;
+  if (s_lfo_route & 0x2)
+    detune *= lfo;
 
   for (j = 0; s_pitch[j] != 0xFFFF && j < s_max_poly; j++) {
     uint16_t pitch = s_pitch[j] + s_pitch_wheel;
@@ -80,8 +91,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     float *w0 = s_w0[j];
     *w0++ = osc_w0f_for_note(note, mod);
     for (i = 0; i < MAX_UNISON; i++) {
-      n1 += s_detune;
-      n2 -= s_detune;
+      n1 += detune;
+      n2 -= detune;
       uint32_t b1 = (uint32_t)n1;
       uint32_t b2 = (uint32_t)n2;
       *w0++ = osc_w0f_for_notef(b1, n1 - b1);
@@ -160,9 +171,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       s_amp = dbampf(-value);
       break;
     case k_user_osc_param_id4:
-      s_max_poly = value + 1;
+      s_lfo_route = value + 1;
       break;
     case k_user_osc_param_id5:
+      s_max_poly = value + 1;
+      break;
     case k_user_osc_param_id6:
     default:
       break;
