@@ -27,9 +27,9 @@ static uint16_t s_note_pitch;
 static uint16_t s_old_pitch;
 static uint16_t s_osc_pitch;
 static uint16_t s_pitch_wheel;
-float s_phase[MAX_POLY][MAX_UNISON * 2 + 1];
-float s_w0[MAX_POLY][MAX_UNISON * 2 + 1];
-float s_pitch[MAX_POLY];
+static float s_phase[MAX_POLY][MAX_UNISON * 2 + 1];
+static float s_w0[MAX_POLY][MAX_UNISON * 2 + 1];
+static uint16_t s_pitch[MAX_POLY];
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
