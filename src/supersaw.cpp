@@ -24,6 +24,7 @@ static uint32_t s_max_poly;
 static uint32_t s_voice_count;
 static uint32_t s_voice_index;
 static uint32_t s_lfo_route;
+static float s_wave_index;
 static float s_shape;
 static float s_shiftshape;
 static uint16_t s_note_pitch;
@@ -45,6 +46,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   s_voice_count = 0;
   s_voice_index = 0;
   s_lfo_route = 1;
+  s_wave_index = 0.f;
   s_shape = 0.f;
   s_shiftshape = 0.f;
   s_note_pitch = NOPITCH;
@@ -114,16 +116,16 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       phase = s_phase[j];
       w0 = s_w0[j];
       for (i = 0; i <= base; i++, phase++, w0++) {
-        valf += osc_sawf(*phase);
+        valf += osc_bl2_sawf(*phase, s_wave_index);
         *phase += *w0;
         *phase -= (uint32_t)*phase;
       }
       if (has_frac) {
-        valf += osc_sawf(*phase) * frac;
+        valf += osc_bl2_sawf(*phase, s_wave_index) * frac;
         *phase += *w0++;
         *phase -= (uint32_t)*phase;
         phase++;
-        valf += osc_sawf(*phase) * frac;
+        valf += osc_bl2_sawf(*phase, s_wave_index) * frac;
         *phase += *w0++;
         *phase -= (uint32_t)*phase;
       }
@@ -186,15 +188,17 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       s_detune = s_shiftshape * s_max_detune;
       break;
     case k_user_osc_param_id3:
-      s_amp = dbampf(-value);
+      s_wave_index = value * .06f;
       break;
     case k_user_osc_param_id4:
-      s_lfo_route = value + 1;
+      s_amp = dbampf(-value);
       break;
     case k_user_osc_param_id5:
-      s_max_poly = value + 1;
+      s_lfo_route = value + 1;
       break;
     case k_user_osc_param_id6:
+      s_max_poly = value + 1;
+      break;
     default:
       break;
   }
