@@ -123,6 +123,16 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
     *y = f32_to_q31(clipminmaxf(-1.f, valf * s_amp, 1.f));
   }
+
+  base += frac == 0.f ? 1 : 3;
+  for (j = 0; s_pitch[j] != 0xFFFF && j < s_max_poly; j++) {
+    float *phase = &s_phase[j][base];
+    float *w0 = &s_w0[j][base];
+    for (i = base; i <= MAX_UNISON * 2; i++, phase++, w0++) {
+      *phase += *w0 * frames;
+      *phase -= (uint32_t)*phase;
+    }
+  }
 }
 
 void OSC_NOTEON(const user_osc_param_t * const params)

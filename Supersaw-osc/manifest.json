@@ -6,14 +6,14 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.8-0",
+        "version" : "0.9-0",
         "name" : "Supersaw",
         "num_param" : 5,
         "params" : [
             ["Unison", 0, 11, ""],
             ["Detune", 1, 100, "%"],
             ["Attenuate", 0, 30, "%"],
-            ["LFO Route", 0, 2, ""],
+            ["Route LFO", 0, 2, ""],
             ["Polyphony", 0, 11, ""]
         ]
     }
