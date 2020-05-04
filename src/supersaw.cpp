@@ -58,11 +58,16 @@ __fast_inline float osc_w0f_for_notef(uint8_t note, float mod) {
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  uint32_t i, j;
+  float lfo, frac, detune, n1, n2, valf, *w0, *phase;
+  uint32_t i, j, b1, b2, base;
+  uint16_t pitch;
+  uint8_t note, mod;
+  bool has_frac;
+
   if (s_note_pitch != s_old_pitch || params->pitch != s_osc_pitch) {
-    uint16_t noteoff = params->pitch - s_osc_pitch + s_old_pitch;
+    pitch = params->pitch - s_osc_pitch + s_old_pitch;
     s_old_pitch = s_note_pitch;
-    for (i = 0; i < s_voice_count && s_pitch[i] != noteoff; i++);
+    for (i = 0; i < s_voice_count && s_pitch[i] != pitch; i++);
     if (i >= s_voice_count) {
       s_osc_pitch = params->pitch;
       s_pitch_wheel = params->pitch - s_note_pitch;
@@ -71,32 +76,32 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
   }
 
-  float lfo = (1.f - q31_to_f32(params->shape_lfo));
+  lfo = (1.f - q31_to_f32(params->shape_lfo));
 
-  float frac = s_unison;
+  frac = s_unison;
   if (s_lfo_route & 0x1)
     frac *= lfo;
-  uint32_t base = (uint32_t)frac;
+  base = (uint32_t)frac;
   frac -= base;
   base <<= 1;
+  has_frac = frac != .0f;
 
-  float detune = s_detune;
+  detune = s_detune;
   if (s_lfo_route & 0x2)
     detune *= lfo;
 
   for (j = s_voice_count; j--;) {
-    uint16_t pitch = s_pitch[j] + s_pitch_wheel;
-    uint8_t note = pitch >> 8;
-    uint8_t mod = pitch & 0xFF;
-    float n1, n2;
+    pitch = s_pitch[j] + s_pitch_wheel;
+    note = pitch >> 8;
+    mod = pitch & 0xFF;
     n1 = n2 = mod * k_note_mod_fscale + note;
-    float *w0 = s_w0[j];
+    w0 = s_w0[j];
     *w0++ = osc_w0f_for_note(note, mod);
     for (i = 0; i < MAX_UNISON; i++) {
       n1 += detune;
       n2 -= detune;
-      uint32_t b1 = (uint32_t)n1;
-      uint32_t b2 = (uint32_t)n2;
+      b1 = (uint32_t)n1;
+      b2 = (uint32_t)n2;
       *w0++ = osc_w0f_for_notef(b1, n1 - b1);
       *w0++ = osc_w0f_for_notef(b2, n2 - b2);
     }
@@ -104,16 +109,16 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    float valf = .0f;
+    valf = .0f;
     for (j = s_voice_count; j--;) {
-      float *phase = s_phase[j];
-      float *w0 = s_w0[j];
+      phase = s_phase[j];
+      w0 = s_w0[j];
       for (i = 0; i <= base; i++, phase++, w0++) {
         valf += osc_sawf(*phase);
         *phase += *w0;
         *phase -= (uint32_t)*phase;
       }
-      if (i <= s_max_unison * 2) {
+      if (has_frac) {
         valf += osc_sawf(*phase) * frac;
         *phase += *w0++;
         *phase -= (uint32_t)*phase;
@@ -126,10 +131,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     *y = f32_to_q31(clipminmaxf(-1.f, valf * s_amp, 1.f));
   }
 
-  base += frac == 0.f ? 1 : 3;
+  base += has_frac ? 3 : 1;
   for (j = s_voice_count; j--;) {
-    float *phase = &s_phase[j][base];
-    float *w0 = &s_w0[j][base];
+    phase = &s_phase[j][base];
+    w0 = &s_w0[j][base];
     for (i = base; i <= MAX_UNISON * 2; i++, phase++, w0++) {
       *phase += *w0 * frames;
       *phase -= (uint32_t)*phase;
@@ -163,14 +168,13 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
-  float valf = param_val_to_f32(value);
   switch (index) {
     case k_user_osc_param_shape:
-      s_shape = valf;
+      s_shape = param_val_to_f32(value);
       s_unison = s_shape * s_max_unison;
       break;
     case k_user_osc_param_shiftshape:
-      s_shiftshape = valf;
+      s_shiftshape = param_val_to_f32(value);
       s_detune = s_shiftshape * s_max_detune;
       break;
     case k_user_osc_param_id1:
