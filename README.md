@@ -13,6 +13,7 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 
 ### Oscillator description
 * Supersaw - Saw with unison.
+* FastSaw - The same as Supersaw rewritten with Q31 fixed point. Less CPU resource consuming i.e. more unison/polyphony/FX avaiable without sound degradation.
 
 ### Oscillator Parameters
 |Oscillator|Shape / A knob|Shift-Shape / Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
