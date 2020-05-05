@@ -68,7 +68,7 @@ __fast_inline float osc_w0f_for_notef(uint8_t note, float mod) {
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  float lfo, frac, detune, n1, n2/*, valf, *w0, *phase*/;
+  float lfo, frac, detune, n1, n2;
   uint32_t i, j, b1, b2, base;
   uint16_t pitch;
   uint8_t note, mod;
@@ -87,11 +87,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
   }
 
-  lfo = (1.f - q31_to_f32(params->shape_lfo));
+  lfo = q31_to_f32(params->shape_lfo);
 
-  frac = s_unison;
   if (s_lfo_route & 0x1)
-    frac *= lfo;
+    frac = clipminmaxf(.0f, s_unison + lfo * s_max_unison, MAX_UNISON);
+  else 
+    frac = s_unison;
+
   base = (uint32_t)frac;
   frac -= base;
   base <<= 1;
@@ -99,7 +101,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   detune = s_detune;
   if (s_lfo_route & 0x2)
-    detune *= lfo;
+    detune += lfo * s_max_detune;
 
   for (j = s_voice_count; j--;) {
     pitch = s_pitch[j] + s_pitch_wheel;
