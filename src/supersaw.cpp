@@ -87,7 +87,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   base = (uint32_t)frac;
   frac -= base;
-  base <<= 1;
+  base = base * 2 + 1;
   has_frac = frac != .0f;
 
   detune = s_detune;
@@ -117,7 +117,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     for (j = s_voice_count; j--;) {
       phase = s_phase[j];
       w0 = s_w0[j];
-      for (i = 0; i <= base; i++, phase++, w0++) {
+      for (i = base; i--; phase++, w0++) {
         valf += osc_bl2_sawf(*phase, s_wave_index);
         *phase += *w0;
         *phase -= (uint32_t)*phase;
@@ -135,7 +135,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     *y = f32_to_q31(clipminmaxf(-1.f, valf * s_amp, 1.f));
   }
 
-  base += has_frac ? 3 : 1;
+  if (has_frac)
+    base += 2;
   for (j = s_voice_count; j--;) {
     phase = &s_phase[j][base];
     w0 = &s_w0[j][base];

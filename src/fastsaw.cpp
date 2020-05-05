@@ -96,7 +96,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   base = (uint32_t)frac;
   frac -= base;
-  base <<= 1;
+  base = base * 2 + 1;
   has_frac = frac != .0f;
 
   detune = s_detune;
@@ -128,14 +128,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     for (j = s_voice_count; j--;) {
       phase = s_phase[j];
       w0 = s_w0[j];
-      for (i = 0; i <= base; i++, phase++, w0++) {
+      for (i = base; i--;) {
         valq = q31add(valq, q31mul(osc_bl2_sawq(*phase, s_wave_index), s_amp));
-        *phase += *w0;
+        *phase++ += *w0++;
       }
       if (has_frac) {
         valq = q31add(valq, q31mul(osc_bl2_sawq(*phase, s_wave_index), fracq));
-        *phase += *w0++;
-        phase++;
+        *phase++ += *w0++;
         valq = q31add(valq, q31mul(osc_bl2_sawq(*phase, s_wave_index), fracq));
         *phase += *w0++;
       }
@@ -143,12 +142,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     *y = valq;
   }
 
-  base += has_frac ? 3 : 1;
+  if (has_frac)
+    base += 2;
   for (j = s_voice_count; j--;) {
     phase = &s_phase[j][base];
     w0 = &s_w0[j][base];
-    for (i = base; i <= MAX_UNISON * 2; i++, phase++, w0++) {
-      *phase += *w0 * frames;
+    for (i = base; i <= MAX_UNISON * 2; i++) {
+      *phase++ += frames * *w0++;
     }
   }
 }
