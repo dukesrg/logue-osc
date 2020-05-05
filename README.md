@@ -6,6 +6,8 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 ### Project structure
 
 * [lodue-sdk/](logue-sdk/) : My own logue-sdk fork with optimized makefiles and reduced project footprint.
+* [inc/fixed_mathq.h](inc/fixed_mathq.h) : Q31 fixed point math functions.
+* [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
 * [src/](src/) : Oscillator source files.
 * ...osc/ : Oscillator project files.
 
