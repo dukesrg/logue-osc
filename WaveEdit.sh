@@ -5,4 +5,3 @@ curl https://waveeditonline.com/wav-files.zip | tar -xvf- -C WaveEdit
 for i in WaveEdit/*.WAV; do
 	./Morpheus.sh $1 $i &
 done
-rm -rf WaveEdit

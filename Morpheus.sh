@@ -18,7 +18,7 @@ else
 	echo Compatible PCM or u-law wave file NOT detected, treating as raw u-law data
 	SKIP=0
 fi
-([ $SKIP -ne 44 ] || ./PCM2uLaw.sh $2) | dd conv=notrunc bs=1 $INPUT skip=$SKIP of=$NAME/payload.bin seek=64 count=16384 status=progress
+([ $SKIP -ne 44 ] || ./PCM2uLaw.sh $2) | dd conv=notrunc bs=1 $INPUT skip=$SKIP of=$NAME/payload.bin seek=64 count=16384
 sed -E s'/^( *"name" *: *")[^"]+(.*)$/\1'${NAME:0:12}'\2/' $NAME/manifest.json > $NAME/manifest.tmp
 mv -f $NAME/manifest.tmp $NAME/manifest.json
 zip -mr $NAME.${1##*.} $NAME
