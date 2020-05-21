@@ -9,7 +9,9 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 * [inc/fixed_mathq.h](inc/fixed_mathq.h) : Q31 fixed point math functions.
 * [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
 * [inc/wavebank.h](inc/wavebank.h) : Customizable [WaveEdit](https://synthtech.com/waveedit) compatible wavetable functions.
-* [Morpheus.sh](Morpheus.sh) : Bash script with for wavetable oscillator injection.
+* [Morpheus.sh](Morpheus.sh) : Wavetable oscillator wave data injector to use with any custom oscillator built with [inc/wavebank.h](inc/wavebank.h) file.
+* [PCM2uLaw.sh](PCM2uLaw.sh) : Dumbest ever audio transcoder for 16-bit PCM to μ-law convertion.
+* [WaveEdit.sh](WaveEdit.sh) : [WaveEdit Online](https://waveeditonline.com/) library batch converter, very slow and CPU consuming.
 * [src/](src/) : Oscillator source files.
 * ...osc/ : Oscillator project files.
 
@@ -28,7 +30,6 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 * Supersaw polyphony is only for NTS-1 firmware 1.2.0 with legato switched off. Setting polyphony more than 1 in any other hardware configuration may result to unpredicted behaviour.
 * Supersaw polyphony is limited to use for chords or preemptive mode with last note priority due to NTS-1 firmware 1.2.0 non legato NOTE OFF implementation (i.e. only last released note event is passed to the runtime).
 * Sound may be degraded when using high level of unison and/or high level of polyphony with another FX due to high CPU processing power requirement, so use parameters wisely for your current creative requiremet.
-* Morpheus requires wavetable data to be injected after compilation. [WaveEdit](https://synthtech.com/waveedit) or any other 64x256 samples wave file must be converted to raw μ-law compressed format before injection.
 * Morpheus LFO rate control is in non-linear scale with more precise control in lower frequencies.
 
 |#|Morpheus LFO X&Y types|
