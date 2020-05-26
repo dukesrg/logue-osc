@@ -14,8 +14,6 @@
 #define OSC_NOTE_Q
 #define OSC_SAW_Q
 #include "osc_apiq.h"
-q31_t midi_to_hz_lut_q[k_midi_to_hz_size];
-q31_t wt_saw_lut_q[k_wt_saw_lut_tsize];
 
 #define MAX_UNISON 12 //maximum unison pairs
 #define MAX_DETUNE 1.f //maximum detune between neighbor unison voices in semitones

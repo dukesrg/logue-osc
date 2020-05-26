@@ -17,7 +17,7 @@
 #define k_samplerate_recipq M_1OVER48K_Q31
 #define k_note_max_hzq 0x3F254D91 //k_note_max_hz/48000
 
-extern q31_t midi_to_hz_lut_q[k_midi_to_hz_size];
+q31_t midi_to_hz_lut_q[k_midi_to_hz_size];
 
   /**
    * Get Hertz value for note
@@ -42,8 +42,28 @@ q31_t osc_w0q_for_note(uint8_t note, q31_t mod) {
 }
 #endif
 
+#ifdef OSC_SIN_Q
+q31_t wt_sine_lut_q[k_wt_sine_lut_size];
+  /**
+   * Lookup value of sin(2*pi*x).
+   *
+   * @param   x  Phase ratio
+   * @return     Result of sin(2*pi*x).
+   */
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t osc_sinq(q31_t x) {
+  x &= 0x7FFFFFFF;
+  uint32_t x0p = x >> (31 - k_wt_sine_size_exp - 1);
+  const uint32_t x0 = x0p & k_wt_sine_mask;
+  const uint32_t x1 = (x0 + 1) & k_wt_sine_mask;
+  const q31_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+  const q31_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  return (x0p < k_wt_sine_size)?y0:-y0;
+}
+#endif
+
 #ifdef OSC_SAW_Q
-extern q31_t wt_saw_lut_q[k_wt_saw_lut_tsize];
+q31_t wt_saw_lut_q[k_wt_saw_lut_tsize];
 
   /**
    * Sawtooth wave lookup.
@@ -125,6 +145,9 @@ void osc_api_initq() {
   uint32_t i __attribute__((unused));
 #ifdef OSC_NOTE_Q
   for (i = k_midi_to_hz_size; i--; midi_to_hz_lut_q[i] = f32_to_q31(midi_to_hz_lut_f[i] * k_samplerate_recipf));
+#endif
+#ifdef OSC_SIN_Q
+  for (i = k_wt_sine_lut_size; i--; wt_sine_lut_q[i] = f32_to_q31(wt_sine_lut_f[i]));
 #endif
 #ifdef OSC_SAW_Q
   for (i = k_wt_saw_lut_tsize; i--; wt_saw_lut_q[i] = f32_to_q31(wt_saw_lut_f[i]));
