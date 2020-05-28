@@ -22,3 +22,15 @@ q31_t clipmaxq(const q31_t x, const q31_t m)
 {
   return (((x)>=m)?m:(x));
 }
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t clipminq(const q31_t m, const q31_t x)
+{
+  return (((x)<=m)?m:(x));
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t clipminmaxq(const q31_t min, const q31_t x, const q31_t max)
+{
+  return (((x)>=max)?max:((x)<=min)?min:(x));
+}
