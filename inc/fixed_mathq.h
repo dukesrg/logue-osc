@@ -12,6 +12,10 @@
 
 #include "fixed_math.h"
 
+#define q7_to_f32_c .0078125f
+#define q7_to_f32(q) ((float)(q) * q7_to_f32_c)
+#define f32_to_q7(f) ((q7_t)ssat((q31_t)((float)(f) * ((1<<7)-1)),8))
+
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t linintq(const q31_t fr, const q31_t x0, const q31_t x1) {
   return q31add(x0, q31mul(fr, q31sub(x1, x0)));
