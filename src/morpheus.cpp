@@ -11,12 +11,16 @@
 #include "fixed_math.h"
 #include "simplelfo.hpp"
 #include "userosc.h"
+
+#define FORMAT_ULAW
+#define SAMPLE_COUNT 256
+#define WAVE_COUNT 64
+#define WAVE_COUNT_X 8
+#define WAVE_COUNT_Y 8
 #include "wavebank.h"
 
 #define LFO_MAX_RATE (10.f / 30.f) //maximum LFO rate in Hz divided by logarithmic slope
 #define LFO_RATE_LOG_BIAS 29.8272342681884765625f //normalize logarithmic LFO for 0...1
-#define MAX_INDEX (WAVE_COUNT - 1)
-#define MAX_INDEXY 7
 
 static float s_shape;
 static float s_shiftshape;
@@ -99,28 +103,28 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   switch (s_interpolate | (s_mode << 1)) {
     case 0:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_i(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * MAX_INDEX));
+        *y = f32_to_q31(osc_wavebank_i(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
         s_phase += w0;
         s_phase -= (uint32_t)s_phase;
       }
       break;
     case 1:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_f(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * MAX_INDEX));
+        *y = f32_to_q31(osc_wavebank_f(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
         s_phase += w0;
         s_phase -= (uint32_t)s_phase;
       }
       break;
     case 2:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_i(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * MAX_INDEXY, get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * MAX_INDEXY));
+        *y = f32_to_q31(osc_wavebank_i(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1), get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
         s_phase += w0;
         s_phase -= (uint32_t)s_phase;
       }
       break;
     case 3:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_f(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * MAX_INDEXY, get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * MAX_INDEXY));
+        *y = f32_to_q31(osc_wavebank_f(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1), get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
         s_phase += w0;
         s_phase -= (uint32_t)s_phase;
       }
