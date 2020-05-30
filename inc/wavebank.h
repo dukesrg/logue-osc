@@ -59,6 +59,14 @@
   #pragma message "WAVE_COUNT not defined, enforcing 64"
   #define WAVE_COUNT 64
 #endif
+#ifndef WAVE_COUNT_X
+  #pragma message "WAVE_COUNT_X not defined, enforcing 8"
+  #define WAVE_COUNT_X 8
+#endif
+#ifndef WAVE_COUNT_Y
+  #pragma message "WAVE_COUNT_Y not defined, enforcing 8"
+  #define WAVE_COUNT_Y 8
+#endif
 
 #define BIAS 0x84
 #define QUANT_MASK 0x0F
@@ -139,7 +147,7 @@ float osc_wavebank_i(float x, uint8_t idx) {
 
 static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank_i(float x, uint8_t idx_x, uint8_t idx_y) {
-  return osc_wavebank_i(x, idx_x + idx_y * 8);
+  return osc_wavebank_i(x, idx_x + idx_y * WAVE_COUNT_X);
 }
 
 static inline __attribute__((always_inline, optimize("Ofast")))
@@ -160,5 +168,5 @@ static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank_f(float x, float idx_x, float idx_y) {
   const uint32_t y0p = (uint32_t)idx_y;
   const float fr = idx_y - y0p;
-  return linintf(fr, osc_wavebank_f(x, idx_x + y0p * 8), osc_wavebank_f(x, idx_x + ((y0p + 1) & 7) * 8));
+  return linintf(fr, osc_wavebank_f(x, idx_x + y0p * WAVE_COUNT_X), osc_wavebank_f(x, idx_x + ((y0p + 1) & (WAVE_COUNT_Y - 1)) * WAVE_COUNT_X));
 }
