@@ -19,7 +19,9 @@
 #define OPERATOR_COUNT 6
 #define EG_STAGE_COUNT 4
 
-#define TRANSPOSE_CENTER 0x18
+#define TRANSPOSE_CENTER 24
+#define PEG_CENTER 50
+#define PEG_SCALE 16
 
 #define ALG_OUT_MASK 0x80
 #define ALG_FBK_MASK 0x40

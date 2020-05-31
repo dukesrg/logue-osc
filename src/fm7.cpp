@@ -35,6 +35,7 @@ static uint32_t s_bank;
 static uint32_t s_voice;
 static uint8_t s_egstage[OPERATOR_COUNT];
 static uint8_t s_transpose;
+//static uint8_t s_pegstage;
 #ifdef USE_Q31
 static q31_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -43,6 +44,11 @@ static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_opval[OPERATOR_COUNT];
 static q31_t s_modlevel[OPERATOR_COUNT];
 static q31_t s_feedback;
+/*
+static float s_pegrate[EG_STAGE_COUNT];
+static float s_peglevel[EG_STAGE_COUNT];
+static float s_pegval[OPERATOR_COUNT];
+*/
 #else
 static float s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static float s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -51,6 +57,11 @@ static float s_oplevel[OPERATOR_COUNT];
 static float s_opval[OPERATOR_COUNT];
 static float s_modlevel[OPERATOR_COUNT];
 static float s_feedback;
+/*
+static q31_t s_pegrate[EG_STAGE_COUNT];
+static q31_t s_peglevel[EG_STAGE_COUNT];
+static q31_t s_pegval[OPERATOR_COUNT];
+*/
 #endif
 #ifdef USE_Q31_PITCH
 static q31_t s_oppitch[OPERATOR_COUNT];
@@ -71,7 +82,18 @@ void initvoice() {
 #else
     s_feedback = (1 << (voice->fbl - 7)) * FEEDBACK_RECIP;
 #endif
-
+/*
+#ifdef USE_Q31
+//todo: PEG level precalc & Q31
+#else
+  float preveglevel = (float)(voice->pl[EG_STAGE_COUNT - 1] - PEG_CENTER) * PEG_SCALE;
+  for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
+    s_pegrate[j] = k_samplerate_recipf * SCALE_RECIP * (s_peglevel[j] - prevlevel) / (RATE_FACTOR * (100 - voice->pr[j]));
+    prevlevel = voice->pl[j];
+    s_peglevel[j] = voice->pl[j];
+#endif
+  }
+*/
   for (uint32_t i = OPERATOR_COUNT; i--;) {
 #ifdef USE_Q31_PHASE
     s_phase[i] = 0;
@@ -142,6 +164,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef USE_Q31_PHASE
   q31_t *phase, *w0;
 #ifdef USE_Q31_PITCH
+//todo: PEG level
   q31_t basew0 = f32_to_q31(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
 #else
   float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
@@ -274,6 +297,28 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
 
     }
+/*
+//todo: PEG level
+#ifdef USE_Q31
+    s_pegval = q31add(s_pegval, s_pegrate[s_pegstage]);
+    if (
+      (s_pegrate[s_pegstage] > 0 && s_pegval >= s_pegrate[s_pegstage])
+      || (s_pegrate[s_pegstage] < 0 && s_pegval <= s_pegrate[s_pegstage])
+      || s_pegrate[s_pegstage] == 0
+    ) {
+#else
+    s_pegval += s_pegrate[s_pegstage];
+    if (
+      (s_pegrate[s_pegstage] > 0.f && s_pegval >= s_pegrate[s_pegstage])
+      || (s_pegrate[s_pegstage] < 0.f && s_pegval <= s_pegrate[s_pegstage])
+      || s_pegrate[s_pegstage] == 0.f
+    ) {
+#endif
+       s_pegval = s_peglevel[s_pegstage];
+       if (s_pegstage < 3)
+        s_pegstage++;
+    }
+*/
 #ifdef USE_Q31
     *y = osc_out;
 #else
@@ -300,6 +345,10 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_egstage[i] = 0;
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
   }
+/*
+  s_pegstage = 0;
+  s_egval = s_eglevel[EG_STAGE_COUNT - 1];
+*/
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
