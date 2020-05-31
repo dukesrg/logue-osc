@@ -19,26 +19,33 @@
 #define WAVE_COUNT_Y 8
 #include "wavebank.h"
 
+//#define USE_Q31
+#ifdef USE_Q31
+  #define USE_Q31_PHASE
+#endif
+
 #define LFO_MAX_RATE (10.f / 30.f) //maximum LFO rate in Hz divided by logarithmic slope
 #define LFO_RATE_LOG_BIAS 29.8272342681884765625f //normalize logarithmic LFO for 0...1
 
 static float s_shape;
 static float s_shiftshape;
-static float s_phase;
 static uint32_t s_interpolate;
 static uint32_t s_mode;
 static uint32_t s_lfox_type;
 static uint32_t s_lfoy_type;
 static uint32_t s_lfo_trigger;
-
 static dsp::SimpleLFO s_lfox;
 static dsp::SimpleLFO s_lfoy;
+#ifdef USE_Q31_PHASE
+static q31_t s_phase;
+#else
+static float s_phase;
+#endif
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
   s_shape = .0f;
   s_shiftshape = .0f;
-  s_phase = .0f;
   s_interpolate = 0;
   s_mode = 0;
   s_lfox_type = 0;
@@ -48,6 +55,11 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   s_lfoy.reset();
   s_lfoy.setF0(0.f, k_samplerate_recipf);
   s_lfoy.setF0(0.f, k_samplerate_recipf);
+#ifdef USE_Q31_PHASE
+  s_phase = 0;
+#else
+  s_phase = .0f;
+#endif
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))
@@ -86,7 +98,7 @@ float get_pos(dsp::SimpleLFO *lfo, uint32_t type, float x) {
       else if (type < k_waves_e_cnt + k_waves_f_cnt)
         x = osc_wave_scanf(wavesF[type - k_waves_e_cnt], phase);
       else
-        x = osc_wavebank_i(phase, type - k_waves_e_cnt - k_waves_f_cnt);
+        x = osc_wavebank(phase, type - k_waves_e_cnt - k_waves_f_cnt);
       x = x * .5f + .5f;
       break;
   }
@@ -97,36 +109,80 @@ float get_pos(dsp::SimpleLFO *lfo, uint32_t type, float x) {
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
+#ifdef USE_Q31_PHASE
+  q31_t w0 = f32_to_q31(osc_w0f_for_note(params->pitch >> 8, params->pitch & 0xFF));
+#else
   float w0 = osc_w0f_for_note(params->pitch >> 8, params->pitch & 0xFF);
+#endif
   q31_t * __restrict y = (q31_t *)yn;
 
   switch (s_interpolate | (s_mode << 1)) {
     case 0:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_i(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
+#ifdef USE_Q31
+  #ifdef USE_Q31_PHASE
+        *y = osc_wavebank(s_phase, (uint32_t)(get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
+  #else
+        *y = osc_wavebank(f32_to_q31(s_phase), (uint32_t)(get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
+  #endif
+#else
+        *y = f32_to_q31(osc_wavebank(s_phase, (uint32_t)(get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1))));
+#endif
         s_phase += w0;
+#ifndef USE_Q31_PHASE
         s_phase -= (uint32_t)s_phase;
+#endif
       }
       break;
     case 1:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_f(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
+#ifdef USE_Q31
+  #ifdef USE_Q31_PHASE
+        *y = osc_wavebank(s_phase, f32_to_q31(get_pos(&s_lfox, s_lfox_type, s_shape)));
+  #else
+        *y = osc_wavebank(f32_to_q31(s_phase), f32_to_q31(get_pos(&s_lfox, s_lfox_type, s_shape)));
+  #endif
+#else
+        *y = f32_to_q31(osc_wavebank(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT - 1)));
+#endif
         s_phase += w0;
+#ifndef USE_Q31_PHASE
         s_phase -= (uint32_t)s_phase;
+#endif
       }
       break;
     case 2:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_i(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1), get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
+#ifdef USE_Q31
+  #ifdef USE_Q31_PHASE
+        *y = osc_wavebank(s_phase, (uint32_t)(get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1)), (uint32_t)(get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
+  #else
+        *y = osc_wavebank(f32_to_q31(s_phase), (uint32_t)(get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1)), (uint32_t)(get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
+  #endif
+#else
+        *y = f32_to_q31(osc_wavebank(s_phase, (uint32_t)(get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1)), (uint32_t)(get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1))));
+#endif
         s_phase += w0;
+#ifndef USE_Q31_PHASE
         s_phase -= (uint32_t)s_phase;
+#endif
       }
       break;
     case 3:
       for (uint32_t f = frames; f--; y++) {
-        *y = f32_to_q31(osc_wavebank_f(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1), get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
+#ifdef USE_Q31
+  #ifdef USE_Q31_PHASE
+        *y = osc_wavebank(s_phase, f32_to_q31(get_pos(&s_lfox, s_lfox_type, s_shape)), f32_to_q31(get_pos(&s_lfoy, s_lfoy_type, s_shiftshape)));
+  #else
+        *y = osc_wavebank(f32_to_q31(s_phase), f32_to_q31(get_pos(&s_lfox, s_lfox_type, s_shape)), f32_to_q31(get_pos(&s_lfoy, s_lfoy_type, s_shiftshape)));
+  #endif
+#else
+        *y = f32_to_q31(osc_wavebank(s_phase, get_pos(&s_lfox, s_lfox_type, s_shape) * (WAVE_COUNT_X - 1), get_pos(&s_lfoy, s_lfoy_type, s_shiftshape) * (WAVE_COUNT_Y - 1)));
+#endif
         s_phase += w0;
+#ifndef USE_Q31_PHASE
         s_phase -= (uint32_t)s_phase;
+#endif
       }
       break;
   }

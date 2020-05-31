@@ -6,12 +6,14 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 ### Project structure
 
 * [lodue-sdk/](logue-sdk/) : My own logue-sdk fork with optimized makefiles and reduced project footprint.
-* [inc/fixed_mathq.h](inc/fixed_mathq.h) : Q31 fixed point math functions.
+* [inc/fixed_mathq.h](inc/fixed_mathq.h) : Additional fixed point math functions.
+* [inc/g711_decode.h](inc/g711_decode.h) : μ-law/A-law decoding functions.
 * [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
 * [inc/wavebank.h](inc/wavebank.h) : Customizable [WaveEdit](https://synthtech.com/waveedit) compatible wavetable functions.
 * [FM7.sh](FM7.sh) : Yamaha DX7 voice bank SysEx injector for FM7 oscillator. You can find banks at [Synth Zone](http://www.synthzone.com/yamaha.htm).
 * [Morpheus.sh](Morpheus.sh) : Wavetable oscillator wave data injector to use with any custom oscillator built with [inc/wavebank.h](inc/wavebank.h) file.
-* [PCM2uLaw.sh](PCM2uLaw.sh) : Dumbest ever audio transcoder for 16-bit PCM to μ-law convertion.
+* [PCM2ALaw.sh](PCM2ALaw.sh) : Dumbest ever audio transcoder for 16-bit PCM to A-law convertion.
+* [PCM2uLaw.sh](PCM2uLaw.sh) : Same as the above to μ-law convertion.
 * [WaveEdit.sh](WaveEdit.sh) : [WaveEdit Online](https://waveeditonline.com/) library batch converter, very slow and CPU consuming.
 * [src/](src/) : Oscillator source files.
 * ...osc/ : Oscillator project files.

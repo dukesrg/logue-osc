@@ -12,6 +12,12 @@
 
 #include "fixed_math.h"
 
+#define q7_to_q31(q) ((q31_t)(q) << 24)
+#define q31_to_q7(q) ((q15_t)((q31_t)(q) >> 24))
+
+#define q15_to_q31(q) ((q31_t)(q) << 16)
+#define q31_to_q15(q) ((q15_t)((q31_t)(q) >> 16))
+
 #define q7_to_f32_c .0078125f
 #define q7_to_f32(q) ((float)(q) * q7_to_f32_c)
 #define f32_to_q7(f) ((q7_t)ssat((q31_t)((float)(f) * ((1<<7)-1)),8))
