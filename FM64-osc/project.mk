@@ -4,11 +4,11 @@
 
 include $(PLATFORMDIR)/osc.mk
 
-PROJECT = FM7
+PROJECT = FM64
 
 UCSRC = 
 
-UCXXSRC = ../src/fm7.cpp
+UCXXSRC = ../src/fm64.cpp
 
 UINCDIR = $(PROJECTDIR)/../inc
 
