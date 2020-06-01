@@ -97,6 +97,17 @@ float dx11_modindex(uint8_t x) {
   return 8.f * M_PI * powf(2.f, .125f * (- (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x )));
 }
 
+static const float dx11_ratio_lut[64] = {
+  .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
+  2.f, 2.82f, 3.f, 3.14f, 3.46f, 4.f, 4.24f, 4.71f,
+  5.f, 5.19f, 5.65, 6.f, 6.28f, 6.92f, 7.f, 7.07f,
+  7.85f, 8.f, 8.48f, 8.65f, 9.f, 9.42f, 9.89f, 10.f,
+  10.38f, 10.99f, 11.f, 11.3f, 12.f, 12.11f, 12.56f, 12.72f,
+  13.f, 13.84f, 14.f, 14.1f, 14.13f, 15.f, 15.55f, 15.57f,
+  15.7f, 16.96f, 17.27f, 17.3f, 18.37f, 18.84f, 19.03f, 19.78f,
+  20.41f, 20.76f, 21.20f, 21.98f, 22.49f, 23.55f, 24.22f, 25.95f
+};
+
 struct dx7_operator_t {
   uint8_t r[EG_STAGE_COUNT]; //EG rates
   uint8_t l[EG_STAGE_COUNT]; //EG levels
@@ -193,7 +204,7 @@ struct dx11_voice_t {
     uint8_t egsft:2; //EG shift
     uint8_t :0;
     uint8_t fine:4; //Frequency range fine
-    uint8_t opw:3; //Waveform
+    uint8_t osw:3; //Waveform
     uint8_t :0;
   } opadd[DX11_OPERATOR_COUNT];
   uint8_t rev; //Reverb rate
