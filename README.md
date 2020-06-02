@@ -29,7 +29,7 @@ You can get the lastest precompiled versions of the oscillators in [releases](..
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1...12 pairs|Detune range 1...100 cents|Band limit 0...100%|Attenuate 0...30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1...12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0...10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0...10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>0 - none<br>1 - LFO X<br>2 - LFO Y<br>3 - both|Morph Interpolate<br>0 - off<br>1 - on|-|
-|FM64|-|-|Bank select 1...4|Voice select 1...32|-|-|-|-|
+|FM64|Voice select|Bank select|Voice select 1...32|Bank select 1...4|-|-|-|-|
 
 ### Notes
 * Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.

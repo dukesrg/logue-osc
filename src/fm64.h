@@ -16,6 +16,8 @@
 #define BANK_COUNT 4
 #endif
 
+#define BANK_SIZE 32
+
 #define DX7_OPERATOR_COUNT 6
 #define DX11_OPERATOR_COUNT 4
 #define EG_STAGE_COUNT 4
@@ -217,4 +219,4 @@ static const __attribute__((used, section(".hooks")))
 union {
   dx7_voice_t dx7;
   dx11_voice_t dx11;
-} dx_voices[BANK_COUNT][32] = {};
+} dx_voices[BANK_COUNT][BANK_SIZE] = {};

@@ -31,9 +31,10 @@
 #define DX11_MAX_RATE 31
 #define DX7_EG_LEVEL_SCALE_RECIP .01010101f //1/99
 #define DX11_EG_LEVEL_SCALE_RECIP .06666667f //1/15
+#define DX11_MAX_LEVEL 15
 #define DX7_RATE_FACTOR .01f //linear EG rate multiplier
 //#define DX11_RATE_FACTOR 0.28125f //9s/32
-#define DX11_RATE_FACTOR 0.02f
+#define DX11_RATE_FACTOR .03f
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 
@@ -122,25 +123,33 @@ void initvoice() {
       s_phase[i] = 0.f;
 #endif
 
-      float prevlevel = voice->op[i].l[EG_STAGE_COUNT - 1] * DX7_EG_LEVEL_SCALE_RECIP;
+      int32_t dl;
 #ifdef USE_Q31
 //todo: non-linear rates
 //todo: reverse rates
-      float curlevel;
-      for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-        curlevel = voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP;
-        s_eglevel[i][j] = f32_to_q31(curlevel);
-        s_egrate[i][j] = f32_to_q31(k_samplerate_recipf * (curlevel - prevlevel) / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
-        prevlevel = curlevel;
+      for (uint32_t j = EG_STAGE_COUNT; j--;) {
+        dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
+        if (dl > 0)
+          s_egrate[i][j] = f32_to_q31(k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
+        else if (dl < 0)
+          s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
+        else 
+          s_egrate[i][j] = 0;
+        s_eglevel[i][j] = f32_to_q31(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].tl * SCALE_RECIP);
       s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].tl));
 #else
-      for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
+      for (uint32_t j = EG_STAGE_COUNT; j--;) {
+        dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
+        if (dl > 0)
+          s_egrate[i][j] = k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
+        else if (dl < 0)
+          s_egrate[i][j] = - k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
+        else 
+          s_egrate[i][j] = 0.f;
         s_eglevel[i][j] = voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP;
-        s_egrate[i][j] = k_samplerate_recipf * (s_eglevel[i][j] - prevlevel) / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
-        prevlevel = s_eglevel[i][j];
       }
       s_opval[i] = 0.f;
       s_oplevel[i] = voice->op[i].tl * SCALE_RECIP;
@@ -184,25 +193,33 @@ void initvoice() {
       s_phase[i] = 0.f;
 #endif
 
-      float prevlevel = 0.f;
+      int32_t dl;
 #ifdef USE_Q31
 //todo: non-linear rates
 //todo: reverse rates
-      float curlevel;
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-        curlevel = (j==0 ? 1.f : j == 1 ? voice->op[i].d1l : 0.f) * DX11_EG_LEVEL_SCALE_RECIP;
-        s_eglevel[i][j] = f32_to_q31(curlevel);
-        s_egrate[i][j] = f32_to_q31(k_samplerate_recipf * (curlevel - prevlevel) / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - voice->op[i].r[j])));
-        prevlevel = curlevel;
+        dl = (j==0 ? DX11_MAX_LEVEL : j == 1 ? voice->op[i].d1l - DX11_MAX_LEVEL : - voice->op[i].d1l);
+        if (dl > 0)
+          s_egrate[i][j] = f32_to_q31(k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - voice->op[i].r[j])));
+        else if (dl < 0)
+          s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - voice->op[i].r[j])));
+        else 
+          s_egrate[i][j] = 0;
+        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != s_opcount - 1 ? voice->opadd[i].egsft : 0)));
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].out * SCALE_RECIP);
       s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].out));
 #else
-      for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-        s_eglevel[i][j] = (j==0 ? 1.f : j == 1 ? voice->op[i].d1l : 0.f) * DX11_EG_LEVEL_SCALE_RECIP;
-        s_egrate[i][j] = k_samplerate_recipf * (s_eglevel[i][j] - prevlevel) / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - voice->op[i].r[j]));
-        prevlevel = s_eglevel[i][j];
+      for (uint32_t j = EG_STAGE_COUNT; j--;) {
+        dl = (j==0 ? DX11_MAX_LEVEL : j == 1 ? voice->op[i].d1l - DX11_MAX_LEVEL : - voice->op[i].d1l);
+        if (dl > 0)
+          s_egrate[i][j] = k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - voice->op[i].r[j]));
+        else if (dl < 0)
+          s_egrate[i][j] = - k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - voice->op[i].r[j]));
+        else 
+          s_egrate[i][j] = 0.f;
+        s_eglevel[i][j] = 1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != s_opcount - 1 ? voice->opadd[i].egsft : 0));
       }
       s_opval[i] = 0.f;
       s_oplevel[i] = voice->op[i].out * SCALE_RECIP;
@@ -222,7 +239,6 @@ void initvoice() {
       else
 //todo: Fine freq ratio
         s_oppitch[i] = dx11_ratio_lut[voice->op[i].f];
-//todo: EG shift
 //todo: Waveform
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
@@ -380,11 +396,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       if (
         ((*egrate)[*egstage] > 0.f && *egval >= (*eglevel)[*egstage])
         || ((*egrate)[*egstage] < 0.f && *egval <= (*eglevel)[*egstage])
-        || (*egrate)[*egstage] == 0.f
+        || (*egrate)[*egstage] == 0
       ) {
 #endif
         *egval = (*eglevel)[*egstage];
-        if (*egstage < 2)
+        if (*egstage < EG_STAGE_COUNT - 2)
           (*egstage)++;
       }
 
@@ -456,19 +472,20 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   switch (index) {
     case k_user_osc_param_shape:
 //      s_shape = param_val_to_f32(value);
-      break;
-    case k_user_osc_param_shiftshape:
-//      s_shiftshape = param_val_to_f32(value);
-      break;
+      value >>= 5;
     case k_user_osc_param_id1:
-      if (s_bank != value) {
-        s_bank = value;
+      if (s_voice != value) {
+        s_voice = value;
         initvoice();
       }
       break;
+      break;
+    case k_user_osc_param_shiftshape:
+//      s_shiftshape = param_val_to_f32(value);
+      value >>= 8;
     case k_user_osc_param_id2:
-      if (s_voice != value) {
-        s_voice = value;
+      if (s_bank != value) {
+        s_bank = value;
         initvoice();
       }
       break;
