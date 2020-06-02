@@ -47,6 +47,7 @@ static uint8_t s_opi;
 static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
 static uint8_t s_egstage[DX7_OPERATOR_COUNT];
 static uint8_t s_transpose;
+static uint8_t s_sustain;
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
@@ -95,6 +96,7 @@ void initvoice() {
     s_opi = voice->opi;
     s_algorithm = dx7_algorithm[voice->als];
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
+    s_sustain = 2;
 
 #ifdef USE_Q31
     s_feedback = f32_to_q31((1 << (voice->fbl - 7)) * FEEDBACK_RECIP);
@@ -176,6 +178,7 @@ void initvoice() {
     s_algorithm = dx11_algorithm[voice->alg];
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
+    s_sustain = 1;
 
 #ifdef USE_Q31
     s_feedback = f32_to_q31((1 << (voice->fbl - 7)) * FEEDBACK_RECIP);
@@ -400,7 +403,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       ) {
 #endif
         *egval = (*eglevel)[*egstage];
-        if (*egstage < EG_STAGE_COUNT - 2)
+        if (*egstage < s_sustain)
           (*egstage)++;
       }
 

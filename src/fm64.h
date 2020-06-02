@@ -90,13 +90,13 @@ static const uint8_t modindex_lut[] = {
 // Modulation index = pi * 2 ^ (33/16 - T / 8)
 static inline __attribute__((optimize("Ofast"), always_inline))
 float dx7_modindex(uint8_t x) {
-  return M_PI * powf(2.f, .0625f * (33.f - 2.f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x )));
+  return M_PI * powf(2.f, .0625f * (33.f - 2.f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x)));
 }
 
 // Modulation index = 8 * pi * 2 ^ (- T / 8), DX21/21/100 and (?) DX11/TX81Z 
 static inline __attribute__((optimize("Ofast"), always_inline))
 float dx11_modindex(uint8_t x) {
-  return 8.f * M_PI * powf(2.f, .125f * (- (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x )));
+  return 8.f * M_PI * powf(2.f, -.125f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x));
 }
 
 static const float dx11_ratio_lut[64] = {
