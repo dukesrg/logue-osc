@@ -48,6 +48,7 @@ static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
 static uint8_t s_egstage[DX7_OPERATOR_COUNT];
 static uint8_t s_transpose;
 static uint8_t s_sustain;
+static uint8_t s_feedback_src;
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
@@ -116,6 +117,11 @@ void initvoice() {
   }
 */
     for (uint32_t i = s_opcount; i--;) {
+      if (s_algorithm[i] & ALG_FBK_MASK) {
+        s_feedback_src = 0;
+        for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
+      }
+
       s_fixedfreq[i] = voice->op[i].pm;
 //      s_waveform[i] = 0;
 
@@ -187,6 +193,11 @@ void initvoice() {
 #endif
 
     for (uint32_t i = s_opcount; i--;) {
+      if (s_algorithm[i] & ALG_FBK_MASK) {
+        s_feedback_src = 0;
+        for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
+      }
+
       s_fixedfreq[i] = voice->opadd[i].fixrg;
 //      s_waveform[i] =  voice->opadd[i].osw;
 
@@ -263,16 +274,12 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
 #ifdef USE_Q31
-  q31_t osc_out, modw0, *modval, *modlevel, *oplevel, *opval, *egval, (*egrate)[EG_STAGE_COUNT], (*eglevel)[EG_STAGE_COUNT];
+  q31_t osc_out, modw0;
 #else 
-  float osc_out, modw0, *modval, *modlevel, *oplevel, *opval, *egval, (*egrate)[EG_STAGE_COUNT], (*eglevel)[EG_STAGE_COUNT];
+  float osc_out, modw0;
 #endif
 
-  const uint8_t *alg;
-  uint8_t *egstage, mod;
-
 #ifdef USE_Q31_PHASE
-  q31_t *phase, *w0;
 #ifdef USE_Q31_PITCH
 //todo: PEG level
   q31_t basew0 = f32_to_q31(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
@@ -294,7 +301,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
   }
 #else 
-  float *phase, *w0;
   float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
   float opw0[DX7_OPERATOR_COUNT];
   for (uint32_t i = s_opcount; i--;) {
@@ -312,99 +318,69 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #else
     osc_out = 0.f;
 #endif
-    phase = s_phase;
-    w0 = opw0;
-    alg = s_algorithm;
-    opval = s_opval;
-    oplevel = s_oplevel;
-    egval = s_egval;
-    egstage = s_egstage;
-    egrate = s_egrate;
-    eglevel = s_eglevel;
-//reverse loop index to calculate modulators before carriers (modulators always not less then carriers)
-    for (uint32_t i = s_opcount; i--; phase++, w0++, opval++, oplevel++, egval++, egstage++, egrate++, eglevel++, alg++) {
-      mod = *alg;
+    for (uint32_t i = 0; i < s_opcount; i++) {
 #ifdef USE_Q31
 #ifdef USE_Q31_PHASE
-      modw0 = *phase;
+      modw0 = s_phase[i];
 #else
-      modw0 = f32_to_q31(*phase);
+      modw0 = f32_to_q31(s_phase[i]);
 #endif
-      modval = s_opval;
-      if (mod & ALG_FBK_MASK) {
-        mod &= ALG_FBK_MASK - 1;
-        for(; mod & ALG_MOD6_MASK; modval++)
-          mod >>= 1;
-        modw0 += q31mul(*modval, s_feedback);
-      } else {
-        modlevel = s_modlevel;
-        for (uint32_t j = s_opcount; j--; modval++, modlevel++) {
-          if (mod & ALG_MOD6_MASK)
-            modw0 += q31mul(*modval, *modlevel);
-          mod >>= 1;
-        }
-/*
-//unrolled modulation loop
-//todo: check the performance
-        if (mod & ALG_MOD6_MASK) modw0 += q31mul(s_opval[0], s_modlevel[0]);
-        if (mod & ALG_MOD5_MASK) modw0 += q31mul(s_opval[1], s_modlevel[1]);
-        if (mod & ALG_MOD4_MASK) modw0 += q31mul(s_opval[2], s_modlevel[2]);
-        if (mod & ALG_MOD3_MASK) modw0 += q31mul(s_opval[3], s_modlevel[3]);
-        if (mod & ALG_MOD2_MASK) modw0 += q31mul(s_opval[4], s_modlevel[4]);
-        if (mod & ALG_MOD1_MASK) modw0 += q31mul(s_opval[5], s_modlevel[5]);
-*/
+      if (s_algorithm[i] & ALG_FBK_MASK) {
+        modw0 += q31mul(s_opval[s_feedback_src], s_feedback);
+      } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += q31mul(s_opval[0], s_modlevel[0]);
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += q31mul(s_opval[1], s_modlevel[1]);
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += q31mul(s_opval[2], s_modlevel[2]);
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += q31mul(s_opval[3], s_modlevel[3]);
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += q31mul(s_opval[4], s_modlevel[4]);
+        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += q31mul(s_opval[5], s_modlevel[5]);
       }
-      *opval = q31mul(osc_sinq(modw0), *egval);
-      if (*alg & ALG_OUT_MASK)
-        osc_out = q31add(osc_out, q31mul(*opval, *oplevel));
-#else
-      modw0 = *phase;
-/*
-      modval = &s_opval;
-      modlevel = &s_modlevel;
-      for (uint32_t j = s_opcount; j--; modval++, modlevel++) {
-        if (mod & ALG_MOD6_MASK)
-            modw0 += *modval * (*alg & ALG_FBK_MASK ? *feedback : *modlevel);
-        mod >>= 1;
-      }
-*/
-//unrolled modulation loop
-      if (mod & ALG_MOD6_MASK) modw0 += s_opval[0] * (mod & ALG_FBK_MASK ? s_feedback : s_modlevel[0]);
-      if (mod & ALG_MOD5_MASK) modw0 += s_opval[1] * (mod & ALG_FBK_MASK ? s_feedback : s_modlevel[1]);
-      if (mod & ALG_MOD4_MASK) modw0 += s_opval[2] * (mod & ALG_FBK_MASK ? s_feedback : s_modlevel[2]);
-      if (mod & ALG_MOD3_MASK) modw0 += s_opval[3] * (mod & ALG_FBK_MASK ? s_feedback : s_modlevel[3]);
-      if (mod & ALG_MOD2_MASK) modw0 += s_opval[4] * (mod & ALG_FBK_MASK ? s_feedback : s_modlevel[4]);
-      if (mod & ALG_MOD1_MASK) modw0 += s_opval[5] * (mod & ALG_FBK_MASK ? s_feedback : s_modlevel[5]);
 
-      *opval = osc_sinf(modw0) * *egval;
-      if (*alg & ALG_OUT_MASK)
-        osc_out += *opval * *oplevel;
+      s_opval[i] = q31mul(osc_sinq(modw0), s_egval[i]);
+      if (s_algorithm[i] & ALG_OUT_MASK)
+        osc_out = q31add(osc_out, q31mul(s_opval[i], s_oplevel[i]));
+#else
+      modw0 = s_phase[i];
+      if (s_algorithm[i] & ALG_FBK_MASK) {
+        modw0 += s_opval[s_feedback_src] * s_feedback;
+      } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0] * s_modlevel[0];
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1] * s_modlevel[1];
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2] * s_modlevel[2];
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3] * s_modlevel[3];
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4] * s_modlevel[4];
+        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5] * s_modlevel[5];
+      }
+
+      s_opval[i] = osc_sinf(modw0) * s_egval[i];
+      if (s_algorithm[i] & ALG_OUT_MASK)
+        osc_out += s_opval[i] * s_oplevel[i];
 #endif
 
-      *phase += *w0;
+      s_phase[i] += opw0[i];
 #ifndef USE_Q31_PHASE
-      *phase -= (uint32_t)*phase;
+      s_phase[i] -= (uint32_t)(s_phase[i]);
 #endif
 
 //todo: flatten the level/rate arrays and get rid of the excessive indexing
 #ifdef USE_Q31
-      *egval = q31add(*egval, (*egrate)[*egstage]);
+      s_egval[i] = q31add(s_egval[i], s_egrate[i][s_egstage[i]]);
       if (
-        ((*egrate)[*egstage] > 0 && *egval >= (*eglevel)[*egstage])
-        || ((*egrate)[*egstage] < 0 && *egval <= (*eglevel)[*egstage])
-        || (*egrate)[*egstage] == 0
+        (s_egrate[i][s_egstage[i]] > 0 && s_egval[i] >= s_eglevel[i][s_egstage[i]])
+        || (s_egrate[i][s_egstage[i]] < 0 && s_egval[i] <= s_eglevel[i][s_egstage[i]])
+        || s_egrate[i][s_egstage[i]] == 0
       ) {
 #else
-      *egval += (*egrate)[*egstage];
+      s_egval[i] += s_egrate[i][s_egstage[i]];
       if (
-        ((*egrate)[*egstage] > 0.f && *egval >= (*eglevel)[*egstage])
-        || ((*egrate)[*egstage] < 0.f && *egval <= (*eglevel)[*egstage])
-        || (*egrate)[*egstage] == 0
+        (s_egrate[i][s_egstage[i]] > 0.f && s_egval[i] >= s_eglevel[i][s_egstage[i]])
+        || (s_egrate[i][s_egstage[i]] < 0.f && s_egval[i] <= s_eglevel[i][s_egstage[i]])
+        || s_egrate[i][s_egstage[i]] == 0.f
       ) {
 #endif
-        *egval = (*eglevel)[*egstage];
-        if (*egstage < s_sustain)
-          (*egstage)++;
+        s_egval[i] = s_eglevel[i][s_egstage[i]];
+        if (s_egstage[i] < s_sustain)
+          s_egstage[i]++;
       }
 
     }
