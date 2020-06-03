@@ -2,6 +2,7 @@
 Custom oscillators for Korg logue-sdk compatible synths
 
 You can get the lastest precompiled versions of the oscillators in [releases](../../releases/) section.
+For user-customizable oscillators online constructor is available here [https://dukesrg.github.io/logue-osc/](https://dukesrg.github.io/logue-osc/).
 
 ### Project structure
 
