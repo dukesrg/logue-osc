@@ -1,1 +1,71 @@
-"logue-osc" 
+<html>
+<head>
+<script type="text/javascript" src="jszip.js"></script>
+<script type="text/javascript" src="FileSaver.js"></script>
+<script language="javascript">
+"use strict";
+var banks;
+
+function FM64(type, name) {
+  fetch("FM64-osc." + type)
+  .then(function (response) {
+    if (response.status === 200 || response.status === 0) {
+        return Promise.resolve(response.blob());
+    } else {
+        return Promise.reject(new Error(response.statusText));
+    }
+  })
+  .then(JSZip.loadAsync)
+  .then(function (zip) {
+    var manifest;
+    var payload;
+    Promise.all([
+      zip.file("FM64/payload.bin").async("Uint8Array").then(function (data) {
+        payload = data;
+        var offs = 0x40;
+        for (var i = 0; i < banks.length && i < 4; i++) {
+            for (var j = 6; j < 4102; j++) {
+              payload[offs++] = banks[i][j];
+            }
+        }
+      }),
+      zip.file("FM64/manifest.json").async("string").then(function (data) {
+        manifest = JSON.parse(data);
+        manifest.header.name = name.substring(0, 12);
+      })
+    ]).then(values => { 
+      zip = new JSZip();
+      zip.file("FM64/payload.bin", payload);
+      zip.file("FM64/manifest.json", JSON.stringify(manifest, null, "  "));
+      zip.generateAsync({type:"blob"}).then(function (blob) {
+        saveAs(blob, "FM64-" + name + "." + type);
+      });
+    });
+  })
+}
+
+function handleFiles(files) {
+  document.querySelector('input[name=name]').value = files[0].name.substring(0, files[0].name.lastIndexOf('.'));
+  banks = new Array();
+  for (var i = 0; i < files.length; i++) {
+    var reader = new FileReader();
+    reader.onload = function() {
+      banks.push(new Uint8Array(this.result));
+    }
+    reader.readAsArrayBuffer(files[i]);
+  }
+}
+
+</script>
+</head>
+<body>
+<h3>Generate FM64 oscillator with custom banks</h3>
+<label for="banks">Voice banks:</label><input type="file" name="banks" id="banks" multiple="true" onchange="handleFiles(this.files)"><small>(Up to 4 voice bank bulk dump SysEx files in any of the DX7/DX21/DX11 series format)</small><br>
+<label for="name">Oscillator name:</label><input type="text" id="name" name="name" maxlength="12"><br>
+<label>Target synth:</label>
+<input type="radio" id="prlgunit" name="type" value="prlgunit" checked="true"><label for="prlgunit">prologue</label>
+<input type="radio" id="mnlgxdunit" name="type" value="mnlgxdunit"><label for="mnlgxdunit">minilogue xd</label>
+<input type="radio" id="ntkdigunit" name="type" value="ntkdigunit"><label for="ntkdigunit">Nu:Tekt NTS-1 digital kit</label>
+<br/><input type="button" value="Download" onClick="FM64(document.querySelector('input[name=type]:checked').value, document.querySelector('input[name=name]').value);" />
+</body>
+</html>
