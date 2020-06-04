@@ -5,6 +5,8 @@
 <script language="javascript">
 "use strict";
 var banks;
+var oscname;
+var oscversion;
 
 function FM64(type, name) {
   fetch("FM64-osc." + type)
@@ -24,17 +26,20 @@ function FM64(type, name) {
         payload = data;
         var offs = 0x40;
         for (var i = 0; i < banks.length && i < 4; i++) {
-            for (var j = 6; j < 4102; j++) {
+            for (var j = 0; j < banks[i].length; j++) {
               payload[offs++] = banks[i][j];
             }
         }
       }),
       zip.file("FM64/manifest.json").async("string").then((data) => {
         manifest = JSON.parse(data);
+        oscname = manifest.header.name;
+        oscversion = manifest.header.version;
         manifest.header.name = name.substring(0, 12);
         manifest = JSON.stringify(manifest, null, "  ");
       })
     ]).then(values => { 
+      document.querySelector('#status').innerHTML += "Original oscillator: " + oscname + " v." + oscversion;
       zip = new JSZip();
       zip.file("FM64/payload.bin", payload);
       zip.file("FM64/manifest.json", manifest);
@@ -48,25 +53,60 @@ function handleFiles(files) {
     (acc, cur) => acc + cur.name.substring(0, cur.name.lastIndexOf(".")), ""
   );
   banks = new Array();
+  var status = document.querySelector('#status');
+  status.innerHTML = "";
   for (var i = 0; i < files.length; i++) {
     var reader = new FileReader();
     reader.onload = (event) => {
-      banks.push(new Uint8Array(event.target.result));
+      status.innerHTML += event.target.filename + ": ";
+      var array = new Uint8Array(event.target.result);
+      if (array.length > 4104) {
+         status.innerHTML += "skipped (size mismatch)";
+      } else {
+        if (banks.length >= 4) {
+          status.innerHTML += "skipped (maximum voice bank limit reached)";
+        } else {
+          if (array.length == 4096) {
+            status.innerHTML += "added (assuming raw voice bank)";
+            banks.push(array);
+          } else {
+            switch(array.slice(0, 6).join("")) {
+              case "2406709160":
+                status.innerHTML += "ignoring SysEx size mismatch, ";
+              case "2406709320":
+                status.innerHTML += "added 6-operators voice bank";
+                banks.push(array.slice(6, 4102));
+                break;
+              case "2406704160":
+                status.innerHTML += "ignoring SysEx size mismatch, ";
+              case "2406704320":
+                status.innerHTML += "added 4-operators voice bank";
+                banks.push(array.slice(6, 4102));
+                break;
+              default:
+                status.innerHTML += "skipped unsupported SysEx";
+            }
+          }
+        }
+      }
+      status.innerHTML += "<br/>";
     }
+    reader.filename = files[i].name;
     reader.readAsArrayBuffer(files[i]);
   }
 }
-
 </script>
 </head>
 <body>
 <h3>Generate FM64 oscillator with custom banks</h3>
-<label for="banks">Voice banks:</label><input type="file" name="banks" id="banks" multiple="true" onchange="handleFiles(this.files)"><small>(Up to 4 voice bank bulk dump SysEx files in any of the DX7/DX21/DX11 series format)</small><br>
-<label for="name">Oscillator name:</label><input type="text" id="name" name="name"><br>
+<h4>Refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for details</h4>
 <label>Target synth:</label>
 <input type="radio" id="prlgunit" name="type" value="prlgunit" checked="true"><label for="prlgunit">prologue</label>
 <input type="radio" id="mnlgxdunit" name="type" value="mnlgxdunit"><label for="mnlgxdunit">minilogue xd</label>
 <input type="radio" id="ntkdigunit" name="type" value="ntkdigunit"><label for="ntkdigunit">Nu:Tekt NTS-1 digital kit</label>
+<br/><label for="banks">Voice banks:</label><input type="file" name="banks" id="banks" multiple="true" onchange="handleFiles(this.files);">
+<br/><label for="name">Custom name:</label><input type="text" id="name" name="name"><br>
+<br/><small><div id="status"></div></small>
 <br/><input type="button" value="Download" onClick="FM64(document.querySelector('input[name=type]:checked').value, document.querySelector('input[name=name]').value);" />
 </body>
 </html>
