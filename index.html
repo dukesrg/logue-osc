@@ -51,6 +51,33 @@ function inject() {
   })
 }
 
+function pcm16toulaw(val) {
+  var mask;
+  var seg;
+  var t = 0x7FFF;
+
+  if (val > t) {
+    val = 0x8000 - (val & 0x7FFF);
+    mask = 0x7F;
+  } else
+    mask = 0xFF;
+
+  val += 0x84;
+
+  for (seg = 8; seg > 0; seg--) {
+    if (val > t)
+      break;
+    t = t >> 1;
+  }
+
+  if (seg == 8)
+    return (0x7F ^ mask);
+  else {
+    val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
+    return (val ^ mask);
+  }
+}
+
 function handleFiles(files) {
   var status = document.querySelector('#status');
   var osc = document.querySelector('input[name=osc]:checked').value;
@@ -100,6 +127,22 @@ function handleFiles(files) {
         if (array.slice(0, 4).join("") + array.slice(8, 12).join("") === "8273707087658669") {
           if (array.slice(22, 24).join("") === "10") {
             switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
+              case "10160": //16-bit PCM
+                var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                if (size < 32768) {
+                  status.innerHTML += "skipped (samle count too small)";
+                } else {
+                   status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
+                   if (size > 32768) {
+                     status.innerHTML += ", truncated to 16384 samples";
+                   }
+                   var newarray = new Uint8Array(16384);
+                   for (i = 0; i < newarray.length; i++)
+                     newarray[i] = pcm16toulaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
+                   data.push(newarray);
+                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                }
+                break;
               case "7080": //u-Law
                 var size = array[0x2E] + (array[0x2F] << 8) + (array[0x30] << 16) + (array[0x31] << 24);
                 if (size < 16384) {
