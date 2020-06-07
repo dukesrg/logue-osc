@@ -1,7 +1,16 @@
 /*
  * File: osc_apiq.h
  *
- * Fixed point Oscillator runtime API.
+ * Oscillator runtime API Fixed Point extension.
+ *
+ * Requires definitions:
+ * - OSC_NOTE_Q: for note to frequency LUT
+ * - OSC_SIN_Q: for sine LUT
+ * - OSC_SAW_Q: for sawtooth LUT
+ *
+ * Also single invocation of osc_api_initq()
+ * is required to generate precalculated
+ * Q31 LUTs from build in LUTs.
  * 
  * 2020 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
@@ -45,7 +54,7 @@ q31_t osc_w0q_for_note(uint8_t note, q31_t mod) {
 #ifdef OSC_SIN_Q
 q31_t wt_sine_lut_q[k_wt_sine_lut_size];
   /**
-   * Lookup value of sin(2*pi*x).
+   * Fixed point lookup value of sin(2*pi*x).
    *
    * @param   x  Phase ratio
    * @return     Result of sin(2*pi*x).
@@ -66,9 +75,9 @@ q31_t osc_sinq(q31_t x) {
 q31_t wt_saw_lut_q[k_wt_saw_lut_tsize];
 
   /**
-   * Sawtooth wave lookup.
+   * Fixed point sawtooth wave lookup.
    *
-   * @param   x  Phase in [0, 1.0) in Q31, [1.0, 1.0) also accepted and sign wrapped
+   * @param   x  Phase in [0, 1.0) in Q31, [-1.0, 1.0) also accepted and sign wrapped
    * @return     Wave sample.
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
@@ -87,9 +96,9 @@ q31_t osc_sawq(q31_t x) {
 }
 
   /**
-   * Band-limited sawtooth wave lookup.
+   * Fixed point band-limited sawtooth wave lookup.
    *
-   * @param   x  Phase in [0, 1.0) in Q31, [1.0, 1.0) also accepted and sign wrapped
+   * @param   x  Phase in [0, 1.0) in Q31, [-1.0, 1.0) also accepted and sign wrapped
    * @param   idx   Wave index in [0,6].
    * @return        Wave sample.
    */
@@ -110,9 +119,9 @@ q31_t osc_bl_sawq(q31_t x, uint8_t idx) {
 }
 
   /**
-   * Band-limited sawtooth wave lookup. (interpolated version)
+   * Fixed point band-limited sawtooth wave lookup. (interpolated version)
    *
-   * @param   x  Phase in [0, 1.0) in Q31, [1.0, 1.0) also accepted and sign wrapped
+   * @param   x  Phase in [0, 1.0) in Q31, [-1.0, 1.0) also accepted and sign wrapped
    * @param   idx   Fractional wave index in [0.0,1.0) in Q31, normalized for [0,6] wave index range
    * @return        Wave sample.
    */
@@ -140,6 +149,9 @@ q31_t osc_bl2_sawq(q31_t x, q31_t idx) {
 }
 #endif
 
+  /**
+   * Fixed point lookup tables precalculation.
+   */
 static inline __attribute__((optimize("Ofast"), always_inline))
 void osc_api_initq() {
   uint32_t i __attribute__((unused));

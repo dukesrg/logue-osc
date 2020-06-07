@@ -3,6 +3,21 @@
  *
  * Custom wavebank oscillator routines
  * 
+ * Requires definitions:
+ * - one of the sample formats:
+ *   - FORMAT_ALAW: A-law
+ *   - FORMAT_ULAW: u-law
+ *   - FORMAT_PCM8: 8-bit linear PCM
+ *   - FORMAT_PCM16: 16-bit linear PCM
+ *   - FORMAT_FLOAT32: Single precision floating point
+ * - SAMPLE_COUNT: samples per waveform, must be power of 2
+ * - WAVE_COUNT: total number of waveforms in wavetable, must be power of 2
+ * - for grid mode only
+ *   - WAVE_COUNT_X: number of waveforms in wavetable dimention X, must be power of 2
+ *   - WAVE_COUNT_Y: number of waveforms in wavetable dimention Y, must be power of 2
+ * 
+ * Warning, lookup functions are overloaded, please take care of the parameter types.
+ * 
  * 2020 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
@@ -128,6 +143,13 @@ uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FO
 
 static const DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
 
+  /**
+   * Floating point linear wavetable lookup.
+   *
+   * @param   x  Phase in [0, 1.0).
+   * @param   idx  Wave index.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank(float x, uint32_t idx) {
   const float p = x - (uint32_t)x;
@@ -138,11 +160,26 @@ float osc_wavebank(float x, uint32_t idx) {
   return linintf(x0f - (uint32_t)x0f, to_f32(wt[x0]), to_f32(wt[x1]));
 }
 
+  /**
+   * Floating point grid wavetable lookup.
+   *
+   * @param   x  Phase in [0, 1.0).
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank(float x, uint32_t idx_x, uint32_t idx_y) {
   return osc_wavebank(x, idx_x + (idx_y << WAVE_COUNT_X_EXP));
 }
 
+  /**
+   * Floating point linear wavetable lookup, interpolated version.
+   *
+   * @param   x  Phase in [0, 1.0).
+   * @param   idx  Wave index.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank(float x, float idx) {
   const float p = x - (uint32_t)x;
@@ -157,6 +194,14 @@ float osc_wavebank(float x, float idx) {
   return linintf((idx - (uint32_t)idx), y0, y1);
 }
 
+  /**
+   * Floating point grid wavetable lookup, interpolated version.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31, [-1.0, 1.0).
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank(float x, float idx_x, float idx_y) {
   const uint32_t y0p = (uint32_t)idx_y;
@@ -164,6 +209,13 @@ float osc_wavebank(float x, float idx_x, float idx_y) {
   return linintf(fr, osc_wavebank(x, idx_x + (y0p << WAVE_COUNT_X_EXP)), osc_wavebank(x, idx_x + (((y0p + 1) & (WAVE_COUNT_Y - 1)) << WAVE_COUNT_X_EXP)));
 }
 
+  /**
+   * Fixed point linear wavetable lookup.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31.
+   * @param   idx  Wave index.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx) {
   x &= 0x7FFFFFFF;
@@ -174,11 +226,26 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
   return linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
 }
 
+  /**
+   * Fixed point grid wavetable lookup.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31.
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx_x, uint32_t idx_y) {
   return osc_wavebank(x, idx_x + (idx_y << WAVE_COUNT_X_EXP));
 }
 
+  /**
+   * Fixex point linear wavetable lookup, interpolated version.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31.
+   * @param   idx  Wave index.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, q31_t idx) {
   x &= 0x7FFFFFFF;
@@ -192,6 +259,14 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
   return linintq((idx * (WAVE_COUNT - 1)) & 0x7FFFFFFF, y0, y1);
 }
 
+  /**
+   * Fixed point grid wavetable lookup, interpolated version.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31.
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, q31_t idx_x, q31_t idx_y) {
   const q31_t y0 = q31add(idx_x >> WAVE_COUNT_X_EXP, (idx_y & (0xFFFFFFFF << WAVE_COUNT_X_EXP)));
