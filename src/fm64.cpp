@@ -25,7 +25,8 @@
   #include "osc_apiq.h"
 #endif
 
-#define FEEDBACK_RECIP .0078125f //1/128
+//#define FEEDBACK_RECIP .0078125f //1/128
+#define FEEDBACK_RECIP .00390625f //1/256
 #define SCALE_RECIP .01010101f //1/99
 #define DX7_MAX_RATE 99
 #define DX11_MAX_RATE 31
@@ -98,9 +99,9 @@ void initvoice() {
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 
 #ifdef USE_Q31
-    s_feedback = f32_to_q31((1 << (voice->fbl - 7)) * FEEDBACK_RECIP);
+    s_feedback = f32_to_q31((0x100 >> (8 - voice->fbl)) * FEEDBACK_RECIP);
 #else
-    s_feedback = (1 << (voice->fbl - 7)) * FEEDBACK_RECIP;
+    s_feedback = (0x100 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
 #endif
 /*
 #ifdef USE_Q31
