@@ -2,12 +2,48 @@
 <head>
 <style>
   * {
-    background-color: #000;
+    background-color: #111;
     color: #fff;
     font-family: sans-serif;
   }
   *[disabled] {
-  color: #777;
+    color: #777;
+  }
+  table {
+    border-color: #111;
+  }
+  th {
+    font-size: small;
+  }
+  td, th {
+    text-align: left;
+  }
+  td:first-of-type {
+    color: #777;
+  }
+  td {
+    background-color: #000;
+  }
+  input {
+    border: 0;
+  }
+  input[type="button"] {
+    background: linear-gradient(to top, #222, #444);
+    border-radius: 2px;
+  }
+  input[type="button"]:disabled {
+    background: linear-gradient(to top, #111, #111);
+  }
+  input[type="radio"] {
+    display: none;
+  }
+  input[type="radio"]:checked + img {
+    background: linear-gradient(to top, #222, #222);
+  }
+  img {
+    background: linear-gradient(to top, #222, #444);
+    border-radius: 2px;
+    padding: 6px;
   }
 </style>
 <script type="text/javascript" src="jszip.js"></script>
@@ -16,11 +52,10 @@
 "use strict";
 var data;
 
-function inject() {
-  var type = document.querySelector('input[name=type]:checked').value;
-  var osc = document.querySelector('input[name=osc]:checked').value;
-  var name = document.querySelector('input[id=name]').value;
-  fetch(osc + "-osc." + type)
+function inject(osc) {
+  var type = document.querySelector('input[name=type]:checked').id + "unit";
+  var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
+  fetch(osc.name + "-osc." + type)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
         return Promise.resolve(response.blob());
@@ -31,11 +66,9 @@ function inject() {
   .then(JSZip.loadAsync)
   .then((zip) => {
     var manifest;
-    var oscname;
-    var oscversion;
     var payload;
     Promise.all([
-      zip.file(osc + "/payload.bin").async("Uint8Array").then((text) => {
+      zip.file(osc.name + "/payload.bin").async("Uint8Array").then((text) => {
         payload = text;
         var offs = 0x40;
         for (var i = 0; i < data.length && i < 4; i++) {
@@ -44,20 +77,36 @@ function inject() {
           }
         }
       }),
-      zip.file(osc + "/manifest.json").async("string").then((data) => {
+      zip.file(osc.name + "/manifest.json").async("string").then((data) => {
         manifest = JSON.parse(data);
-        oscname = manifest.header.name;
-        oscversion = manifest.header.version;
         manifest.header.name = name.substring(0, 12);
         manifest = JSON.stringify(manifest, null, "  ");
       })
     ]).then(values => { 
-      document.querySelector('#status').innerHTML += "Source oscillator: " + oscname + " v." + oscversion;
       zip = new JSZip();
-      zip.file(osc + "/payload.bin", payload);
-      zip.file(osc + "/manifest.json", manifest);
-      zip.generateAsync({type:"blob"}).then((blob) => saveAs(blob, osc + "-" + name + "." + type));
+      zip.file(osc.name + "/payload.bin", payload);
+      zip.file(osc.name + "/manifest.json", manifest);
+      zip.generateAsync({type:"blob"}).then((blob) => saveAs(blob, osc.name + "-" + name + "." + type));
     });
+  })
+}
+
+function getInfo(osc) {
+  var type = document.querySelector('input[name=type]:checked').id + "unit";
+  fetch(osc + "-osc." + type)
+  .then((response) => {
+    if (response.status === 200 || response.status === 0) {
+        return Promise.resolve(response.blob());
+    } else {
+        return Promise.reject(new Error(response.statusText));
+    }
+  })
+  .then(JSZip.loadAsync)
+  .then((zip) => {
+    zip.file(osc + "/manifest.json").async("string").then((data) => {
+      var manifest = JSON.parse(data);
+      ["version", "api"].map(e => document.querySelector("td[id=" + osc + "-" + e).innerHTML = manifest.header[e]);
+    })
   })
 }
 
@@ -88,10 +137,11 @@ function pcm16toulaw(val) {
   }
 }
 
-function handleFiles(files) {
+function handleFiles(f) {
+  var files = f.files;
   var status = document.querySelector('#status');
-  var osc = document.querySelector('input[name=osc]:checked').value;
-  var name = document.querySelector('input[id=name]');
+  var osc = f.name;
+  var name = document.querySelector('input[type=text][name=' + osc + ']');
   name.value = "";
   data = new Array();
   status.innerHTML = "";
@@ -178,7 +228,7 @@ function handleFiles(files) {
       }
       status.innerHTML += "<br/>";
       if (data.length > 0) {
-        document.querySelector('input[id=download]').disabled = false;
+        document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
         name.disabled = false;
       }
     }
@@ -187,35 +237,46 @@ function handleFiles(files) {
   }
 }
 
-function oscClick(osc) {
-  var f = document.querySelector('input[id=files]');
-  f.disabled = false;
-  if (osc.value === "FM64") {
-    f.multiple = true;
-    f.accept = ".syx";
-  } else {
-    f.multiple = false;
-    f.accept = ".wav";
-  }
-  f.value = "";
-  handleFiles(f.files);
+function typeClick(type) {
+  document.cookie = "type=" + type.id;
 }
+
+function onLoad() {
+  var type = document.querySelector('input[id=' + document.cookie.substring(document.cookie.indexOf("type=")).split(";")[0].split("=")[1] + ']')
+  if (type)
+    type.checked = true;
+  ["FM64", "Morpheus"].map(e => getInfo(e));
+}
+
 </script>
 </head>
-<body>
+<body onload="onLoad();">
 <h3>Generate custom oscillators, refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for details</h3>
-<label>Target synth:</label>
-<input type="radio" id="prlgunit" name="type" value="prlgunit" checked="true"><label for="prlgunit"><b>prologue</b></label>
-<input type="radio" id="mnlgxdunit" name="type" value="mnlgxdunit"><label for="mnlgxdunit"><b>minilogue xd</b></label>
-<input type="radio" id="ntkdigunit" name="type" value="ntkdigunit"><label for="ntkdigunit"><b>NTS-1 digital</b></label>
-<br/>
-<label>Source oscillator:</label>
-<input type="radio" id="FM64" name="osc" value="FM64" onClick="oscClick(this);"><label for="FM64">FM64</label>
-<input type="radio" id="Morpheus" name="osc" value="Morpheus" onClick="oscClick(this);"><label for="Morpheus">Morpheus</label>
-<br/>
-<label for="files">Custom data:</label><input type="file" name="files" id="files" disabled="true" onchange="handleFiles(this.files);">
-<br/><label for="name">Custom name:</label><input type="text" id="name" name="name" disabled="true"><br>
-<br/><small><div id="status"></div></small>
-<br/><input type="button" id="download" value="Download" disabled="true" onClick="inject();" />
+<label><input type="radio" id="prlg" name="type" onchange="typeClick(this);"><img src="prlg.png"/></label>
+<label><input type="radio" id="mnlgxd" name="type" onchange="typeClick(this);"><img src="mnlgxd.png"/></label>
+<label><input type="radio" id="ntkdig" name="type" onchange="typeClick(this);"><img src="ntkdig.png"/></label>
+<table cellpadding="6" border="0" width="25%">
+<tr><td style="width: 100%; font-size: small; color: #FFF; background-color: #222; text-align: center;">USER OSCILLATORS</td></tr>
+</table>
+<table rules="rows" cellpadding="6" border="2" width="100%">
+<tr><th/><th>NAME</th><th>VERSION</th><th>API</th><th>CUSTOM&nbsp;DATA</th><th>CUSTOM&nbsp;NAME</th><th>DOWNLOAD</th><th/></tr>
+<tr><td>1</td><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);"></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td/></tr>
+<tr><td>2</td><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);"></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td/></tr>
+<tr><td>3</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>4</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>5</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>6</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>7</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>8</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>9</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>10</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>11</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>12</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>13</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>14</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>15</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><td>16</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+</table>
+<small><div id="status"></div></small>
 </body>
 </html>
