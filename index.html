@@ -1,5 +1,15 @@
 <html>
 <head>
+<style>
+  * {
+    background-color: #000;
+    color: #fff;
+    font-family: sans-serif;
+  }
+  *[disabled] {
+  color: #777;
+  }
+</style>
 <script type="text/javascript" src="jszip.js"></script>
 <script type="text/javascript" src="FileSaver.js"></script>
 <script language="javascript">
@@ -195,9 +205,9 @@ function oscClick(osc) {
 <body>
 <h3>Generate custom oscillators, refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for details</h3>
 <label>Target synth:</label>
-<input type="radio" id="prlgunit" name="type" value="prlgunit" checked="true"><label for="prlgunit">prologue</label>
-<input type="radio" id="mnlgxdunit" name="type" value="mnlgxdunit"><label for="mnlgxdunit">minilogue xd</label>
-<input type="radio" id="ntkdigunit" name="type" value="ntkdigunit"><label for="ntkdigunit">Nu:Tekt NTS-1 digital kit</label>
+<input type="radio" id="prlgunit" name="type" value="prlgunit" checked="true"><label for="prlgunit"><b>prologue</b></label>
+<input type="radio" id="mnlgxdunit" name="type" value="mnlgxdunit"><label for="mnlgxdunit"><b>minilogue xd</b></label>
+<input type="radio" id="ntkdigunit" name="type" value="ntkdigunit"><label for="ntkdigunit"><b>NTS-1 digital</b></label>
 <br/>
 <label>Source oscillator:</label>
 <input type="radio" id="FM64" name="osc" value="FM64" onClick="oscClick(this);"><label for="FM64">FM64</label>
