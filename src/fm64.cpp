@@ -60,6 +60,7 @@ static q31_t s_oplevel[DX7_OPERATOR_COUNT];
 static q31_t s_opval[DX7_OPERATOR_COUNT];
 static q31_t s_modlevel[DX7_OPERATOR_COUNT];
 static q31_t s_feedback;
+static q31_t s_feedback_opval[2];
 /*
 static float s_pegrate[EG_STAGE_COUNT];
 static float s_peglevel[EG_STAGE_COUNT];
@@ -73,6 +74,7 @@ static float s_oplevel[DX7_OPERATOR_COUNT];
 static float s_opval[DX7_OPERATOR_COUNT];
 static float s_modlevel[DX7_OPERATOR_COUNT];
 static float s_feedback;
+static float s_feedback_opval[2];
 /*
 static q31_t s_pegrate[EG_STAGE_COUNT];
 static q31_t s_peglevel[EG_STAGE_COUNT];
@@ -100,8 +102,13 @@ void initvoice() {
 
 #ifdef USE_Q31
     s_feedback = f32_to_q31((0x100 >> (8 - voice->fbl)) * FEEDBACK_RECIP);
+    s_feedback_opval[0] = 0;
+    s_feedback_opval[1] = 0;
 #else
-    s_feedback = (0x100 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
+//    s_feedback = (0x100 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
+    s_feedback = (0x100 >> (8 - voice->fbl)) * FEEDBACK_RECIP * .5f; // 1/2 to compensate averaged operator output sum
+    s_feedback_opval[0] = 0.f;
+    s_feedback_opval[1] = 0.f;
 #endif
 /*
 #ifdef USE_Q31
@@ -146,7 +153,8 @@ void initvoice() {
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].tl * SCALE_RECIP);
-      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].tl));
+//      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].tl));
+      s_modlevel[i] = s_oplevel[i];
 #else
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
@@ -225,7 +233,8 @@ void initvoice() {
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].out * SCALE_RECIP);
-      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].out));
+//      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].out));
+      s_modlevel[i] = s_oplevel[i];
 #else
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         if (j == (EG_STAGE_COUNT - 2) && s_egrate[i][j] == 0)
@@ -332,7 +341,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = f32_to_q31(s_phase[i]);
 #endif
       if (s_algorithm[i] & ALG_FBK_MASK) {
-        modw0 += q31mul(s_opval[s_feedback_src], s_feedback);
+//        modw0 += q31mul(s_opval[s_feedback_src], s_feedback);
+        modw0 += q31mul(q31add(s_feedback_opval[0], s_feedback_opval[1]), s_feedback);
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += q31mul(s_opval[0], s_modlevel[0]);
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += q31mul(s_opval[1], s_modlevel[1]);
@@ -345,10 +355,15 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_opval[i] = q31mul(osc_sinq(modw0), s_egval[i]);
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = q31add(osc_out, q31mul(s_opval[i], s_oplevel[i]));
+      if (i == s_feedback_src) {
+        s_feedback_opval[1] = s_feedback_opval[0];
+        s_feedback_opval[0] = s_opval[i] >> 1;
+      }
 #else
       modw0 = s_phase[i];
       if (s_algorithm[i] & ALG_FBK_MASK) {
-        modw0 += s_opval[s_feedback_src] * s_feedback;
+//        modw0 += s_opval[s_feedback_src] * s_feedback;
+        modw0 += (s_feedback_opval[0] + s_feedback_opval[1]) * s_feedback;
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0] * s_modlevel[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1] * s_modlevel[1];
@@ -361,6 +376,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_opval[i] = osc_sinf(modw0) * s_egval[i];
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out += s_opval[i] * s_oplevel[i];
+      if (i == s_feedback_src) {
+        s_feedback_opval[1] = s_feedback_opval[0];
+        s_feedback_opval[0] = s_opval[i];
+      }
 #endif
 
       s_phase[i] += opw0[i];
