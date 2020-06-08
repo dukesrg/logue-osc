@@ -25,8 +25,7 @@
   #include "osc_apiq.h"
 #endif
 
-//#define FEEDBACK_RECIP .0078125f //1/128
-#define FEEDBACK_RECIP .00390625f //1/256
+#define FEEDBACK_RECIP .0078125f //1/128
 #define SCALE_RECIP .01010101f //1/99
 #define DX7_MAX_RATE 99
 #define DX11_MAX_RATE 31
@@ -153,8 +152,7 @@ void initvoice() {
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].tl * SCALE_RECIP);
-//      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].tl));
-      s_modlevel[i] = s_oplevel[i];
+      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].tl));
 #else
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
@@ -168,8 +166,7 @@ void initvoice() {
       }
       s_opval[i] = 0.f;
       s_oplevel[i] = voice->op[i].tl * SCALE_RECIP;
-//      s_modlevel[i] = dx7_modindex(voice->op[i].tl);
-      s_modlevel[i] = s_oplevel[i];
+      s_modlevel[i] = dx7_modindex(voice->op[i].tl);
 #endif
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
@@ -233,8 +230,7 @@ void initvoice() {
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].out * SCALE_RECIP);
-//      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].out));
-      s_modlevel[i] = s_oplevel[i];
+      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].out));
 #else
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         if (j == (EG_STAGE_COUNT - 2) && s_egrate[i][j] == 0)
@@ -251,8 +247,7 @@ void initvoice() {
       }
       s_opval[i] = 0.f;
       s_oplevel[i] = voice->op[i].out * SCALE_RECIP;
-//      s_modlevel[i] = dx11_modindex(voice->op[i].out);
-      s_modlevel[i] = s_oplevel[i];
+      s_modlevel[i] = dx11_modindex(voice->op[i].out);
 #endif
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
