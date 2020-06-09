@@ -5,12 +5,19 @@
     background-color: #111;
     color: #fff;
     font-family: sans-serif;
+    outline: none;
+    box-shadow: none;
   }
-  *[disabled] {
+  *:disabled {
     color: #777;
   }
   table {
     border-color: #111;
+    counter-reset: rowNumber;
+  }
+  table tr td:first-child::before {
+    counter-increment: rowNumber;
+    content: counter(rowNumber);
   }
   th {
     font-size: small;
@@ -21,29 +28,55 @@
   td:first-of-type {
     color: #777;
   }
+  div:last-of-type {
+    text-align: center;
+    font-size: small;
+    color: #777;
+  }
+  td:last-child {
+    font-size: small;
+    color: #777;
+  }
   td {
     background-color: #000;
   }
   input {
     border: 0;
   }
+  input[type="text"] {
+    width: 100%;
+  }
   input[type="button"] {
     background: linear-gradient(to top, #222, #444);
     border-radius: 2px;
   }
-  input[type="button"]:disabled {
+  input[type="button"]:disabled{
     background: linear-gradient(to top, #111, #111);
   }
+  input[type="button"]:active, label.button:active {
+    background: radial-gradient(circle, #CCC, #444);
+  }
+  input[type="file"] {
+    position: absolute;
+    top: -100px;
+    width: 0px;
+  }
   input[type="radio"] {
-    display: none;
+     display: none;
   }
   input[type="radio"]:checked + img {
-    background: linear-gradient(to top, #222, #222);
+    background: radial-gradient(circle, #CCC, #444);
   }
   img {
     background: linear-gradient(to top, #222, #444);
     border-radius: 2px;
     padding: 6px;
+  }
+  label.button {
+    background: linear-gradient(to top, #222, #444);
+    border-radius: 2px;
+    padding: 1px 6px;
+    font-size: small;
   }
 </style>
 <script type="text/javascript" src="jszip.js"></script>
@@ -53,9 +86,9 @@
 var data;
 
 function inject(osc) {
-  var type = document.querySelector('input[name=type]:checked').id + "unit";
+  var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
-  fetch(osc.name + "-osc." + type)
+  fetch(osc.name + "-osc." + platform)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
         return Promise.resolve(response.blob());
@@ -86,14 +119,14 @@ function inject(osc) {
       zip = new JSZip();
       zip.file(osc.name + "/payload.bin", payload);
       zip.file(osc.name + "/manifest.json", manifest);
-      zip.generateAsync({type:"blob"}).then((blob) => saveAs(blob, osc.name + "-" + name + "." + type));
+      zip.generateAsync({type:"blob"}).then((blob) => saveAs(blob, osc.name + "-" + name + "." + platform));
     });
   })
 }
 
 function getInfo(osc) {
-  var type = document.querySelector('input[name=type]:checked').id + "unit";
-  fetch(osc + "-osc." + type)
+  var platform = document.querySelector('input[name=platform]:checked').id + "unit";
+  fetch(osc + "-osc." + platform)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
         return Promise.resolve(response.blob());
@@ -105,7 +138,7 @@ function getInfo(osc) {
   .then((zip) => {
     zip.file(osc + "/manifest.json").async("string").then((data) => {
       var manifest = JSON.parse(data);
-      ["version", "api"].map(e => document.querySelector("td[id=" + osc + "-" + e).innerHTML = manifest.header[e]);
+      ["version", "api"].map(e => document.querySelector("#" + osc + "-" + e).innerHTML = manifest.header[e]);
     })
   })
 }
@@ -139,8 +172,8 @@ function pcm16toulaw(val) {
 
 function handleFiles(f) {
   var files = f.files;
-  var status = document.querySelector('#status');
   var osc = f.name;
+  var status = document.querySelector('#' + osc + '-notes');
   var name = document.querySelector('input[type=text][name=' + osc + ']');
   name.value = "";
   data = new Array();
@@ -237,46 +270,47 @@ function handleFiles(f) {
   }
 }
 
-function typeClick(type) {
-  document.cookie = "type=" + type.id;
+function platformClick(platform) {
+  document.cookie = "type=" + platform.id;
 }
 
 function onLoad() {
-  var type = document.querySelector('input[id=' + document.cookie.substring(document.cookie.indexOf("type=")).split(";")[0].split("=")[1] + ']')
-  if (type)
-    type.checked = true;
+  var platform = document.querySelector('#' + document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1])
+  if (platform)
+    platform.checked = true;
   ["FM64", "Morpheus"].map(e => getInfo(e));
 }
-
 </script>
 </head>
 <body onload="onLoad();">
-<h3>Generate custom oscillators, refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for details</h3>
-<label><input type="radio" id="prlg" name="type" onchange="typeClick(this);"><img src="prlg.png"/></label>
-<label><input type="radio" id="mnlgxd" name="type" onchange="typeClick(this);"><img src="mnlgxd.png"/></label>
-<label><input type="radio" id="ntkdig" name="type" onchange="typeClick(this);"><img src="ntkdig.png"/></label>
-<table cellpadding="6" border="0" width="25%">
-<tr><td style="width: 100%; font-size: small; color: #FFF; background-color: #222; text-align: center;">USER OSCILLATORS</td></tr>
-</table>
+<h3></h3>
+<label><input type="radio" id="prlg" name="platform" onchange="platformClick(this);"/><img src="prlg.png"/></label>
+<label><input type="radio" id="mnlgxd" name="platform" onchange="platformClick(this);"/><img src="mnlgxd.png"/></label>
+<label><input type="radio" id="ntkdig" name="platform" onchange="platformClick(this);"/><img src="ntkdig.png"/></label>
+<div style="width: 25%; height: 30px; line-height: 30px; font-size: small; color: #FFF; background-color: #222; text-align: center;">
+USER OSCILLATORS
+</div>
 <table rules="rows" cellpadding="6" border="2" width="100%">
-<tr><th/><th>NAME</th><th>VERSION</th><th>API</th><th>CUSTOM&nbsp;DATA</th><th>CUSTOM&nbsp;NAME</th><th>DOWNLOAD</th><th/></tr>
-<tr><td>1</td><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);"></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td/></tr>
-<tr><td>2</td><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);"></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td/></tr>
-<tr><td>3</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>4</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>5</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>6</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>7</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>8</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>9</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>10</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>11</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>12</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>13</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>14</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>15</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
-<tr><td>16</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td>---</td><td/></tr>
+<tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="*">NOTES</th></tr>
+<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-notes">Upload up to 4 DX7/DX21/DX11 voice bank SysEx files</td></tr>
+<tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-notes">Upload one 16-bit linear PCM or &mu;-law mono WAV file</td></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
 </table>
-<small><div id="status"></div></small>
+<div>
+Refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
+</div>
 </body>
 </html>
