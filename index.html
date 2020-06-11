@@ -33,7 +33,7 @@
     font-size: small;
     color: #777;
   }
-  td:last-child {
+  td:last-child, td:nth-last-child(2) {
     font-size: small;
     color: #777;
   }
@@ -139,6 +139,8 @@ function getInfo(osc) {
     zip.file(osc + "/manifest.json").async("string").then((data) => {
       var manifest = JSON.parse(data);
       ["version", "api"].map(e => document.querySelector("#" + osc + "-" + e).innerHTML = manifest.header[e]);
+      document.querySelector('#' + osc + '-size').innerHTML = manifest.header.custom_data.count + ' x ' + manifest.header.custom_data.size;
+      document.querySelector('#' + osc + '-description').innerHTML = manifest.header.custom_data.description;
     })
   })
 }
@@ -278,7 +280,7 @@ function onLoad() {
   var platform = document.querySelector('#' + document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1])
   if (platform)
     platform.checked = true;
-  ["FM64", "Morpheus"].map(e => getInfo(e));
+  ["FM64", "Morpheus", "Anthologue"].map(e => getInfo(e));
 }
 </script>
 </head>
@@ -291,23 +293,23 @@ function onLoad() {
 USER OSCILLATORS
 </div>
 <table rules="rows" cellpadding="6" border="2" width="100%">
-<tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="*">NOTES</th></tr>
-<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-notes">Upload up to 4 DX7/DX21/DX11 voice bank SysEx files</td></tr>
-<tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-notes">Upload one 16-bit linear PCM or &mu;-law mono WAV file</td></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/></tr>
+<tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
+<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
+<tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
+<tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
 </table>
 <div>
 Refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
