@@ -16,6 +16,13 @@
             ["VCO1 Level", 0, 100, "%"],
             ["VCO2 Level", 0, 100, "%"],
             ["Sync Ring", 0, 3, ""]
-        ]
+        ],
+        "custom_data" : {
+          "description" : "Korg minilogue/monologue programs",
+          "count" : 64,
+          "size" : 448,
+          "offset" : 64,
+          "param" : 0
+        }
     }
 }

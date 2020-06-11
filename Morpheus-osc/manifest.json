@@ -15,6 +15,13 @@
             ["LFOY", 0, 100, "%"],
             ["LFOTrigger", 0, 3, "%"],
             ["Interpolate", 0, 1, "%"]
-        ]
+        ],
+        "custom_data" : {
+          "description" : "Raw wave, μ-law encoded",
+          "count" : 1,
+          "size" : 16384,
+          "offset" : 64,
+          "param" : -1
+        }
     }
 }
