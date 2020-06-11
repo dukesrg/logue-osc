@@ -34,6 +34,15 @@ static uint8_t s_octave1;
 static uint8_t s_octave2;
 static uint8_t s_octavekbd;
 
+static uint8_t s_seq_len;
+static float s_seq_res;
+static uint8_t s_seq_step;
+static uint16_t s_seq_step_bit;
+static uint16_t s_seq_step_mask;
+static float s_sample_pos;
+static uint8_t s_seq_note[16];
+static uint8_t s_seq_vel[16];
+
 static uint8_t s_prog;
 static uint8_t s_prog_type;
 
@@ -61,6 +70,15 @@ void initvoice() {
     s_ringmod = p->sync_ring==0;
     s_sync = p->sync_ring==2;
 
+    s_seq_len = p->step_length;
+    s_seq_res = (k_samplerate * 15) << p->step_resolution;
+    s_seq_step_mask = p->step_mask;
+
+    for (uint32_t i = 0; i< 16; i++) {
+      s_seq_note[i] = p->step_event_data[i].note;
+      s_seq_vel[i] = p->step_event_data[i].velocity;
+    }
+
   } else if (logue_prog[s_prog].minilogue.SEQD == *(uint32_t*)&"SEQD") {
     const mnlg_prog_t *p = &logue_prog[s_prog].minilogue;
     s_prog_type = minilogue_ID;
@@ -82,6 +100,16 @@ void initvoice() {
     s_crossmod = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo)) ;
     s_sync = p->sync;
     s_ringmod = p->ring;
+
+    s_seq_len = p->step_length;
+    s_seq_res = (k_samplerate * 15) << p->step_resolution;
+    s_seq_step_mask = p->step_mask;
+
+    for (uint32_t i = 0; i< 16; i++) {
+      s_seq_note[i] = p->step_event_data[i].note[0];
+      s_seq_vel[i] = p->step_event_data[i].velocity[0];
+    }
+
   }
 
 }
@@ -89,24 +117,29 @@ void initvoice() {
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
   s_prog = 0;
-  s_phase1 = 0;
-  s_phase2 = 0;
   initvoice();
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  q31_t out1 = 0, out2 = 0;
+  q31_t out, out1 = 0, out2 = 0;
   q31_t w01, w02;
   q31_t t1, t2;
-//  float bpm = fx_get_bpmf();
+  uint16_t pitch1, pitch2;
+  float seq_quant = s_seq_res / fx_get_bpmf();
+
+  if (s_seq_step_mask)
+    pitch1 = pitch2 = (uint16_t)s_seq_note[s_seq_step] << 8;
+  else
+    pitch1 = pitch2 = params->pitch;
+
+  pitch1 += s_pitch1;
+  pitch2 += s_pitch2;
+  uint8_t note1 = pitch1 >> 8;
+  uint8_t note2 = pitch2 >> 8;
 
   int8_t octave1 = s_octave1 + s_octavekbd - 2;
   int8_t octave2 = s_octave2 + s_octavekbd - 2;
-  uint16_t pitch1 = params->pitch + s_pitch1;
-  uint16_t pitch2 = params->pitch + s_pitch2;
-  uint8_t note1 = pitch1 >> 8;
-  uint8_t note2 = pitch2 >> 8;
 
   if (octave1 > 0)
     note1 += 12 << octave1;
@@ -189,7 +222,21 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
     s_phase1 &= 0x7FFFFFFF;
 
-    *y = q31add(q31add(q31mul(out1, s_level1), q31mul(out2, s_level2)), q31mul(f32_to_q31(osc_white()), s_noise_level));
+    out = 0;
+    if (s_seq_step_bit & s_seq_step_mask)
+      out = q31add(q31add(q31mul(out1, s_level1), q31mul(out2, s_level2)), q31mul(f32_to_q31(osc_white()), s_noise_level));
+
+    *y = out;
+
+    if (++s_sample_pos >= seq_quant) {
+      s_sample_pos -= seq_quant;
+      if (++s_seq_step >= s_seq_len) {
+        s_seq_step = 0;
+        s_seq_step_bit = 1;
+      } else {
+        s_seq_step_bit <<= 1;
+      }  
+    }
   }
 }
 
@@ -197,6 +244,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   s_phase1 = 0;
   s_phase2 = 0;
+  s_seq_step = 0;
+  s_seq_step_bit = 1;
+  s_sample_pos = 0.f;
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
