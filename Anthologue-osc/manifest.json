@@ -1,0 +1,21 @@
+{
+    "header" :
+    {
+        "platform" : "nutekt-digital",
+        "module" : "osc",
+        "api" : "1.1-0",
+        "dev_id" : 1701541188,
+        "prg_id" : 0,
+        "version" : "0.1-0",
+        "name" : "Anthologue",
+        "num_param": 6,
+        "params": [
+            ["Prog", 0, 63, ""],
+            ["VCO1 Wave", 0, 2, ""],
+            ["VCO2 Wave", 0, 2, ""],
+            ["VCO1 Level", 0, 100, "%"],
+            ["VCO2 Level", 0, 100, "%"],
+            ["Sync Ring", 0, 3, ""]
+        ]
+    }
+}
