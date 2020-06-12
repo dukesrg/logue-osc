@@ -2,7 +2,7 @@
 Custom oscillators for Korg logue-sdk compatible synths
 
 You can get the lastest precompiled versions of the oscillators in [releases](../../releases/) section.
-For user-customizable oscillators online constructor is available here [https://dukesrg.github.io/logue-osc/](https://dukesrg.github.io/logue-osc/).
+For user-customizable oscillators online constructor is available at https://dukesrg.github.io/logue-osc/.
 
 ### Project structure
 
@@ -11,7 +11,7 @@ For user-customizable oscillators online constructor is available here [https://
 * [inc/g711_decode.h](inc/g711_decode.h) : μ-law/A-law decoding functions.
 * [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
 * [inc/wavebank.h](inc/wavebank.h) : Customizable [WaveEdit](https://synthtech.com/waveedit) compatible wavetable functions.
-* [Anthologue.sh](Anthologue.sh) : KORG minilogue/monologue program data injector for Anthologue oscillator.
+* [Anthologue.sh](Anthologue.sh) : KORG minilogue/monologue program data injector for Anthologue oscillator. You can get sample programs at Korg downloads for [minilogue](https://www.korg.com/us/support/download/product/0/544/) and [monologue](https://www.korg.com/us/support/download/product/0/733/)
 * [FM64.sh](FM64.sh) : Yamaha DX7/DX21/DX11-series voice bank SysEx injector for FM64 oscillator. You can find banks at [Synth Zone](http://www.synthzone.com/yamaha.htm).
 * [Morpheus.sh](Morpheus.sh) : Wavetable oscillator wave data injector to use with any custom oscillator built with [inc/wavebank.h](inc/wavebank.h) file.
 * [PCM2ALaw.sh](PCM2ALaw.sh) : Dumbest ever audio transcoder for 16-bit PCM to A-law convertion.
@@ -24,8 +24,8 @@ For user-customizable oscillators online constructor is available here [https://
 * Supersaw - Saw with unison.
 * FastSaw - The same as Supersaw rewritten with Q31 fixed point. Less CPU resource consuming i.e. more unison/polyphony/FX avaiable without sound degradation.
 * Morpheus - Example implementation of custom wavetable inspired by [WaveEdit](https://synthtech.com/waveedit).
-* FM64 - 6/4-operator FM oscillator with up to 4 Yamaha DX7/DX21/DX11-series voice banks suport (WiP)
-* Anthologue - 2 VCO oscillator with up to 4 Korg monologue/minilogue program limited suport (WiP)
+* FM64 - 6/4-operator FM oscillator with up to 4 Yamaha DX7/DX21/DX11-series voice banks suport. Current progress is in issue [FM64 features implementation](../../issues/2).
+* Anthologue - 2 VCO oscillator with up to 4 Korg monologue/minilogue program suport. Current progress is in issue [Anthologue features implementation](../../issues/1).
 
 ### Oscillator Parameters
 |Oscillator|Shape / A knob|Shift-Shape / Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
