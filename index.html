@@ -28,6 +28,9 @@
   td:first-of-type {
     color: #777;
   }
+  td:nth-child(2):empty:before, td:nth-child(3):empty:before, td:nth-child(4):empty:before {
+    content: "---";
+  }
   div:last-of-type {
     text-align: center;
     font-size: small;
@@ -175,7 +178,7 @@ function pcm16toulaw(val) {
 function handleFiles(f) {
   var files = f.files;
   var osc = f.name;
-  var status = document.querySelector('#' + osc + '-notes');
+  var status = document.querySelector('#' + osc + '-description');
   var name = document.querySelector('input[type=text][name=' + osc + ']');
   name.value = "";
   data = new Array();
@@ -274,6 +277,7 @@ function handleFiles(f) {
 
 function platformClick(platform) {
   document.cookie = "type=" + platform.id;
+  onLoad(); 
 }
 
 function onLoad() {
@@ -297,19 +301,19 @@ USER OSCILLATORS
 <tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
 <tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
 <tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
-<tr><td/><td>---</td><td>---</td><td>---</td><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 </table>
 <div>
 Refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
