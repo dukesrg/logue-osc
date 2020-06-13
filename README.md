@@ -35,7 +35,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |FM64|Voice select|Bank select|Voice select 1&hellip;32|Bank select 1&hellip;4|-|-|-|-|
 |Anthologue|VCO 1 shape|VCO 2 shape|Program select 1&hellip;64|VCO 1 wave 1&hellip;3|VCO 2 wave 1&hellip;3|VCO 1 level 0&hellip;100%|VCO 2 level 0&hellip;100%|Sync/Ring Modulation<br>1 - none<br>2 - Sync<br>2 - Ring modulation<br>3 - both|
 
-### Notes
+### Oscillator notes
 * Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.
 * Supersaw polyphony is only for NTS-1 firmware 1.2.0 with legato switched off. Setting polyphony more than 1 in any other hardware configuration may result to unpredicted behaviour.
 * Supersaw polyphony is limited to use for chords or preemptive mode with last note priority due to NTS-1 firmware 1.2.0 non legato NOTE OFF implementation (i.e. only last released note event is passed to the runtime).
@@ -55,3 +55,32 @@ For user-customizable oscillators online constructor is available at https://duk
 |20&hellip;35|Wave Bank F|
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
+
+### manifest.json custom data extension
+
+Oscillators with customizable data may contain additional metadata about customization. This data is ignored by synthesithers and Librarian apps, but useful for external utilities to manage custom data. Here is an example:
+
+```
+{
+    "header" : 
+    {
+        ...
+        "params" : [
+            ["Wave",      0,  63,  ""]
+          ],
+        "custom_data" : [
+            ["Wave file",      64,  256,  64. "Wave"]
+          ]        
+    }
+}
+```
+
+* custom_data (array) : custom data descriptors
+
+Custom data descriptors are themselves arrays and should contain 3-5 values:
+
+0. description (string) : custom data brief description, may contain format description.
+1. offset (int) : custom data offset in oscillator binary file.
+2. size (int) : custom data element size.
+3. count (string) : optional maximum number of custom data elements (if more than one).
+4. parameter (string) : optional name of the parameter that controls custom element selection (to reflect actual number of elements injected).
