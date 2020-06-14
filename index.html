@@ -192,7 +192,9 @@ function handleFiles(f) {
         if (array.length > 4104) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
-          if (data.length >= 4) {
+                  if (data.length >= 4) {
+            status.innerHTML += "skipped (maximum voice bank limit reached)";
+          } else {  if (data.length >= 4) {
             status.innerHTML += "skipped (maximum voice bank limit reached)";
           } else {
             if (array.length == 4096) {
@@ -221,14 +223,14 @@ function handleFiles(f) {
             }
           }
         }
-      } else {
+      } else if (osc === "Morpheus") {
         if (array.slice(0, 4).join("") + array.slice(8, 12).join("") === "8273707087658669") {
           if (array.slice(22, 24).join("") === "10") {
             switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
               case "10160": //16-bit PCM
                 var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
                 if (size < 32768) {
-                  status.innerHTML += "skipped (samle count too small)";
+                  status.innerHTML += "skipped (sample count too small)";
                 } else {
                    status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
                    if (size > 32768) {
@@ -263,7 +265,17 @@ function handleFiles(f) {
         } else {
           status.innerHTML += "skipped unsupported file format";
         }
+      } else if (osc === "Anthologue") {
+       
+        if (array.length != 448) {
+           status.innerHTML += "skipped (size mismatch)";
+        } else {
+          data.push(array);
+        }
       }
+ 
+
+
       status.innerHTML += "<br/>";
       if (data.length > 0) {
         document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
