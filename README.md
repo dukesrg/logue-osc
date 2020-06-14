@@ -31,7 +31,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |Oscillator|Shape / A knob|Shift-Shape / Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
-|Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>0 - none<br>1 - LFO X<br>2 - LFO Y<br>3 - both|Morph Interpolate<br>0 - off<br>1 - on|-|
+|Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
 |FM64|Voice select|Bank select|Voice select 1&hellip;32|Bank select 1&hellip;4|-|-|-|-|
 |Anthologue|VCO 1 shape|VCO 2 shape|Program select 1&hellip;64|VCO 1 wave 1&hellip;3|VCO 2 wave 1&hellip;3|VCO 1 level 0&hellip;100%|VCO 2 level 0&hellip;100%|Sync/Ring Modulation<br>1 - none<br>2 - Sync<br>2 - Ring modulation<br>3 - both|
 
@@ -66,11 +66,11 @@ Oscillators with customizable data may contain additional metadata about customi
     {
         ...
         "params" : [
-            ["Wave",      0,  63,  ""]
+            ["Wave", 0, 63, ""]
           ],
         "custom_data" : [
-            ["Wave file",      64,  256,  64. "Wave"]
-          ]        
+            ["Wave file", 64, 256, 64, 0]
+        ]
     }
 }
 ```
@@ -82,5 +82,5 @@ Custom data descriptors are themselves arrays and should contain 3-5 values:
 0. description (string) : custom data brief description, may contain format description.
 1. offset (int) : custom data offset in oscillator binary file.
 2. size (int) : custom data element size.
-3. count (string) : optional maximum number of custom data elements (if more than one).
-4. parameter (string) : optional name of the parameter that controls custom element selection (to reflect actual number of elements injected).
+3. count (int) : optional maximum number of custom data elements (if more than one).
+4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected).

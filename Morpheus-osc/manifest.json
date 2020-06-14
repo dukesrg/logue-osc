@@ -6,22 +6,18 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.1-0",
+        "version" : "1.0-0",
         "name" : "Morpheus",
         "num_param" : 5,
         "params" : [
             ["Mode", 0, 1, ""],
             ["LFOX", 0, 100, "%"],
             ["LFOY", 0, 100, "%"],
-            ["LFOTrigger", 0, 3, "%"],
-            ["Interpolate", 0, 1, "%"]
+            ["LFOTrigger", 0, 3, ""],
+            ["Interpolate", 0, 1, ""]
         ],
-        "custom_data" : {
-          "description" : "Raw wave, μ-law encoded",
-          "count" : 1,
-          "size" : 16384,
-          "offset" : 64,
-          "param" : -1
-        }
+        "custom_data" : [
+          ["Raw wave, μ-law encoded", 64, 16384]
+        ]
     }
 }
