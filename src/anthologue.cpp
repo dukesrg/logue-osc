@@ -42,6 +42,8 @@ static uint16_t s_seq_step_mask;
 static float s_sample_pos;
 static uint8_t s_seq_note[16];
 static uint8_t s_seq_vel[16];
+static bool s_seq_started;
+static int16_t s_seq_transpose;
 
 static uint8_t s_prog;
 static uint8_t s_prog_type;
@@ -128,9 +130,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   uint16_t pitch1, pitch2;
   float seq_quant = s_seq_res / fx_get_bpmf();
 
-  if (s_seq_step_mask)
-    pitch1 = pitch2 = (uint16_t)s_seq_note[s_seq_step] << 8;
-  else
+  if (s_seq_step_mask) {
+    pitch1 = (uint16_t)s_seq_note[s_seq_step] << 8;
+    if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
+      s_seq_transpose = params->pitch - pitch1;
+      s_seq_started = true;
+    }
+    pitch1 = pitch2 = pitch1 + s_seq_transpose;
+  } else
     pitch1 = pitch2 = params->pitch;
 
   pitch1 += s_pitch1;
@@ -223,7 +230,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_phase1 &= 0x7FFFFFFF;
 
     out = 0;
-    if (s_seq_step_bit & s_seq_step_mask)
+    if ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step])
       out = q31add(q31add(q31mul(out1, s_level1), q31mul(out2, s_level2)), q31mul(f32_to_q31(osc_white()), s_noise_level));
 
     *y = out;
@@ -247,6 +254,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_seq_step = 0;
   s_seq_step_bit = 1;
   s_sample_pos = 0.f;
+  s_seq_transpose = 0;
+  s_seq_started = false;
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
