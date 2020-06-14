@@ -87,6 +87,7 @@
 <script language="javascript">
 "use strict";
 var data;
+var count;
 
 function inject(osc) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
@@ -113,9 +114,12 @@ function inject(osc) {
           }
         }
       }),
-      zip.file(osc.name + "/manifest.json").async("string").then((data) => {
-        manifest = JSON.parse(data);
+      zip.file(osc.name + "/manifest.json").async("string").then((text) => {
+        manifest = JSON.parse(text);
         manifest.header.name = name.substring(0, 12);
+        var paramidx = manifest.header.custom_data[0][4];
+        if (typeof paramidx !== 'undefined')
+          manifest.header.params[paramidx][2] = data.length - 1;
         manifest = JSON.stringify(manifest, null, "  ");
       })
     ]).then(values => { 
@@ -142,8 +146,11 @@ function getInfo(osc) {
     zip.file(osc + "/manifest.json").async("string").then((data) => {
       var manifest = JSON.parse(data);
       ["version", "api"].map(e => document.querySelector("#" + osc + "-" + e).innerHTML = manifest.header[e]);
-      document.querySelector('#' + osc + '-size').innerHTML = manifest.header.custom_data.count + ' x ' + manifest.header.custom_data.size;
-      document.querySelector('#' + osc + '-description').innerHTML = manifest.header.custom_data.description;
+      count[osc] = manifest.header.custom_data[0][3];
+      if (!count[osc])
+        count[osc] = 1;
+      document.querySelector('#' + osc + '-size').innerHTML = manifest.header.custom_data[0][2] + ' x ' + count[osc];
+      document.querySelector('#' + osc + '-description').innerHTML = manifest.header.custom_data[0][0];
     })
   })
 }
@@ -192,9 +199,7 @@ function handleFiles(f) {
         if (array.length > 4104) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
-                  if (data.length >= 4) {
-            status.innerHTML += "skipped (maximum voice bank limit reached)";
-          } else {  if (data.length >= 4) {
+           if (data.length >= count[osc]) {
             status.innerHTML += "skipped (maximum voice bank limit reached)";
           } else {
             if (array.length == 4096) {
@@ -224,58 +229,77 @@ function handleFiles(f) {
           }
         }
       } else if (osc === "Morpheus") {
-        if (array.slice(0, 4).join("") + array.slice(8, 12).join("") === "8273707087658669") {
-          if (array.slice(22, 24).join("") === "10") {
-            switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
-              case "10160": //16-bit PCM
-                var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
-                if (size < 32768) {
-                  status.innerHTML += "skipped (sample count too small)";
-                } else {
-                   status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
-                   if (size > 32768) {
-                     status.innerHTML += ", truncated to 16384 samples";
-                   }
-                   var newarray = new Uint8Array(16384);
-                   for (i = 0; i < newarray.length; i++)
-                     newarray[i] = pcm16toulaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
-                   data.push(newarray);
-                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                }
-                break;
-              case "7080": //u-Law
-                var size = array[0x2E] + (array[0x2F] << 8) + (array[0x30] << 16) + (array[0x31] << 24);
-                if (size < 16384) {
-                  status.innerHTML += "skipped (samle count too small)";
-                } else {
-                   status.innerHTML += "added &#xb5;-law compressed file";
-                   if (size > 16384) {
-                     status.innerHTML += ", truncated to 16384 samples";
-                   }
-                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                   data.push(array.slice(58, 16469))
-                }
-                break;
-              default:
-                status.innerHTML += "skipped (format not supported)";
-            };
+        if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
+          if (data.length >= count[osc]) {
+            status.innerHTML += "skipped (maximum wave file limit reached)";
           } else {
-            status.innerHTML += "skipped (channel count not supported)";
+            if (array.slice(22, 24).join("") === "10") {
+              switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
+                case "10160": //16-bit PCM
+                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                  if (size < 32768) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                     status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
+                     if (size > 32768) {
+                       status.innerHTML += ", truncated to 16384 samples";
+                     }
+                     var newarray = new Uint8Array(16384);
+                     for (i = 0; i < newarray.length; i++)
+                       newarray[i] = pcm16toulaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
+                     data.push(newarray);
+                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  }
+                  break;
+                case "7080": //u-Law
+                  var size = array[0x2E] + (array[0x2F] << 8) + (array[0x30] << 16) + (array[0x31] << 24);
+                  if (size < 16384) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                     status.innerHTML += "added &#xb5;-law compressed file";
+                     if (size > 16384) {
+                       status.innerHTML += ", truncated to 16384 samples";
+                     }
+                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                     data.push(array.slice(58, 16469))
+                  }
+                  break;
+                default:
+                  status.innerHTML += "skipped (format not supported)";
+              };
+            } else {
+              status.innerHTML += "skipped (channel count not supported)";
+            }
           }
         } else {
           status.innerHTML += "skipped unsupported file format";
         }
       } else if (osc === "Anthologue") {
-       
         if (array.length != 448) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
-          data.push(array);
+          if (String.fromCharCode.apply(String, array.slice(0, 4)) == "PROG") {
+            if (data.length >= count[osc]) {
+              status.innerHTML += "skipped (maximum program limit reached)";
+            } else {
+              var progname = String.fromCharCode.apply(String, array.slice(4, 16)).replace(/\0/g,'');
+              if (String.fromCharCode.apply(String, array.slice(48, 52)) == "SEQD") {
+                status.innerHTML += "added monologue program " + progname;
+                name.value += progname;
+                data.push(array);
+              } else if (String.fromCharCode.apply(String, array.slice(96, 100)) == "SEQD") {
+                status.innerHTML += "added minilogue program " + progname;
+                name.value += progname;
+                data.push(array);               
+              } else {
+                status.innerHTML += "skipped unsupported file format";
+              }
+            }
+          } else {
+            status.innerHTML += "skipped unsupported file format";
+          }
         }
       }
- 
-
-
       status.innerHTML += "<br/>";
       if (data.length > 0) {
         document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
@@ -296,6 +320,7 @@ function onLoad() {
   var platform = document.querySelector('#' + document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1])
   if (platform)
     platform.checked = true;
+  count = new Array();
   ["FM64", "Morpheus", "Anthologue"].map(e => getInfo(e));
 }
 </script>
@@ -310,9 +335,9 @@ USER OSCILLATORS
 </div>
 <table rules="rows" cellpadding="6" border="2" width="100%">
 <tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
-<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
+<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
 <tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
-<tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
+<tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
