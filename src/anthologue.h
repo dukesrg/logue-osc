@@ -16,8 +16,8 @@
   #define BANK_SIZE 64
 #endif
 
-#define param_val_to_q31(val) ((uint32_t)val * 0x00200802)
-#define to10bit(h, l) ((((uint32_t)h) << 2) | l)
+#define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
+#define to10bit(h, l) (uint16_t)((((uint16_t)h) << 2) | l)
 
 #define SEQ_STEP_COUNT 16
 #define SEQ_MOTION_SLOT_COUNT 4
@@ -28,7 +28,7 @@ enum {
     prologue_ID = 2, //0x4B
     monologue_xd_ID = 3, //0x51
 };
-
+/*
 enum {
   XY_SLIDER = 0,
   XY_JOY_Y = 0,
@@ -131,6 +131,7 @@ enum {
   CC_REVERB_DRY_WET = 110,
   CC_DELAY_WET_PRLG = 111,
 };
+*/
 
 struct motion_slot_param_t {
   uint8_t motion_enable:1;
@@ -343,31 +344,7 @@ struct molg_prog_t {
   } step_event_data[SEQ_STEP_COUNT];
 };
 
-//static inline __attribute__((optimize("Ofast"), always_inline))
-int32_t getPitch(uint32_t pitch) {
-//todo: better pitch calculation implementation
-  int32_t res;
-  if (pitch < 4)
-    res = - 1200;
-  else if (pitch < 356)
-    res = - 1200 + (pitch - 4) * (1200 - 256) / (356 - 4);
-  else if (pitch < 476)
-    res = - 256 + ((pitch - 356) << 1);
-  else if (pitch < 492)
-    res = - 16 + (pitch - 476);
-  else if (pitch < 532)
-    res = 0;
-  else if (pitch < 548)
-    res = pitch - 532;
-  else if (pitch < 668)
-    res = 16 + ((pitch - 548) << 1);
-  else if (pitch < 1020)
-    res = 256 + (pitch - 668) * (1200 - 256) / (1020 - 668);
-  else
-    res = 1200;
-  return res * 256 / 100;
-}
-
+/*
 static const uint8_t motion_to_cc_lut[2][32] = {
   { //mnlg
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -386,7 +363,7 @@ static const uint8_t motion_to_cc_lut[2][32] = {
     CC_VCO1_LEVEL, //29
     CC_VCO2_LEVEL, //30
     CC_NOISE_LEVEL, //31
-/*    CC_CUTOFF, //32
+    CC_CUTOFF, //32
     CC_RESONANCE, //33
     CC_CUTOFF_EG_INT, //34
     CC_CUTOFF_VELOCITY_MNLG, //35
@@ -414,7 +391,7 @@ static const uint8_t motion_to_cc_lut[2][32] = {
     0, 0, 0,
 0,//    CC_PITCH_BEND, //61
 0,//    CC_GATE_TIME, //62
-*/  }, { //molg
+  }, { //molg
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     CC_VCO1_PITCH, //13
     CC_VCO1_SHAPE, //14
@@ -435,7 +412,7 @@ static const uint8_t motion_to_cc_lut[2][32] = {
     CC_EG_TYPE_MOLG, //29,
     CC_EG_TARGET_MOLG, //30,
     CC_LFO_RATE, //31,
-/*    CC_LFO_INT, //32,
+    CC_LFO_INT, //32,
     CC_LFO_TARGET, //33,
     CC_LFO_WAVE_MNLG_MOLG, //34,
     CC_LFO_MODE_MOLG, //35,
@@ -450,9 +427,8 @@ static const uint8_t motion_to_cc_lut[2][32] = {
 //  0
 //  }, { //mnlgxd
 //  0
-*/  }
+  }
 };
-/*
 static const uint8_t wheel_to_cc_lut[2][63] = {
   {0}, //mnlg
   {0}, //molg

@@ -33,7 +33,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
 |FM64|Voice select|Bank select|Voice select 1&hellip;32|Bank select 1&hellip;4|-|-|-|-|
-|Anthologue|VCO 1 shape|VCO 2 shape|Program select 1&hellip;64|VCO 1 wave 1&hellip;3|VCO 2 wave 1&hellip;3|VCO 1 level 0&hellip;100%|VCO 2 level 0&hellip;100%|Sync/Ring Modulation<br>1 - none<br>2 - Sync<br>2 - Ring modulation<br>3 - both|
+|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;64|Play mode select<br>1 - note<br>2 - sequence trigger|Assignable controller 2 select 1&hellip;15|Assignable controller 2 select 1&hellip;15|-|-|
 
 ### Oscillator notes
 * Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.
@@ -43,6 +43,7 @@ For user-customizable oscillators online constructor is available at https://duk
 * Morpheus LFO rate control is in non-linear scale with more precise control in lower frequencies.
 * FM64 is very rough and only limited number of features are supported, currently most voices sounds far different from the originals.
 * Using FX with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations. Currently using 1 FX looks safe.
+* Anthologue patch select sets VCOs parameters according to selected monologue or minilogue patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for monologue program).
 
 |#|Morpheus LFO X&Y types|
 |-|-|
@@ -55,6 +56,31 @@ For user-customizable oscillators online constructor is available at https://duk
 |20&hellip;35|Wave Bank F|
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
+
+|#|Anthologue Waves|
+|-|-|
+|1|Square|
+|1|Triangle|
+|2|Saw|
+|3|Noise|
+
+|#|Anthologue Assignable controller 1&2|
+|-|-|
+|1|Slider|
+|2|VCO 1 Pitch|
+|3|VCO 1 Shape|
+|4|VCO 1 Octave|
+|5|VCO 1 Wave|
+|6|VCO 2 Pitch|
+|7|VCO 2 Shape|
+|8|VCO 2 Octave|
+|9|VCO 2 Wave|
+|10|VCO 2 Cross Mod Depth|
+|11|VCO 2 Sync|
+|12|VCO 2 Ring Mod|
+|13|VCO 1 Level|
+|14|VCO 2 Level|
+|15|Noise Level|
 
 ### manifest.json custom data extension
 
