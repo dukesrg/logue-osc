@@ -12,6 +12,7 @@
 #include "fixed_mathq.h"
 #include "fx_api.h"
 #include "osc_apiq.h"
+
 #include "anthologue.h"
 
 static q31_t s_phase1;
@@ -25,13 +26,14 @@ static q31_t s_level1;
 static q31_t s_level2;
 static q31_t s_noise_level;
 static q31_t s_crossmod;
-static q31_t s_drive;
+//static q31_t s_drive;
 static uint8_t s_wave1;
 static uint8_t s_wave2;
 static uint8_t s_ringmod;
 static uint8_t s_sync;
 static uint8_t s_octave1;
 static uint8_t s_octave2;
+
 static uint8_t s_octavekbd;
 
 static uint8_t s_seq_len;
@@ -44,6 +46,9 @@ static uint8_t s_seq_note[16];
 static uint8_t s_seq_vel[16];
 static bool s_seq_started;
 static int16_t s_seq_transpose;
+static const motion_slot_param_t *s_motion_slot_param;
+static const uint16_t *s_motion_slot_step_mask;
+static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
 
 static uint8_t s_prog;
 static uint8_t s_prog_type;
@@ -67,18 +72,24 @@ void initvoice() {
     s_wave2 = p->vco2_wave;
 
 //todo: drive
-    s_drive = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
+//    s_drive = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
     s_crossmod = 0;
-    s_ringmod = p->sync_ring==0;
-    s_sync = p->sync_ring==2;
+    s_ringmod = p->ring_sync==0;
+    s_sync = p->ring_sync==2;
 
     s_seq_len = p->step_length;
     s_seq_res = (k_samplerate * 15) << p->step_resolution;
     s_seq_step_mask = p->step_mask;
 
-    for (uint32_t i = 0; i< 16; i++) {
+    s_motion_slot_param = p->motion_slot_param;
+    s_motion_slot_step_mask = p->motion_slot_step_mask;
+    for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note;
       s_seq_vel[i] = p->step_event_data[i].velocity;
+      for (uint8_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+        s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
+        s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
+      }
     }
 
   } else if (logue_prog[s_prog].minilogue.SEQD == *(uint32_t*)&"SEQD") {
@@ -98,7 +109,7 @@ void initvoice() {
     s_wave1 = p->vco1_wave;
     s_wave2 = p->vco2_wave;
 
-    s_drive = 0;
+//    s_drive = 0;
     s_crossmod = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo)) ;
     s_sync = p->sync;
     s_ringmod = p->ring;
@@ -106,14 +117,92 @@ void initvoice() {
     s_seq_len = p->step_length;
     s_seq_res = (k_samplerate * 15) << p->step_resolution;
     s_seq_step_mask = p->step_mask;
-
-    for (uint32_t i = 0; i< 16; i++) {
+    s_motion_slot_param = p->motion_slot_param;
+    s_motion_slot_step_mask = p->motion_slot_step_mask;
+    for (uint8_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note[0];
       s_seq_vel[i] = p->step_event_data[i].velocity[0];
+      for (uint8_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+        s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
+        s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
+      }
     }
 
   }
 
+}
+
+//static inline __attribute__((optimize("Ofast"), always_inline))
+void setParam(uint8_t param, uint8_t val) {
+  param = motion_to_cc_lut[s_prog_type][param];
+  uint16_t val10bit = (uint16_t)val << 2;
+  switch (param) {
+    case CC_VCO1_PITCH:
+      s_pitch1 = getPitch(val10bit);
+      break;
+    case CC_VCO1_SHAPE:
+      s_shape1 = val10bit;
+      break;
+    case CC_VCO1_LEVEL:
+      s_level1 = val10bit;
+      break;
+    case CC_VCO1_OCTAVE:
+      s_octave1 = val;
+      break;
+    case CC_VCO1_WAVE:
+      s_wave1 = val;
+      break;
+
+    case CC_VCO2_PITCH:
+      s_pitch2 = getPitch(val10bit);
+      break;
+    case CC_VCO2_SHAPE:
+      s_shape2 = val10bit;
+      break;
+    case CC_VCO2_LEVEL:
+      s_level2 = val10bit;
+      break;
+    case CC_VCO2_OCTAVE:
+      s_octave2 = val;
+      break;
+    case CC_VCO2_WAVE:
+      s_wave2 = val;
+      break;
+    case CC_NOISE_LEVEL:
+//    case CC_MULTI_LEVEL:
+      s_noise_level = val10bit;
+    break;
+
+    case CC_RING_SYNC_MOLG:
+      s_ringmod = val==0;
+      s_sync = val==2;
+    break;
+
+    case CC_VCO2_CROSS_MOD_DEPTH:
+      s_crossmod = val10bit;
+    break;
+
+    case CC_SYNC:
+//    case CC_RING_SYNC_PRLG:
+      s_sync = val;
+    break;
+    case CC_RING:
+//    case CC_PITCH_EG_PRLG:
+      s_ringmod = val;
+    break;
+
+    default:
+      break;
+  }
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+void setMotion() {
+  for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
+    if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
+      setParam(s_motion_slot_param[i].parameter_id, s_motion_slot_data[s_seq_step][i][0]);
+    }
+  }
 }
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
@@ -124,21 +213,24 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  q31_t out, out1 = 0, out2 = 0;
+  q31_t out1 = 0, out2 = 0;
   q31_t w01, w02;
   q31_t t1, t2;
   uint16_t pitch1, pitch2;
+  uint8_t gate = 0;
   float seq_quant = s_seq_res / fx_get_bpmf();
 
   if (s_seq_step_mask) {
+    gate = (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step];
     pitch1 = (uint16_t)s_seq_note[s_seq_step] << 8;
     if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
       s_seq_transpose = params->pitch - pitch1;
       s_seq_started = true;
     }
     pitch1 = pitch2 = pitch1 + s_seq_transpose;
-  } else
+  } else {
     pitch1 = pitch2 = params->pitch;
+  }
 
   pitch1 += s_pitch1;
   pitch2 += s_pitch2;
@@ -163,62 +255,68 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    switch (s_wave1) {
-      case 0:
-        out1 = 0x7FFFFFFF;
-        if (s_phase1 < 0x40000000 - q31mul(0x3F000000, s_shape1))
-          out1++;
-        break;
-      case 1:
-        if (s_phase1 < 0x40000000)
-          t1 = ((s_phase1 - 0x20000000) << 2);
-        else
-          t1 = ((0x5FFFFFFF - s_phase1) << 2);
-        t2 = q31mul(t1, s_shape1) << 1;
-        out1 = t1 + t2;
-        if (t2 && ((out1 ^ t1) | (t2 ^ t1)) & 0x80000000)
-          out1 = -out1;
-        break;
-      case 2:
-        out1 = q31mul(0x20000000, s_shape1);
-        if (s_phase1 < 0x40000000 - out1 || s_phase1 > 0x40000000 + out1)
-          out1 = (0x1FFFFFFF - s_phase1) << 2;
-        else
-          out1 = (s_phase1 - 0x20000000) << 2;
-        break;
-    }
-
-    switch (s_wave2) {
-      case 0:
-        if (s_prog_type == monologue_ID)
-          out2 = f32_to_q31(osc_white());
-        else {
-          out2 = 0x7FFFFFFF;
-          if (s_phase2 < 0x40000000 - q31mul(0x3F000000, s_shape2))
-            out2++;
+    if (!gate) {
+      *y = 0;
+    } else {
+      switch (s_wave1) {
+        case 0:
+          out1 = 0x7FFFFFFF;
+          if (s_phase1 < 0x40000000 - q31mul(0x3F000000, s_shape1))
+            out1++;
+          break;
+        case 1:
+          if (s_phase1 < 0x40000000)
+            t1 = ((s_phase1 - 0x20000000) << 2);
+          else
+            t1 = ((0x5FFFFFFF - s_phase1) << 2);
+          t2 = q31mul(t1, s_shape1) << 1;
+          out1 = t1 + t2;
+          if (t2 && ((out1 ^ t1) | (t2 ^ t1)) & 0x80000000)
+            out1 = -out1;
+          break;
+        case 2:
+          out1 = q31mul(0x20000000, s_shape1);
+          if (s_phase1 < 0x40000000 - out1 || s_phase1 > 0x40000000 + out1)
+            out1 = (0x1FFFFFFF - s_phase1) << 2;
+           else
+           out1 = (s_phase1 - 0x20000000) << 2;
+          break;
         }
-        break;
-      case 1:
-        if (s_phase2 < 0x40000000)
-          t1 = ((s_phase2 - 0x20000000) << 2);
-        else
-          t1 = ((0x5FFFFFFF - s_phase2) << 2);
-        t2 = q31mul(t1, s_shape2) << 1;
-        out2 = t1 + t2;
-        if (t2 && ((out2 ^ t1) | (t2 ^ t1)) & 0x80000000)
-          out2 = -out2;
-        break;
-      case 2:
-        out2 = q31mul(0x20000000, s_shape2);
-        if (s_phase2 < 0x40000000 - out2 || s_phase2 > 0x40000000 + out2)
-          out2 = (0x1FFFFFFF - s_phase2) << 2;
-        else
-          out2 = (s_phase1 - 0x20000000) << 2;
-        break;
-    }
 
-    if (s_ringmod)
-      out2 = q31mul(out2, out1);
+      switch (s_wave2) {
+        case 0:
+          if (s_prog_type == monologue_ID)
+            out2 = f32_to_q31(osc_white());
+          else {
+            out2 = 0x7FFFFFFF;
+            if (s_phase2 < 0x40000000 - q31mul(0x3F000000, s_shape2))
+              out2++;
+          }
+          break;
+        case 1:
+          if (s_phase2 < 0x40000000)
+            t1 = ((s_phase2 - 0x20000000) << 2);
+          else
+            t1 = ((0x5FFFFFFF - s_phase2) << 2);
+          t2 = q31mul(t1, s_shape2) << 1;
+          out2 = t1 + t2;
+          if (t2 && ((out2 ^ t1) | (t2 ^ t1)) & 0x80000000)
+            out2 = -out2;
+          break;
+        case 2:
+          out2 = q31mul(0x20000000, s_shape2);
+          if (s_phase2 < 0x40000000 - out2 || s_phase2 > 0x40000000 + out2)
+            out2 = (0x1FFFFFFF - s_phase2) << 2;
+          else
+            out2 = (s_phase1 - 0x20000000) << 2;
+          break;
+      }
+
+      if (s_ringmod)
+        out2 = q31mul(out2, out1);
+
+      *y = q31add(q31add(q31mul(out1, s_level1), q31mul(out2, s_level2)), q31mul(f32_to_q31(osc_white()), s_noise_level));
+    }
 
     s_phase1 += w01;
     if (s_sync && s_phase1 <= 0) {
@@ -229,12 +327,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
     s_phase1 &= 0x7FFFFFFF;
 
-    out = 0;
-    if ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step])
-      out = q31add(q31add(q31mul(out1, s_level1), q31mul(out2, s_level2)), q31mul(f32_to_q31(osc_white()), s_noise_level));
-
-    *y = out;
-
     if (++s_sample_pos >= seq_quant) {
       s_sample_pos -= seq_quant;
       if (++s_seq_step >= s_seq_len) {
@@ -243,6 +335,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       } else {
         s_seq_step_bit <<= 1;
       }  
+      gate = (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step];
+      setMotion();
     }
   }
 }
@@ -256,6 +350,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_sample_pos = 0.f;
   s_seq_transpose = 0;
   s_seq_started = false;
+  setMotion();
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
