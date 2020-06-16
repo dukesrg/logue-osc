@@ -33,7 +33,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
 |FM64|Voice select|Bank select|Voice select 1&hellip;32|Bank select 1&hellip;4|-|-|-|-|
-|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;64|Play mode select<br>1 - note<br>2 - sequence trigger|Assignable controller 2 select 1&hellip;22|Assignable controller 2 select 1&hellip;22|-|-|
+|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;64|Play mode select<br>1 - note<br>2 - sequence trigger|Assignable controller 1 select 1&hellip;22|Assignable controller 2 select 1&hellip;22|-|-|
 
 ### Oscillator notes
 * Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.

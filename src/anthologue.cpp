@@ -291,9 +291,8 @@ void initVoice() {
     s_params[p_vco3_ring] = 0;
     s_params[p_vco2_cross] = 0;
     s_params[p_vco3_cross] = 0;
-
 //todo: drive
-//    s_drive = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
+//    s_params[p_drive] = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
 
     s_program_level = (uint32_t)(p->program_level - 102) * 0x0147AE14;
 
@@ -346,8 +345,7 @@ void initVoice() {
     s_params[p_vco3_ring] = 0;
     s_params[p_vco2_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
     s_params[p_vco3_cross] = 0;
-
-//    s_drive = 0;
+//    s_params[p_drive] = 0;
 
     s_program_level = (uint32_t)(p->program_level - 102) * 0x0147AE14;
 
@@ -486,7 +484,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         out3 = q31mul(out3, out2);
 
       out = q31add(q31add(q31mul(out1, s_params[p_vco1_level]), q31mul(out2, s_params[p_vco2_level])), q31mul(out3, s_params[p_vco3_level]));
-      q31add(out, q31mul(out, s_program_level));
+      out = q31add(out, q31mul(out, s_program_level));
     }
 
     *y = out;
