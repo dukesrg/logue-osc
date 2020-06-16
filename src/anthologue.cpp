@@ -143,16 +143,16 @@ static q31_t s_program_level;
 static int8_t s_octavekbd;
 static uint8_t s_slider_assign;
 static uint8_t s_seq_len;
-static float s_seq_res;
+static uint32_t s_seq_res;
 static uint8_t s_seq_step;
 static uint16_t s_seq_step_bit;
 static uint16_t s_seq_step_mask;
-static float s_sample_pos;
+static uint32_t s_sample_pos;
 static uint8_t s_seq_note[16];
 static uint8_t s_seq_vel[16];
 static q31_t s_seq_gate[16];
 static uint32_t s_seq_gate_len;
-static float s_seq_quant;
+static uint32_t s_seq_quant;
 
 static bool s_seq_started;
 static int16_t s_seq_transpose;
@@ -301,7 +301,7 @@ void initVoice() {
     s_slider_assign = p->slider_assign;
 
     s_seq_len = p->step_length;
-    s_seq_res = (k_samplerate * 15) << p->step_resolution;
+    s_seq_res = (k_samplerate * 150) << p->step_resolution;
     s_seq_step_mask = p->step_mask;
     s_motion_slot_param = p->motion_slot_param;
     s_motion_slot_step_mask = p->motion_slot_step_mask;
@@ -355,7 +355,7 @@ void initVoice() {
     s_slider_assign = p->slider_assign;
 
     s_seq_len = p->step_length;
-    s_seq_res = (k_samplerate * 15) << p->step_resolution;
+    s_seq_res = (k_samplerate * 150) << p->step_resolution;
     s_seq_step_mask = p->step_mask;
     s_motion_slot_param = p->motion_slot_param;
     s_motion_slot_step_mask = p->motion_slot_step_mask;
@@ -381,7 +381,7 @@ void initVoice() {
 void initSeq() {
   s_seq_step = 0;
   s_seq_step_bit = 1;
-  s_sample_pos = 0.f;
+  s_sample_pos = 0;
   s_seq_transpose = 0;
   s_seq_started = false;
 }
@@ -447,10 +447,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   int32_t pitch1, pitch2, pitch3;
   uint8_t gate = 0;
 
-  s_seq_quant = s_seq_res / fx_get_bpmf();
+  s_seq_quant = s_seq_res / fx_get_bpm();
 
   if (s_play_mode == mode_seq) {
-    s_seq_gate_len = q31mul((uint32_t)s_seq_quant, s_seq_gate[s_seq_step]);
+    s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
     gate = ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]);
     pitch1 = (uint32_t)s_seq_note[s_seq_step] << 8;
     if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
@@ -472,7 +472,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    if (s_play_mode == mode_seq && (!gate || (uint32_t)s_sample_pos >= s_seq_gate_len)) {
+    if (s_play_mode == mode_seq && (!gate || s_sample_pos >= s_seq_gate_len)) {
       out = out1 = out2 = out3 = 0;
     } else {
       out1 = getVco(s_phase1, s_params[p_vco1_wave], s_params[p_vco1_shape]);
@@ -516,7 +516,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       } else {
         s_seq_step_bit <<= 1;
       }  
-      s_seq_gate_len = q31mul((uint32_t)s_seq_quant, s_seq_gate[s_seq_step]);
+      s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
       gate = ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]);
       setMotion();
     }
