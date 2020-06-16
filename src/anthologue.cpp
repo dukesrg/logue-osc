@@ -1,7 +1,7 @@
 /*
  * File: anthologue.cpp
  *
- * 2 VCO oscillator
+ * 3 VCO oscillator
  * 
  * 2020 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
@@ -21,22 +21,42 @@
 #define SLIDER_PARAM_LUT_LAST 22
 
 enum {
-  p_slider_assign,
+  p_slider_assign = 0,
   p_vco1_pitch,
   p_vco1_shape,
   p_vco1_octave,
   p_vco1_wave,
+  p_vco1_level,
   p_vco2_pitch,
   p_vco2_shape,
   p_vco2_octave,
   p_vco2_wave,
-  p_cross,
-  p_sync,
-  p_ring,
-  p_vco1_level,
   p_vco2_level,
-  p_noise_level,
+  p_vco2_sync,
+  p_vco2_ring,
+  p_vco2_cross,
+  p_vco3_pitch,
+  p_vco3_shape,
+  p_vco3_octave,
+  p_vco3_wave,
+  p_vco3_level,
+  p_vco3_sync,
+  p_vco3_ring,
+  p_vco3_cross,
   p_num
+};
+
+enum {
+  wave_sqr = 0,
+  wave_tri,
+  wave_saw,
+  wave_noise,
+  wave_num,
+};
+
+enum {
+  mode_note = 0,
+  mode_seq,
 };
 
 static uint32_t s_params[p_num];
@@ -52,13 +72,13 @@ static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRS
     p_vco2_shape,
     p_vco2_octave,
     p_vco2_wave,
-    p_cross,
-    0,
-    p_sync,
-    p_ring,
+    p_vco2_cross,
+    0, //PEG INT
+    p_vco2_sync,
+    p_vco2_ring,
     p_vco1_level,
     p_vco2_level,
-    p_noise_level, //31
+    p_vco3_level, //31
   }, { //molg
     p_vco1_pitch, //13
     p_vco1_shape,
@@ -70,9 +90,15 @@ static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRS
     p_vco2_wave,
     p_vco1_level,
     p_vco2_level,
-    0, 0,
-    p_sync, //25
-    0, 0, 0, 0, 0, 0,
+    0, //CUTOFF
+    0, //RESONANCE
+    p_vco2_sync, //25
+    0, //ATTACK
+    0, //DECAY
+    0, //EG INT
+    0, //EG TYPE
+    0, //EG TARGET
+    0, //LFO RATE
   }
 };
 
@@ -82,12 +108,23 @@ static uint8_t slider_param_lut[2][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRS
     p_vco1_shape,
     p_vco2_pitch,
     p_vco2_shape,
-    p_cross,
+    p_vco2_cross,
     0, //VCO2 PEG INT
     p_vco1_level,
     p_vco2_level,
-    p_noise_level, //10
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    p_vco3_level, //10
+    0, //CUTOFF
+    0, //RESONANCE
+    0, //FILTER EG INT
+    0, //AMP EG ATTACK
+    0, //AMP EG DECAY
+    0, //AMP EG SUSTAIN
+    0, //AMP EG RELEASE
+    0, //EG ATTACK
+    0, //EG DECAY
+    0, //EG SUSTAIN
+    0, //EG RELEASE
+    0, //LFO RATE
   }, {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     p_vco1_pitch, //13
@@ -101,25 +138,7 @@ static uint8_t slider_param_lut[2][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRS
   }
 };
 
-/*
-static uint32_t s_pitch1;
-static uint32_t s_pitch2;
-static q31_t s_shape1;
-static q31_t s_shape2;
-static q31_t s_level1;
-static q31_t s_level2;
-static q31_t s_noise_level;
-static q31_t s_crossmod;
-//static q31_t s_drive;
-static uint8_t s_wave1;
-static uint8_t s_wave2;
-static uint8_t s_ringmod;
-static uint8_t s_sync;
-static uint8_t s_octave1;
-static uint8_t s_octave2;
-*/
-
-static uint8_t s_octavekbd;
+static int8_t s_octavekbd;
 static uint8_t s_slider_assign;
 static uint8_t s_seq_len;
 static float s_seq_res;
@@ -137,6 +156,7 @@ static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
 
 static q31_t s_phase1;
 static q31_t s_phase2;
+static q31_t s_phase3;
 
 static uint8_t s_prog;
 static uint8_t s_prog_type;
@@ -144,10 +164,10 @@ static uint8_t s_play_mode;
 static uint8_t s_shape;
 static uint8_t s_shiftshape;
 
-static inline __attribute__((optimize("Ofast"), always_inline))
-uint16_t getPitch(uint16_t pitch) {
+//static inline __attribute__((optimize("Ofast"), always_inline))
+int32_t getPitch(uint16_t pitch) {
 //todo: better pitch calculation implementation
-  uint16_t res;
+  int32_t res;
   if (pitch < 4)
     res = - 1200;
   else if (pitch < 356)
@@ -169,7 +189,7 @@ uint16_t getPitch(uint16_t pitch) {
   return res * 256 / 100;
 }
 
-static inline __attribute__((optimize("Ofast"), always_inline))
+//static inline __attribute__((optimize("Ofast"), always_inline))
 void setParam(uint8_t param, uint8_t val) {
   if (param >= MOTION_PARAM_LUT_FIRST && param <= MOTION_PARAM_LUT_LAST) {
     param = motion_param_lut[s_prog_type][param - MOTION_PARAM_LUT_FIRST];
@@ -179,18 +199,18 @@ void setParam(uint8_t param, uint8_t val) {
         s_params[param] = getPitch((uint16_t)val << 2);
         break;
       case p_vco2_wave:
-        if (s_prog_type == monologue_ID && val == 0)
-          val = 3;
+        if (s_prog_type == monologue_ID && val == wave_sqr)
+          val = wave_noise;
       case p_vco1_wave:
       case p_vco1_octave:
       case p_vco2_octave:
         s_params[param] = val;
         break;
-      case p_ring:
-      case p_sync:
+      case p_vco2_ring:
+      case p_vco2_sync:
         if (s_prog_type == monologue_ID) {
-          s_params[p_ring] = val==0;
-          s_params[p_sync] = val==2;
+          s_params[p_vco2_ring] = val==0;
+          s_params[p_vco2_sync] = val==2;
         } else
           s_params[param] = val;
         break;
@@ -214,23 +234,22 @@ void setParam(uint8_t param, uint16_t val) {
   switch (param) {
     case p_vco1_pitch:
     case p_vco2_pitch:
+    case p_vco3_pitch:
       s_params[param] = getPitch(val);
       break;
-    case p_vco2_wave:
-      if (s_prog_type == monologue_ID && val == 0)
-        val = 3;
-    case p_vco1_wave:
     case p_vco1_octave:
     case p_vco2_octave:
-      s_params[param] = val;
+    case p_vco3_octave:
+    case p_vco1_wave:
+    case p_vco2_wave:
+    case p_vco3_wave:
+      s_params[param] = val >> 8;
       break;
-    case p_ring:
-    case p_sync:
-      if (s_prog_type == monologue_ID) {
-        s_params[p_ring] = val==0;
-        s_params[p_sync] = val==2;
-      } else
-        s_params[param] = val;
+    case p_vco2_sync:
+    case p_vco2_ring:
+    case p_vco3_sync:
+    case p_vco3_ring:
+      s_params[param] = val >> 9;
       break;
     default:
       s_params[param] = param_val_to_q31(val);
@@ -238,32 +257,37 @@ void setParam(uint8_t param, uint16_t val) {
   }
 }
 
-void initvoice() {
+void initVoice() {
   if (logue_prog[s_prog].monologue.SEQD == *(uint32_t*)&"SEQD") {
     const molg_prog_t *p = &logue_prog[s_prog].monologue;
     s_prog_type = monologue_ID;
  
     s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
     s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
-//    setParam(p_vco1_pitch, to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
-//    setParam(p_vco2_pitch, to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
+    s_params[p_vco2_pitch] = 0;
     s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
     s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
-    s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
-    s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
-    s_params[p_noise_level] = 0;
+    s_params[p_vco3_shape] = 0;
     s_params[p_vco1_octave] = p->vco1_octave;
     s_params[p_vco2_octave] = p->vco2_octave;
+    s_params[p_vco3_octave] = 0;
     s_params[p_vco1_wave] = p->vco1_wave;
-    s_params[p_vco2_wave] = p->vco2_wave == 0 ? 3 : p->vco2_wave;
-    s_params[p_cross] = 0;
-    s_params[p_ring] = p->ring_sync==0;
-    s_params[p_sync] = p->ring_sync==2;
+    s_params[p_vco2_wave] = p->vco2_wave == wave_sqr ? (uint32_t)wave_noise : p->vco2_wave;
+    s_params[p_vco3_wave] = wave_sqr;
+    s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
+    s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
+    s_params[p_vco3_level] = 0;
+    s_params[p_vco2_sync] = p->ring_sync==2;
+    s_params[p_vco3_sync] = 0;
+    s_params[p_vco2_ring] = p->ring_sync==0;
+    s_params[p_vco3_ring] = 0;
+    s_params[p_vco2_cross] = 0;
+    s_params[p_vco3_cross] = 0;
 
 //todo: drive
 //    s_drive = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
 
-    s_octavekbd = p->keyboard_octave;
+    s_octavekbd = p->keyboard_octave - 2;
     s_slider_assign = p->slider_assign;
 
     s_seq_len = p->step_length;
@@ -274,7 +298,7 @@ void initvoice() {
     for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note;
       s_seq_vel[i] = p->step_event_data[i].velocity;
-      for (uint8_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+      for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
         s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
         s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
       }
@@ -286,24 +310,29 @@ void initvoice() {
  
     s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
     s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
-//    setParam(p_vco1_pitch, to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
-//    setParam(p_vco2_pitch, to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
+    s_params[p_vco2_pitch] = 0;
     s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
     s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
-    s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
-    s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
-    s_params[p_noise_level] = param_val_to_q31(to10bit(p->noise_level_hi, p->noise_level_lo));
+    s_params[p_vco3_shape] = 0;
     s_params[p_vco1_octave] = p->vco1_octave;
     s_params[p_vco2_octave] = p->vco2_octave;
+    s_params[p_vco3_octave] = 0;
     s_params[p_vco1_wave] = p->vco1_wave;
     s_params[p_vco2_wave] = p->vco2_wave;
-    s_params[p_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
-    s_params[p_ring] = p->ring;
-    s_params[p_sync] = p->sync;
+    s_params[p_vco3_wave] = wave_noise;
+    s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
+    s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
+    s_params[p_vco3_level] = param_val_to_q31(to10bit(p->noise_level_hi, p->noise_level_lo));
+    s_params[p_vco2_sync] = p->sync;
+    s_params[p_vco3_sync] = 0;
+    s_params[p_vco2_ring] = p->ring;
+    s_params[p_vco3_ring] = 0;
+    s_params[p_vco2_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
+    s_params[p_vco3_cross] = 0;
 
 //    s_drive = 0;
 
-    s_octavekbd = p->keyboard_octave;
+    s_octavekbd = p->keyboard_octave - 2;
     s_slider_assign = p->slider_assign;
 
     s_seq_len = p->step_length;
@@ -311,10 +340,10 @@ void initvoice() {
     s_seq_step_mask = p->step_mask;
     s_motion_slot_param = p->motion_slot_param;
     s_motion_slot_step_mask = p->motion_slot_step_mask;
-    for (uint8_t i = 0; i < SEQ_STEP_COUNT; i++) {
+    for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note[0];
       s_seq_vel[i] = p->step_event_data[i].velocity[0];
-      for (uint8_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+      for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
         s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
         s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
       }
@@ -323,7 +352,7 @@ void initvoice() {
   }
 }
 
-void initseq() {
+void initSeq() {
   s_seq_step = 0;
   s_seq_step_bit = 1;
   s_sample_pos = 0.f;
@@ -331,7 +360,7 @@ void initseq() {
   s_seq_started = false;
 }
 
-static inline __attribute__((optimize("Ofast"), always_inline))
+//static inline __attribute__((optimize("Ofast"), always_inline))
 void setMotion() {
   for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
     if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
@@ -340,132 +369,114 @@ void setMotion() {
   }
 }
 
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
+  q31_t t1, t2, out;
+  switch (wave) {
+    case wave_sqr:
+      out = 0x7FFFFFFF;
+      if (phase < 0x40000000 - q31mul(0x3F000000, shape))
+        out++;
+      break;
+    case wave_tri:
+      if (phase < 0x40000000)
+        t1 = ((phase - 0x20000000) << 2);
+      else
+        t1 = ((0x5FFFFFFF - phase) << 2);
+      t2 = q31mul(t1, shape) << 1;
+      out = t1 + t2;
+      if (t2 && ((out ^ t1) | (t2 ^ t1)) & 0x80000000)
+        out = -out;
+      break;
+    case wave_saw:
+      out = q31mul(0x20000000, shape);
+      if (phase < 0x40000000 - out || phase > 0x40000000 + out)
+        out = (0x1FFFFFFF - phase) << 2;
+       else
+        out = (phase - 0x20000000) << 2;
+      break;
+    case wave_noise:
+      out = f32_to_q31(osc_white());
+      break;
+    default:
+      out = 0;
+      break;
+  }
+  return out;
+}
+
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
   s_prog = 0;
-  s_play_mode = 0;
-  s_shape = 0;
-  s_shiftshape = 0;
-  initvoice();
+  s_play_mode = mode_note;
+  s_shape = p_slider_assign;
+  s_shiftshape = p_slider_assign;
+  initVoice();
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  q31_t out1 = 0, out2 = 0;
-  q31_t w01, w02;
-  q31_t t1, t2;
-  uint16_t pitch1, pitch2;
+  q31_t out1, out2, out3;
+  q31_t w01, w02, w03;
+  int32_t pitch1, pitch2, pitch3;
   uint8_t gate = 0;
   float seq_quant = s_seq_res / fx_get_bpmf();
 
-  if (s_play_mode) {
+  if (s_play_mode == mode_seq) {
     gate = (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step];
-    pitch1 = (uint16_t)s_seq_note[s_seq_step] << 8;
+    pitch1 = (uint32_t)s_seq_note[s_seq_step] << 8;
     if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
       s_seq_transpose = params->pitch - pitch1;
       s_seq_started = true;
     }
-    pitch1 = pitch2 = pitch1 + s_seq_transpose;
+    pitch1 = pitch2 = pitch3 = pitch1 + s_seq_transpose;
   } else {
-    pitch1 = pitch2 = params->pitch;
+    pitch1 = pitch2 = pitch3 = params->pitch;
   }
 
   pitch1 += s_params[p_vco1_pitch];
   pitch2 += s_params[p_vco2_pitch];
-  uint8_t note1 = pitch1 >> 8;
-  uint8_t note2 = pitch2 >> 8;
+  pitch3 += s_params[p_vco3_pitch];
 
-  int8_t octave1 = s_params[p_vco1_octave] + s_octavekbd - 2;
-  int8_t octave2 = s_params[p_vco2_octave] + s_octavekbd - 2;
-
-  if (octave1 > 0)
-    note1 += 12 << octave1;
-  else if (octave1 < 0)
-    note1 -= 12 >> -octave1;
-
-  if (octave2 > 0)
-    note2 += 12 << octave2;
-  else if (octave2 < 0)
-    note2 -= 12 >> -octave2;
-
-  w01 = f32_to_q31(osc_w0f_for_note(note1, pitch1 & 0xFF));
-  w02 = f32_to_q31(osc_w0f_for_note(note2, pitch2 & 0xFF));
+  w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + 12 * (s_params[p_vco1_octave] + s_octavekbd), pitch1 & 0xFF));
+  w02 = f32_to_q31(osc_w0f_for_note((pitch2 >> 8) + 12 * (s_params[p_vco2_octave] + s_octavekbd), pitch2 & 0xFF));
+  w03 = f32_to_q31(osc_w0f_for_note((pitch3 >> 8) + 12 * (s_params[p_vco3_octave] + s_octavekbd), pitch3 & 0xFF));
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    if (!gate && s_play_mode) {
+    if (s_play_mode == mode_seq && !gate) {
       *y = 0;
+      out1 = out2 = out3 = 0;
     } else {
-      switch (s_params[p_vco1_wave]) {
-        case 0:
-          out1 = 0x7FFFFFFF;
-          if (s_phase1 < 0x40000000 - q31mul(0x3F000000, s_params[p_vco1_shape]))
-            out1++;
-          break;
-        case 1:
-          if (s_phase1 < 0x40000000)
-            t1 = ((s_phase1 - 0x20000000) << 2);
-          else
-            t1 = ((0x5FFFFFFF - s_phase1) << 2);
-          t2 = q31mul(t1, s_params[p_vco1_shape]) << 1;
-          out1 = t1 + t2;
-          if (t2 && ((out1 ^ t1) | (t2 ^ t1)) & 0x80000000)
-            out1 = -out1;
-          break;
-        case 2:
-          out1 = q31mul(0x20000000, s_params[p_vco1_shape]);
-          if (s_phase1 < 0x40000000 - out1 || s_phase1 > 0x40000000 + out1)
-            out1 = (0x1FFFFFFF - s_phase1) << 2;
-           else
-           out1 = (s_phase1 - 0x20000000) << 2;
-          break;
-        case 3:
-          out1 = f32_to_q31(osc_white());
-          break;
-        }
+      out1 = getVco(s_phase1, s_params[p_vco1_wave], s_params[p_vco1_shape]);
+      out2 = getVco(s_phase2, s_params[p_vco2_wave], s_params[p_vco2_shape]);
+      out3 = getVco(s_phase3, s_params[p_vco3_wave], s_params[p_vco3_shape]);
 
-      switch (s_params[p_vco2_wave]) {
-        case 0:
-          out2 = 0x7FFFFFFF;
-          if (s_phase2 < 0x40000000 - q31mul(0x3F000000, s_params[p_vco2_shape]))
-            out2++;
-          break;
-        case 1:
-          if (s_phase2 < 0x40000000)
-            t1 = ((s_phase2 - 0x20000000) << 2);
-          else
-            t1 = ((0x5FFFFFFF - s_phase2) << 2);
-          t2 = q31mul(t1, s_params[p_vco2_shape]) << 1;
-          out2 = t1 + t2;
-          if (t2 && ((out2 ^ t1) | (t2 ^ t1)) & 0x80000000)
-            out2 = -out2;
-          break;
-        case 2:
-          out2 = q31mul(0x20000000, s_params[p_vco2_shape]);
-          if (s_phase2 < 0x40000000 - out2 || s_phase2 > 0x40000000 + out2)
-            out2 = (0x1FFFFFFF - s_phase2) << 2;
-          else
-            out2 = (s_phase1 - 0x20000000) << 2;
-          break;
-        case 3:
-          out2 = f32_to_q31(osc_white());
-          break;
-      }
-
-      if (s_params[p_ring])
+      if (s_params[p_vco2_ring])
         out2 = q31mul(out2, out1);
 
-      *y = q31add(q31add(q31mul(out1, s_params[p_vco1_level]), q31mul(out2, s_params[p_vco2_level])), q31mul(f32_to_q31(osc_white()), s_params[p_noise_level]));
+      if (s_params[p_vco3_ring])
+        out3 = q31mul(out3, out2);
+
+      *y = q31add(q31add(q31mul(out1, s_params[p_vco1_level]), q31mul(out2, s_params[p_vco2_level])), q31mul(out3, s_params[p_vco3_level]));
     }
 
     s_phase1 += w01;
-    if (s_params[p_sync] && s_phase1 <= 0) {
+    if (s_params[p_vco2_sync] && s_phase1 <= 0) {
       s_phase2 = s_phase1;
     } else {
-      s_phase2 += w02 + q31mul(out1, s_params[p_cross]);
-      s_phase2 &= 0x7FFFFFFF;
+      s_phase2 += w02 + q31mul(out1, s_params[p_vco2_cross]);
     }
+
+    if (s_params[p_vco3_sync] && s_phase2 <= 0) {
+      s_phase3 = s_phase2;
+    } else {
+      s_phase3 += w03 + q31mul(out2, s_params[p_vco3_cross]);
+    }
+
     s_phase1 &= 0x7FFFFFFF;
+    s_phase2 &= 0x7FFFFFFF;
+    s_phase3 &= 0x7FFFFFFF;
 
     if (++s_sample_pos >= seq_quant) {
       s_sample_pos -= seq_quant;
@@ -485,7 +496,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   s_phase1 = 0;
   s_phase2 = 0;
-  initseq();
+  s_phase3 = 0;
+  initSeq();
   setMotion();
 }
 
@@ -506,8 +518,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_id1:
       if (s_prog != value) {
         s_prog = value;
-        initvoice();
-        initseq();
+        initVoice();
+        initSeq();
       }
       break;
     case k_user_osc_param_id2:
@@ -520,8 +532,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
        s_shiftshape = value;
       break;
     case k_user_osc_param_id5:
+
       break;
     case k_user_osc_param_id6:
+
       break;
     default:
       break;
