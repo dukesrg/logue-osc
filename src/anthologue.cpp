@@ -22,6 +22,8 @@
 
 enum {
   p_slider_assign = 0,
+  p_program_level,
+  p_keyboard_octave,
   p_vco1_pitch,
   p_vco1_shape,
   p_vco1_octave,
@@ -138,9 +140,6 @@ static uint8_t slider_param_lut[2][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRS
   }
 };
 
-static q31_t s_program_level;
-
-static int8_t s_octavekbd;
 static uint8_t s_slider_assign;
 static uint8_t s_seq_len;
 static uint32_t s_seq_res;
@@ -259,6 +258,12 @@ void setParam(uint8_t param, uint16_t val) {
     case p_vco3_ring:
       s_params[param] = val >> 9;
       break;
+    case p_program_level:
+      s_params[param] = ((val * 5 ) >> 10) - 2;
+      break;
+    case p_keyboard_octave:
+      s_params[param] = q31mul(param_val_to_q31(val), 5) - 2;
+      break;
     default:
       s_params[param] = param_val_to_q31(val);
       break;
@@ -294,9 +299,8 @@ void initVoice() {
 //todo: drive
 //    s_params[p_drive] = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
 
-    s_program_level = (uint32_t)(p->program_level - 102) * 0x0147AE14;
-
-    s_octavekbd = p->keyboard_octave - 2;
+    s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
+    s_params[p_keyboard_octave] = p->keyboard_octave - 2;
     s_slider_assign = p->slider_assign;
 
     s_seq_len = p->step_length;
@@ -347,9 +351,8 @@ void initVoice() {
     s_params[p_vco3_cross] = 0;
 //    s_params[p_drive] = 0;
 
-    s_program_level = (uint32_t)(p->program_level - 102) * 0x0147AE14;
-
-    s_octavekbd = p->keyboard_octave - 2;
+    s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
+    s_params[p_keyboard_octave] = p->keyboard_octave - 2;
     s_slider_assign = p->slider_assign;
 
     s_seq_len = p->step_length;
@@ -386,9 +389,11 @@ void initSeq() {
 
 //static inline __attribute__((optimize("Ofast"), always_inline))
 void setMotion() {
-  for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
-    if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
-      setParam(s_motion_slot_param[i].parameter_id, s_motion_slot_data[s_seq_step][i][0]);
+  if (s_play_mode == mode_seq) {
+    for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
+      if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
+        setParam(s_motion_slot_param[i].parameter_id, s_motion_slot_data[s_seq_step][i][0]);
+      }
     }
   }
 }
@@ -464,9 +469,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   pitch2 += s_params[p_vco2_pitch];
   pitch3 += s_params[p_vco3_pitch];
 
-  w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + 12 * (s_params[p_vco1_octave] + s_octavekbd), pitch1 & 0xFF));
-  w02 = f32_to_q31(osc_w0f_for_note((pitch2 >> 8) + 12 * (s_params[p_vco2_octave] + s_octavekbd), pitch2 & 0xFF));
-  w03 = f32_to_q31(osc_w0f_for_note((pitch3 >> 8) + 12 * (s_params[p_vco3_octave] + s_octavekbd), pitch3 & 0xFF));
+  w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + 12 * (s_params[p_vco1_octave] + s_params[p_keyboard_octave]), pitch1 & 0xFF));
+  w02 = f32_to_q31(osc_w0f_for_note((pitch2 >> 8) + 12 * (s_params[p_vco2_octave] + s_params[p_keyboard_octave]), pitch2 & 0xFF));
+  w03 = f32_to_q31(osc_w0f_for_note((pitch3 >> 8) + 12 * (s_params[p_vco3_octave] + s_params[p_keyboard_octave]), pitch3 & 0xFF));
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
@@ -484,7 +489,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         out3 = q31mul(out3, out2);
 
       out = q31add(q31add(q31mul(out1, s_params[p_vco1_level]), q31mul(out2, s_params[p_vco2_level])), q31mul(out3, s_params[p_vco3_level]));
-      out = q31add(out, q31mul(out, s_program_level));
+      out = q31add(out, q31mul(out, s_params[p_program_level]));
     }
 
     *y = out;
