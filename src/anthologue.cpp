@@ -150,6 +150,10 @@ static uint16_t s_seq_step_mask;
 static float s_sample_pos;
 static uint8_t s_seq_note[16];
 static uint8_t s_seq_vel[16];
+static q31_t s_seq_gate[16];
+static uint32_t s_seq_gate_len;
+static float s_seq_quant;
+
 static bool s_seq_started;
 static int16_t s_seq_transpose;
 static const motion_slot_param_t *s_motion_slot_param;
@@ -160,6 +164,7 @@ static q31_t s_phase1;
 static q31_t s_phase2;
 static q31_t s_phase3;
 static uint32_t s_note_pitch;
+static bool s_tie;
 
 static uint8_t s_prog;
 static uint8_t s_prog_type;
@@ -290,7 +295,7 @@ void initVoice() {
 //todo: drive
 //    s_drive = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
 
-    s_program_level = ((uint32_t)(p->program_level - 102) * 0x0147AE14);
+    s_program_level = (uint32_t)(p->program_level - 102) * 0x0147AE14;
 
     s_octavekbd = p->keyboard_octave - 2;
     s_slider_assign = p->slider_assign;
@@ -303,6 +308,13 @@ void initVoice() {
     for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note;
       s_seq_vel[i] = p->step_event_data[i].velocity;
+      if (p->step_event_data[i].gate.gate_time < 72) {
+        s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate.gate_time) * 0x01C71C72;
+      } else if (p->step_event_data[i].gate.gate_time == 72) {
+        s_seq_gate[i] = 0x7FFFFFFF;
+      } else {
+
+      }
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
         s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
         s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
@@ -337,7 +349,7 @@ void initVoice() {
 
 //    s_drive = 0;
 
-    s_program_level = ((uint32_t)(p->program_level - 102) * 0x0147AE14);
+    s_program_level = (uint32_t)(p->program_level - 102) * 0x0147AE14;
 
     s_octavekbd = p->keyboard_octave - 2;
     s_slider_assign = p->slider_assign;
@@ -350,6 +362,13 @@ void initVoice() {
     for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note[0];
       s_seq_vel[i] = p->step_event_data[i].velocity[0];
+      if (p->step_event_data[i].gate[0].gate_time < 72) {
+        s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate[0].gate_time) * 0x01C71C72;
+      } else if (p->step_event_data[i].gate[0].gate_time == 72) {
+        s_seq_gate[i] = 0x7FFFFFFF;
+      } else {
+
+      }
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
         s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
         s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
@@ -427,10 +446,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t w01, w02, w03;
   int32_t pitch1, pitch2, pitch3;
   uint8_t gate = 0;
-  float seq_quant = s_seq_res / fx_get_bpmf();
+
+  s_seq_quant = s_seq_res / fx_get_bpmf();
 
   if (s_play_mode == mode_seq) {
-    gate = (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step];
+    s_seq_gate_len = q31mul((uint32_t)s_seq_quant, s_seq_gate[s_seq_step]);
+    gate = ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]);
     pitch1 = (uint32_t)s_seq_note[s_seq_step] << 8;
     if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
       s_seq_transpose = s_note_pitch - pitch1;
@@ -451,7 +472,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    if (s_play_mode == mode_seq && !gate) {
+    if (s_play_mode == mode_seq && (!gate || (uint32_t)s_sample_pos >= s_seq_gate_len)) {
       out = out1 = out2 = out3 = 0;
     } else {
       out1 = getVco(s_phase1, s_params[p_vco1_wave], s_params[p_vco1_shape]);
@@ -487,15 +508,16 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_phase2 &= 0x7FFFFFFF;
     s_phase3 &= 0x7FFFFFFF;
 
-    if (++s_sample_pos >= seq_quant) {
-      s_sample_pos -= seq_quant;
+    if (++s_sample_pos >= s_seq_quant) {
+      s_sample_pos -= s_seq_quant;
       if (++s_seq_step >= s_seq_len) {
         s_seq_step = 0;
         s_seq_step_bit = 1;
       } else {
         s_seq_step_bit <<= 1;
       }  
-      gate = (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step];
+      s_seq_gate_len = q31mul((uint32_t)s_seq_quant, s_seq_gate[s_seq_step]);
+      gate = ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]);
       setMotion();
     }
   }
@@ -507,6 +529,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_phase2 = 0;
   s_phase3 = 0;
   s_note_pitch = params->pitch;
+  s_tie = false;
   initSeq();
   setMotion();
 }

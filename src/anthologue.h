@@ -140,6 +140,11 @@ struct motion_slot_param_t {
   uint8_t parameter_id;
 };
 
+struct gate_t {
+ uint8_t gate_time:7;
+ uint8_t trigger_switch:1;
+};
+
 struct mnlg_prog_t {
   uint32_t PROG;
   char name[12];
@@ -249,10 +254,7 @@ struct mnlg_prog_t {
   struct {
     uint8_t note[4];
     uint8_t velocity[4];
-    struct {
-      uint8_t gate_time:7;
-      uint8_t trigger_switch:1;
-    } gate[4];
+    gate_t gate[4];
     uint8_t motion_slot_data[SEQ_MOTION_SLOT_COUNT][2];
   } step_event_data[SEQ_STEP_COUNT];
 };
@@ -337,8 +339,7 @@ struct molg_prog_t {
     uint8_t reserved1;
     uint8_t velocity;
     uint8_t reserved3;
-    uint8_t gate_time:7;
-    uint8_t trigger_switch:1;
+    gate_t gate;
     uint8_t reserved5;
     uint8_t motion_slot_data[SEQ_MOTION_SLOT_COUNT][4];
   } step_event_data[SEQ_STEP_COUNT];
