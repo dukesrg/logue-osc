@@ -157,6 +157,7 @@ static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
 static q31_t s_phase1;
 static q31_t s_phase2;
 static q31_t s_phase3;
+static uint32_t s_note_pitch;
 
 static uint8_t s_prog;
 static uint8_t s_prog_type;
@@ -426,10 +427,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     gate = (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step];
     pitch1 = (uint32_t)s_seq_note[s_seq_step] << 8;
     if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
-      s_seq_transpose = params->pitch - pitch1;
+      s_seq_transpose = s_note_pitch - pitch1;
       s_seq_started = true;
     }
-    pitch1 = pitch2 = pitch3 = pitch1 + s_seq_transpose;
+    pitch1 = pitch2 = pitch3 = pitch1 + s_seq_transpose + params->pitch - s_note_pitch;
   } else {
     pitch1 = pitch2 = pitch3 = params->pitch;
   }
@@ -497,6 +498,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_phase1 = 0;
   s_phase2 = 0;
   s_phase3 = 0;
+  s_note_pitch = params->pitch;
   initSeq();
   setMotion();
 }
