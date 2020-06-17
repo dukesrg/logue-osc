@@ -65,7 +65,7 @@ static uint32_t s_params[p_num];
 
 static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRST + 1] = {
   { //mnlg
-    0, 0, 0, 0,
+    p_num, p_num, p_num, p_num,
     p_vco1_pitch, //17
     p_vco1_shape,
     p_vco1_octave,
@@ -75,7 +75,7 @@ static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRS
     p_vco2_octave,
     p_vco2_wave,
     p_vco2_cross,
-    0, //PEG INT
+    p_num, //PEG INT
     p_vco2_sync,
     p_vco2_ring,
     p_vco1_level,
@@ -92,15 +92,15 @@ static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRS
     p_vco2_wave,
     p_vco1_level,
     p_vco2_level,
-    0, //CUTOFF
-    0, //RESONANCE
+    p_num, //CUTOFF
+    p_num, //RESONANCE
     p_vco2_sync, //25
-    0, //ATTACK
-    0, //DECAY
-    0, //EG INT
-    0, //EG TYPE
-    0, //EG TARGET
-    0, //LFO RATE
+    p_num, //ATTACK
+    p_num, //DECAY
+    p_num, //EG INT
+    p_num, //EG TYPE
+    p_num, //EG TARGET
+    p_num, //LFO RATE
   }
 };
 
@@ -111,36 +111,35 @@ static uint8_t slider_param_lut[2][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRS
     p_vco2_pitch,
     p_vco2_shape,
     p_vco2_cross,
-    0, //VCO2 PEG INT
+    p_num, //VCO2 PEG INT
     p_vco1_level,
     p_vco2_level,
     p_vco3_level, //10
-    0, //CUTOFF
-    0, //RESONANCE
-    0, //FILTER EG INT
-    0, //AMP EG ATTACK
-    0, //AMP EG DECAY
-    0, //AMP EG SUSTAIN
-    0, //AMP EG RELEASE
-    0, //EG ATTACK
-    0, //EG DECAY
-    0, //EG SUSTAIN
-    0, //EG RELEASE
-    0, //LFO RATE
+    p_num, //CUTOFF
+    p_num, //RESONANCE
+    p_num, //FILTER EG INT
+    p_num, //AMP EG ATTACK
+    p_num, //AMP EG DECAY
+    p_num, //AMP EG SUSTAIN
+    p_num, //AMP EG RELEASE
+    p_num, //EG ATTACK
+    p_num, //EG DECAY
+    p_num, //EG SUSTAIN
+    p_num, //EG RELEASE
+    p_num, //LFO RATE
   }, {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num,
     p_vco1_pitch, //13
     p_vco1_shape,
-    0, 0,
+    p_num, p_num,
     p_vco2_pitch,
     p_vco2_shape,
-    0, 0,
+    p_num, p_num,
     p_vco1_level,
     p_vco2_level,
   }
 };
 
-static uint8_t s_slider_assign;
 static uint8_t s_seq_len;
 static uint32_t s_seq_res;
 static uint8_t s_seq_step;
@@ -158,10 +157,6 @@ static bool s_seq_started;
 static uint32_t s_note_pitch;
 static uint32_t s_seq_step_pitch;
 static int16_t s_seq_transpose;
-//static const motion_slot_param_t *s_motion_slot_param;
-//static const uint16_t *s_motion_slot_step_mask;
-//static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
-
 static uint8_t s_seq_motion_start[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT];
 static uint8_t s_seq_motion_diff[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT];
 static uint8_t s_seq_motion_param[SEQ_MOTION_SLOT_COUNT];
@@ -234,7 +229,7 @@ void initVoice() {
 
     s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
     s_params[p_keyboard_octave] = p->keyboard_octave - 2;
-    s_slider_assign = p->slider_assign;
+    s_params[p_slider_assign] = p->slider_assign;
 
     s_seq_len = p->step_length;
     s_seq_res = (k_samplerate * 150) << p->step_resolution;
@@ -251,16 +246,16 @@ void initVoice() {
 
       }
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
-        if ((p->motion_slot_step_mask[j] & (1 << i)) && p->motion_slot_param[j].motion_enable) {
-          s_seq_motion_param[j] = p->motion_slot_param[j].parameter_id;
-          if (s_seq_motion_param[j] >= MOTION_PARAM_LUT_FIRST && s_seq_motion_param[j] <= MOTION_PARAM_LUT_LAST) {
-            s_seq_motion_param[j] = motion_param_lut[s_prog_type][s_seq_motion_param[j] - MOTION_PARAM_LUT_FIRST];
+        const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
+        if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
+          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST) {
+            s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
           } else {
             s_seq_motion_param[j] = p_num;
           }
           if (s_seq_motion_param[j] != p_num) {
             s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
-            if (p->motion_slot_param[j].smooth_enable) {
+            if (motion_slot_param->smooth_enable) {
               s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
             } else {
               s_seq_motion_diff[i][j] = 0;
@@ -297,11 +292,12 @@ void initVoice() {
     s_params[p_vco3_ring] = 0;
     s_params[p_vco2_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
     s_params[p_vco3_cross] = 0;
+//todo: drive
 //    s_params[p_drive] = 0;
 
     s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
     s_params[p_keyboard_octave] = p->keyboard_octave - 2;
-    s_slider_assign = p->slider_assign;
+    s_params[p_slider_assign] = p->slider_assign;
 
     s_seq_len = p->step_length;
     s_seq_res = (k_samplerate * 150) << p->step_resolution;
@@ -318,16 +314,16 @@ void initVoice() {
 
       }
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
-        if ((p->motion_slot_step_mask[j] & (1 << i)) && p->motion_slot_param[j].motion_enable) {
-          s_seq_motion_param[j] = p->motion_slot_param[j].parameter_id;
-          if (s_seq_motion_param[j] >= MOTION_PARAM_LUT_FIRST && s_seq_motion_param[j] <= MOTION_PARAM_LUT_LAST) {
-            s_seq_motion_param[j] = motion_param_lut[s_prog_type][s_seq_motion_param[j] - MOTION_PARAM_LUT_FIRST];
+        const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
+        if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
+          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST) {
+            s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
           } else {
             s_seq_motion_param[j] = p_num;
           }
           if (s_seq_motion_param[j] != p_num) {
             s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
-            if (p->motion_slot_param[j].smooth_enable) {
+            if (motion_slot_param->smooth_enable) {
               s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
             } else {
               s_seq_motion_diff[i][j] = 0;
@@ -372,7 +368,7 @@ q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
       out = q31mul(0x20000000, shape);
       if (phase < 0x40000000 - out || phase > 0x40000000 + out)
         out = (0x1FFFFFFF - phase) << 2;
-       else
+      else
         out = (phase - 0x20000000) << 2;
       break;
     case wave_noise:
@@ -527,23 +523,23 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
+  q31_t param;
   switch (index) {
     case k_user_osc_param_shape:
     case k_user_osc_param_shiftshape:
       index = s_assignable[index - k_user_osc_param_shape];
       if (index == p_slider_assign) {
-        index = s_slider_assign;
-        if (index >= SLIDER_PARAM_LUT_FIRST && index <= SLIDER_PARAM_LUT_LAST) {
-          index = slider_param_lut[s_prog_type][index - SLIDER_PARAM_LUT_FIRST];
-        } else {
+        if (s_params[p_slider_assign] < SLIDER_PARAM_LUT_FIRST || s_params[p_slider_assign] > SLIDER_PARAM_LUT_LAST)
           return;
-        }
+        index = slider_param_lut[s_prog_type][s_params[p_slider_assign] - SLIDER_PARAM_LUT_FIRST];
+        if (index == p_num)
+          return;
       }
       switch (index) {
         case p_vco1_pitch:
         case p_vco2_pitch:
         case p_vco3_pitch:
-          s_params[index] = getPitch(value);
+          param = getPitch(value);
           break;
         case p_vco1_octave:
         case p_vco2_octave:
@@ -551,24 +547,25 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_vco1_wave:
         case p_vco2_wave:
         case p_vco3_wave:
-          s_params[index] = value >> 8;
+          param = value >> 8;
           break;
         case p_vco2_sync:
         case p_vco2_ring:
         case p_vco3_sync:
         case p_vco3_ring:
-          s_params[index] = value >> 9;
+          param = value >> 9;
           break;
         case p_program_level:
-          s_params[index] = ((value * 5 ) >> 10) - 2;
+          param = ((value * 5 ) >> 10) - 2;
           break;
         case p_keyboard_octave:
-          s_params[index] = q31mul(param_val_to_q31(value), 5) - 2;
+          param = q31mul(param_val_to_q31(value), 5) - 2;
           break;
         default:
-          s_params[index] = param_val_to_q31(value);
+          param = param_val_to_q31(value);
           break;
       }
+      s_params[index] = param;
       break;
     case k_user_osc_param_id1:
       if (s_prog != value) {

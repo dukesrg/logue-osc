@@ -21,6 +21,7 @@
 
 #define SEQ_STEP_COUNT 16
 #define SEQ_MOTION_SLOT_COUNT 4
+#define MNLG_POLY 4
 
 enum {
     minilogue_ID = 0, //0x2C
@@ -145,6 +146,13 @@ struct gate_t {
  uint8_t trigger_switch:1;
 };
 
+struct mnlg_step_event_data_t {
+ uint8_t note[MNLG_POLY];
+ uint8_t velocity[MNLG_POLY];
+ gate_t gate[MNLG_POLY];
+ uint8_t motion_slot_data[SEQ_MOTION_SLOT_COUNT][2];
+};
+
 struct mnlg_prog_t {
   uint32_t PROG;
   char name[12];
@@ -251,12 +259,17 @@ struct mnlg_prog_t {
   uint16_t step_switch_mask;
   motion_slot_param_t motion_slot_param[SEQ_MOTION_SLOT_COUNT];
   uint16_t motion_slot_step_mask[SEQ_MOTION_SLOT_COUNT];
-  struct {
-    uint8_t note[4];
-    uint8_t velocity[4];
-    gate_t gate[4];
-    uint8_t motion_slot_data[SEQ_MOTION_SLOT_COUNT][2];
-  } step_event_data[SEQ_STEP_COUNT];
+  mnlg_step_event_data_t step_event_data[SEQ_STEP_COUNT];
+};
+
+struct molg_step_event_data_t {
+  uint8_t note;
+  uint8_t reserved1;
+  uint8_t velocity;
+  uint8_t reserved3;
+  gate_t gate;
+  uint8_t reserved5;
+  uint8_t motion_slot_data[SEQ_MOTION_SLOT_COUNT][4];
 };
 
 struct molg_prog_t {
@@ -334,15 +347,7 @@ struct molg_prog_t {
   motion_slot_param_t motion_slot_param[SEQ_MOTION_SLOT_COUNT];
   uint16_t motion_slot_step_mask[SEQ_MOTION_SLOT_COUNT];
   uint8_t reserved88[8];  
-  struct {
-    uint8_t note;
-    uint8_t reserved1;
-    uint8_t velocity;
-    uint8_t reserved3;
-    gate_t gate;
-    uint8_t reserved5;
-    uint8_t motion_slot_data[SEQ_MOTION_SLOT_COUNT][4];
-  } step_event_data[SEQ_STEP_COUNT];
+  molg_step_event_data_t step_event_data[SEQ_STEP_COUNT];
 };
 
 /*
