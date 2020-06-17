@@ -158,13 +158,15 @@ static bool s_seq_started;
 static uint32_t s_note_pitch;
 static uint32_t s_seq_step_pitch;
 static int16_t s_seq_transpose;
-static const motion_slot_param_t *s_motion_slot_param;
-static const uint16_t *s_motion_slot_step_mask;
-static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
+//static const motion_slot_param_t *s_motion_slot_param;
+//static const uint16_t *s_motion_slot_step_mask;
+//static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
 
+static uint8_t s_seq_motion_start[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT];
+static uint8_t s_seq_motion_diff[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT];
 static uint8_t s_seq_motion_param[SEQ_MOTION_SLOT_COUNT];
-static q31_t s_seq_motion_value[SEQ_MOTION_SLOT_COUNT];
 static q31_t s_seq_motion_delta[SEQ_MOTION_SLOT_COUNT];
+static q31_t s_seq_motion_value[SEQ_MOTION_SLOT_COUNT];
 
 static q31_t s_phase1;
 static q31_t s_phase2;
@@ -237,8 +239,7 @@ void initVoice() {
     s_seq_len = p->step_length;
     s_seq_res = (k_samplerate * 150) << p->step_resolution;
     s_seq_step_mask = p->step_mask;
-    s_motion_slot_param = p->motion_slot_param;
-    s_motion_slot_step_mask = p->motion_slot_step_mask;
+
     for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note;
       s_seq_vel[i] = p->step_event_data[i].velocity;
@@ -250,8 +251,24 @@ void initVoice() {
 
       }
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
-        s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
-        s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
+        if ((p->motion_slot_step_mask[j] & (1 << i)) && p->motion_slot_param[j].motion_enable) {
+          s_seq_motion_param[j] = p->motion_slot_param[j].parameter_id;
+          if (s_seq_motion_param[j] >= MOTION_PARAM_LUT_FIRST && s_seq_motion_param[j] <= MOTION_PARAM_LUT_LAST) {
+            s_seq_motion_param[j] = motion_param_lut[s_prog_type][s_seq_motion_param[j] - MOTION_PARAM_LUT_FIRST];
+          } else {
+            s_seq_motion_param[j] = p_num;
+          }
+          if (s_seq_motion_param[j] != p_num) {
+            s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
+            if (p->motion_slot_param[j].smooth_enable) {
+              s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
+            } else {
+              s_seq_motion_diff[i][j] = 0;
+            }
+          }
+        } else {
+          s_seq_motion_param[j] = p_num;
+        }
       }
     }
 
@@ -289,8 +306,7 @@ void initVoice() {
     s_seq_len = p->step_length;
     s_seq_res = (k_samplerate * 150) << p->step_resolution;
     s_seq_step_mask = p->step_mask;
-    s_motion_slot_param = p->motion_slot_param;
-    s_motion_slot_step_mask = p->motion_slot_step_mask;
+
     for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
       s_seq_note[i] = p->step_event_data[i].note[0];
       s_seq_vel[i] = p->step_event_data[i].velocity[0];
@@ -302,8 +318,24 @@ void initVoice() {
 
       }
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
-        s_motion_slot_data[i][j][0] = p->step_event_data[i].motion_slot_data[j][0];
-        s_motion_slot_data[i][j][1] = p->step_event_data[i].motion_slot_data[j][1];
+        if ((p->motion_slot_step_mask[j] & (1 << i)) && p->motion_slot_param[j].motion_enable) {
+          s_seq_motion_param[j] = p->motion_slot_param[j].parameter_id;
+          if (s_seq_motion_param[j] >= MOTION_PARAM_LUT_FIRST && s_seq_motion_param[j] <= MOTION_PARAM_LUT_LAST) {
+            s_seq_motion_param[j] = motion_param_lut[s_prog_type][s_seq_motion_param[j] - MOTION_PARAM_LUT_FIRST];
+          } else {
+            s_seq_motion_param[j] = p_num;
+          }
+          if (s_seq_motion_param[j] != p_num) {
+            s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
+            if (p->motion_slot_param[j].smooth_enable) {
+              s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
+            } else {
+              s_seq_motion_diff[i][j] = 0;
+            }
+          }
+        } else {
+          s_seq_motion_param[j] = p_num;
+        }
       }
     }
 
@@ -387,21 +419,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         s_seq_started = true;
       }
       for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
-        if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
-          s_seq_motion_param[i] = s_motion_slot_param[i].parameter_id;
-          if (s_seq_motion_param[i] >= MOTION_PARAM_LUT_FIRST && s_seq_motion_param[i] <= MOTION_PARAM_LUT_LAST) {
-            s_seq_motion_param[i] = motion_param_lut[s_prog_type][s_seq_motion_param[i] - MOTION_PARAM_LUT_FIRST];
-          } else {
-            s_seq_motion_param[i] = p_num;
-          }
-          if (s_seq_motion_param[i] != p_num) {
-            s_seq_motion_value[i] = ((q31_t)s_motion_slot_data[s_seq_step][i][0] << 23);
-            if (s_motion_slot_param[i].smooth_enable) {
-              s_seq_motion_delta[i] = (((q31_t)s_motion_slot_data[s_seq_step][i][1] << 23) - s_seq_motion_value[i]) / s_seq_quant;
-            } else {
-              s_seq_motion_delta[i] = 0;
-            }
-          }
+        if (s_seq_motion_param[i] != p_num) {
+          s_seq_motion_value[i] = (q31_t)s_seq_motion_start[s_seq_step][i] << 23;
+          s_seq_motion_delta[i] = ((q31_t)s_seq_motion_diff[s_seq_step][i] << 23) / s_seq_quant;
         }
       }
     }
@@ -409,36 +429,34 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 
   for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
-    if (s_motion_slot_param[i].motion_enable && (s_motion_slot_step_mask[i] & s_seq_step_bit)) {
-      uint8_t val = s_seq_motion_value[i] >> 23;
-      switch (s_seq_motion_param[i]) {
-        case p_vco1_pitch:
-        case p_vco2_pitch:
-          s_params[s_seq_motion_param[i]] = getPitch(s_seq_motion_value[i] >> 21);
-          break;
-        case p_vco2_wave:
-          if (s_prog_type == monologue_ID && val == wave_sqr)
-            val = wave_noise;
-        case p_vco1_wave:
-        case p_vco1_octave:
-        case p_vco2_octave:
+    uint8_t val = s_seq_motion_value[i] >> 23;
+    switch (s_seq_motion_param[i]) {
+      case p_vco1_pitch:
+      case p_vco2_pitch:
+        s_params[s_seq_motion_param[i]] = getPitch(s_seq_motion_value[i] >> 21);
+        break;
+      case p_vco2_wave:
+        if (s_prog_type == monologue_ID && val == wave_sqr)
+          val = wave_noise;
+      case p_vco1_wave:
+      case p_vco1_octave:
+      case p_vco2_octave:
+        s_params[s_seq_motion_param[i]] = val;
+        break;
+      case p_vco2_ring:
+      case p_vco2_sync:
+        if (s_prog_type == monologue_ID) {
+          s_params[p_vco2_ring] = val==0;
+          s_params[p_vco2_sync] = val==2;
+        } else
           s_params[s_seq_motion_param[i]] = val;
-          break;
-        case p_vco2_ring:
-        case p_vco2_sync:
-          if (s_prog_type == monologue_ID) {
-            s_params[p_vco2_ring] = val==0;
-            s_params[p_vco2_sync] = val==2;
-          } else
-            s_params[s_seq_motion_param[i]] = val;
-          break;
-        default:
-          s_params[s_seq_motion_param[i]] = s_seq_motion_value[i];
-        case p_num:
-          break;
-      }
-      s_seq_motion_value[i] = q31add(s_seq_motion_value[i], s_seq_motion_delta[i]);
+        break;
+      default:
+        s_params[s_seq_motion_param[i]] = s_seq_motion_value[i];
+      case p_num:
+        break;
     }
+    s_seq_motion_value[i] = q31add(s_seq_motion_value[i], s_seq_motion_delta[i]);
   }
 
   pitch1 = pitch3 + s_params[p_vco1_pitch];
