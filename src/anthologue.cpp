@@ -170,8 +170,7 @@ static q31_t s_phase3;
 static uint8_t s_prog;
 static uint8_t s_prog_type;
 static uint8_t s_play_mode;
-static uint8_t s_shape;
-static uint8_t s_shiftshape;
+static uint8_t s_assignable[2];
 
 //static inline __attribute__((optimize("Ofast"), always_inline))
 int32_t getPitch(uint16_t pitch) {
@@ -196,80 +195,6 @@ int32_t getPitch(uint16_t pitch) {
   else
     res = 1200;
   return res * 256 / 100;
-}
-
-//static inline __attribute__((optimize("Ofast"), always_inline))
-void setParam(uint8_t param, uint8_t val) {
-  if (param >= MOTION_PARAM_LUT_FIRST && param <= MOTION_PARAM_LUT_LAST) {
-    param = motion_param_lut[s_prog_type][param - MOTION_PARAM_LUT_FIRST];
-    switch (param) {
-      case p_vco1_pitch:
-      case p_vco2_pitch:
-        s_params[param] = getPitch((uint16_t)val << 2);
-        break;
-      case p_vco2_wave:
-        if (s_prog_type == monologue_ID && val == wave_sqr)
-          val = wave_noise;
-      case p_vco1_wave:
-      case p_vco1_octave:
-      case p_vco2_octave:
-        s_params[param] = val;
-        break;
-      case p_vco2_ring:
-      case p_vco2_sync:
-        if (s_prog_type == monologue_ID) {
-          s_params[p_vco2_ring] = val==0;
-          s_params[p_vco2_sync] = val==2;
-        } else
-          s_params[param] = val;
-        break;
-      default:
-        s_params[param] = param_val_to_q31((uint16_t)val << 2);
-        break;
-    }
-  }
-}
-
-//static inline __attribute__((optimize("Ofast"), always_inline))
-void setParam(uint8_t param, uint16_t val) {
-  if (param == 0) {
-    param = s_slider_assign;
-    if (param >= SLIDER_PARAM_LUT_FIRST && param <= SLIDER_PARAM_LUT_LAST) {
-      param = slider_param_lut[s_prog_type][param - SLIDER_PARAM_LUT_FIRST];
-    } else {
-      return;
-    }
-  }
-  switch (param) {
-    case p_vco1_pitch:
-    case p_vco2_pitch:
-    case p_vco3_pitch:
-      s_params[param] = getPitch(val);
-      break;
-    case p_vco1_octave:
-    case p_vco2_octave:
-    case p_vco3_octave:
-    case p_vco1_wave:
-    case p_vco2_wave:
-    case p_vco3_wave:
-      s_params[param] = val >> 8;
-      break;
-    case p_vco2_sync:
-    case p_vco2_ring:
-    case p_vco3_sync:
-    case p_vco3_ring:
-      s_params[param] = val >> 9;
-      break;
-    case p_program_level:
-      s_params[param] = ((val * 5 ) >> 10) - 2;
-      break;
-    case p_keyboard_octave:
-      s_params[param] = q31mul(param_val_to_q31(val), 5) - 2;
-      break;
-    default:
-      s_params[param] = param_val_to_q31(val);
-      break;
-  }
 }
 
 void initVoice() {
@@ -428,8 +353,8 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 {
   s_prog = 0;
   s_play_mode = mode_note;
-  s_shape = p_slider_assign;
-  s_shiftshape = p_slider_assign;
+  s_assignable[0] = p_slider_assign;
+  s_assignable[1] = p_slider_assign;
   initVoice();
 }
 
@@ -438,6 +363,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t out, out1, out2, out3;
   q31_t w01, w02, w03;
   int32_t pitch1, pitch2, pitch3 = params->pitch;
+  uint8_t param, val;
 
   if (s_play_mode == mode_seq) {
     if (s_sample_pos >= s_seq_quant) {
@@ -459,7 +385,36 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
       for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
         if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
-          setParam(s_motion_slot_param[i].parameter_id, s_motion_slot_data[s_seq_step][i][0]);
+          param = s_motion_slot_param[i].parameter_id;
+          if (param >= MOTION_PARAM_LUT_FIRST && param <= MOTION_PARAM_LUT_LAST) {
+            param = motion_param_lut[s_prog_type][param - MOTION_PARAM_LUT_FIRST];
+            val = s_motion_slot_data[s_seq_step][i][0];
+            switch (param) {
+              case p_vco1_pitch:
+              case p_vco2_pitch:
+                s_params[param] = getPitch((uint16_t)val << 2);
+                break;
+              case p_vco2_wave:
+                if (s_prog_type == monologue_ID && val == wave_sqr)
+                  val = wave_noise;
+              case p_vco1_wave:
+              case p_vco1_octave:
+              case p_vco2_octave:
+                s_params[param] = val;
+                break;
+              case p_vco2_ring:
+              case p_vco2_sync:
+                if (s_prog_type == monologue_ID) {
+                  s_params[p_vco2_ring] = val==0;
+                  s_params[p_vco2_sync] = val==2;
+                } else
+                  s_params[param] = val;
+                break;
+              default:
+                s_params[param] = param_val_to_q31((uint16_t)val << 2);
+                break;
+            }
+          }
         }
       }
     }
@@ -536,10 +491,46 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 {
   switch (index) {
     case k_user_osc_param_shape:
-      setParam(s_shape, value);
-      break;
     case k_user_osc_param_shiftshape:
-      setParam(s_shiftshape, value);
+      index = s_assignable[index - k_user_osc_param_shape];
+      if (index == p_slider_assign) {
+        index = s_slider_assign;
+        if (index >= SLIDER_PARAM_LUT_FIRST && index <= SLIDER_PARAM_LUT_LAST) {
+          index = slider_param_lut[s_prog_type][index - SLIDER_PARAM_LUT_FIRST];
+        } else {
+          return;
+        }
+      }
+      switch (index) {
+        case p_vco1_pitch:
+        case p_vco2_pitch:
+        case p_vco3_pitch:
+          s_params[index] = getPitch(value);
+          break;
+        case p_vco1_octave:
+        case p_vco2_octave:
+        case p_vco3_octave:
+        case p_vco1_wave:
+        case p_vco2_wave:
+        case p_vco3_wave:
+          s_params[index] = value >> 8;
+          break;
+        case p_vco2_sync:
+        case p_vco2_ring:
+        case p_vco3_sync:
+        case p_vco3_ring:
+          s_params[index] = value >> 9;
+          break;
+        case p_program_level:
+          s_params[index] = ((value * 5 ) >> 10) - 2;
+          break;
+        case p_keyboard_octave:
+          s_params[index] = q31mul(param_val_to_q31(value), 5) - 2;
+          break;
+        default:
+          s_params[index] = param_val_to_q31(value);
+          break;
+      }
       break;
     case k_user_osc_param_id1:
       if (s_prog != value) {
@@ -552,10 +543,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
        s_play_mode = value;
       break;
     case k_user_osc_param_id3:
-       s_shape = value;
-      break;
     case k_user_osc_param_id4:
-       s_shiftshape = value;
+       s_assignable[index - k_user_osc_param_id3] = value;
       break;
     case k_user_osc_param_id5:
 
