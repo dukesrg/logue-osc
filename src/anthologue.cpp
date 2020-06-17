@@ -151,9 +151,12 @@ static uint8_t s_seq_note[16];
 static uint8_t s_seq_vel[16];
 static q31_t s_seq_gate[16];
 static uint32_t s_seq_gate_len;
+static bool s_seq_gate_on;
 static uint32_t s_seq_quant;
 
 static bool s_seq_started;
+static uint32_t s_note_pitch;
+static uint32_t s_seq_step_pitch;
 static int16_t s_seq_transpose;
 static const motion_slot_param_t *s_motion_slot_param;
 static const uint16_t *s_motion_slot_step_mask;
@@ -162,8 +165,7 @@ static uint8_t s_motion_slot_data[SEQ_STEP_COUNT][SEQ_MOTION_SLOT_COUNT][2];
 static q31_t s_phase1;
 static q31_t s_phase2;
 static q31_t s_phase3;
-static uint32_t s_note_pitch;
-static bool s_tie;
+//static bool s_tie;
 
 static uint8_t s_prog;
 static uint8_t s_prog_type;
@@ -380,22 +382,14 @@ void initVoice() {
 }
 
 void initSeq() {
-  s_seq_step = 0;
-  s_seq_step_bit = 1;
+  s_seq_step = SEQ_STEP_COUNT;
   s_sample_pos = 0;
-  s_seq_transpose = 0;
+  s_seq_quant = 0;
   s_seq_started = false;
 }
 
 //static inline __attribute__((optimize("Ofast"), always_inline))
 void setMotion() {
-  if (s_play_mode == mode_seq) {
-    for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
-      if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
-        setParam(s_motion_slot_param[i].parameter_id, s_motion_slot_data[s_seq_step][i][0]);
-      }
-    }
-  }
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))
@@ -448,19 +442,31 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t out, out1, out2, out3;
   q31_t w01, w02, w03;
   int32_t pitch1, pitch2, pitch3;
-  uint8_t gate = 0;
-
-  s_seq_quant = s_seq_res / fx_get_bpm();
 
   if (s_play_mode == mode_seq) {
-    s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
-    gate = ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]);
-    pitch1 = (uint32_t)s_seq_note[s_seq_step] << 8;
-    if (!s_seq_started && (s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]) {
-      s_seq_transpose = s_note_pitch - pitch1;
-      s_seq_started = true;
+    if (s_sample_pos >= s_seq_quant) {
+      s_sample_pos = 0;
+      if (++s_seq_step >= s_seq_len) {
+        s_seq_step = 0;
+        s_seq_step_bit = 1;
+      } else {
+        s_seq_step_bit <<= 1;
+      }  
+      s_seq_quant = s_seq_res / fx_get_bpm();
+      s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
+      s_seq_gate_on = ((s_seq_step_mask & s_seq_step_bit) && s_seq_vel[s_seq_step]);
+      s_seq_step_pitch = (uint32_t)s_seq_note[s_seq_step] << 8;
+      if (!s_seq_started && s_seq_gate_on) {
+        s_seq_transpose = s_note_pitch - s_seq_step_pitch;
+        s_seq_started = true;
+      }
+      for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
+        if ((s_motion_slot_step_mask[i] & s_seq_step_bit) && s_motion_slot_param[i].motion_enable) {
+          setParam(s_motion_slot_param[i].parameter_id, s_motion_slot_data[s_seq_step][i][0]);
+        }
+      }
     }
-    pitch1 = pitch2 = pitch3 = pitch1 + s_seq_transpose + params->pitch - s_note_pitch;
+    pitch1 = pitch2 = pitch3 = s_seq_step_pitch + s_seq_transpose + params->pitch - s_note_pitch;
   } else {
     pitch1 = pitch2 = pitch3 = params->pitch;
   }
@@ -475,7 +481,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    if (s_play_mode == mode_seq && (!gate || s_sample_pos >= s_seq_gate_len)) {
+    if (s_play_mode == mode_seq && (!s_seq_gate_on || s_sample_pos >= s_seq_gate_len)) {
       out = out1 = out2 = out3 = 0;
     } else {
       out1 = getVco(s_phase1, s_params[p_vco1_wave], s_params[p_vco1_shape]);
@@ -511,18 +517,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_phase2 &= 0x7FFFFFFF;
     s_phase3 &= 0x7FFFFFFF;
 
-    if (++s_sample_pos >= s_seq_quant) {
-      s_sample_pos -= s_seq_quant;
-      if (++s_seq_step >= s_seq_len) {
-        s_seq_step = 0;
-        s_seq_step_bit = 1;
-      } else {
-        s_seq_step_bit <<= 1;
-      }  
-      s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
-      gate = ((s_seq_step_bit & s_seq_step_mask) && s_seq_vel[s_seq_step]);
-      setMotion();
-    }
+    s_sample_pos++;
+
   }
 }
 
@@ -532,9 +528,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_phase2 = 0;
   s_phase3 = 0;
   s_note_pitch = params->pitch;
-  s_tie = false;
+//  s_tie = false;
   initSeq();
-  setMotion();
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
