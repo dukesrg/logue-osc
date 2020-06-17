@@ -388,10 +388,6 @@ void initSeq() {
   s_seq_started = false;
 }
 
-//static inline __attribute__((optimize("Ofast"), always_inline))
-void setMotion() {
-}
-
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
   q31_t t1, t2, out;
@@ -441,7 +437,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 {
   q31_t out, out1, out2, out3;
   q31_t w01, w02, w03;
-  int32_t pitch1, pitch2, pitch3;
+  int32_t pitch1, pitch2, pitch3 = params->pitch;
 
   if (s_play_mode == mode_seq) {
     if (s_sample_pos >= s_seq_quant) {
@@ -453,6 +449,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         s_seq_step_bit <<= 1;
       }  
       s_seq_quant = s_seq_res / fx_get_bpm();
+//todo: fix previous program influence on gate length bug
       s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
       s_seq_gate_on = ((s_seq_step_mask & s_seq_step_bit) && s_seq_vel[s_seq_step]);
       s_seq_step_pitch = (uint32_t)s_seq_note[s_seq_step] << 8;
@@ -466,13 +463,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         }
       }
     }
-    pitch1 = pitch2 = pitch3 = s_seq_step_pitch + s_seq_transpose + params->pitch - s_note_pitch;
-  } else {
-    pitch1 = pitch2 = pitch3 = params->pitch;
+    pitch3 += s_seq_step_pitch + s_seq_transpose - s_note_pitch;
   }
 
-  pitch1 += s_params[p_vco1_pitch];
-  pitch2 += s_params[p_vco2_pitch];
+  pitch1 = pitch3 + s_params[p_vco1_pitch];
+  pitch2 = pitch3 + s_params[p_vco2_pitch];
   pitch3 += s_params[p_vco3_pitch];
 
   w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + 12 * (s_params[p_vco1_octave] + s_params[p_keyboard_octave]), pitch1 & 0xFF));
