@@ -67,29 +67,32 @@ For user-customizable oscillators online constructor is available at https://duk
 |#|Anthologue Assignable controller 1&2|
 |-|-|
 |1|Slider|
-|2|Program Level|
-|3|Keyvoard Octave|
-|4|VCO 1 Pitch|
-|5|VCO 1 Shape|
-|6|VCO 1 Octave|
-|7|VCO 1 Wave|
-|8|VCO 1 Level|
-|9|VCO 2 Pitch|
-|10|VCO 2 Shape|
-|11|VCO 2 Octave|
-|12|VCO 2 Wave|
-|13|VCO 2 Level|
-|14|VCO 2 Sync|
-|15|VCO 2 Ring Mod|
-|16|VCO 2 Cross Mod Depth|
-|17|VCO 3 Pitch|
-|18|VCO 3 Shape|
-|19|VCO 3 Octave|
-|20|VCO 3 Wave|
-|21|VCO 3 Level|
-|22|VCO 3 Sync|
-|23|VCO 3 Ring Mod|
-|24|VCO 3 Cross Mod Depth|
+|2|Pitch Bend|
+|3|Bend Range +|
+|4|Bend Range -|
+|5|Program Level|
+|6|Keyvoard Octave|
+|7|VCO 1 Pitch|
+|8|VCO 1 Shape|
+|9|VCO 1 Octave|
+|10|VCO 1 Wave|
+|11|VCO 1 Level|
+|12|VCO 2 Pitch|
+|13|VCO 2 Shape|
+|14|VCO 2 Octave|
+|15|VCO 2 Wave|
+|16|VCO 2 Level|
+|17|VCO 2 Sync|
+|18|VCO 2 Ring Mod|
+|19|VCO 2 Cross Mod Depth|
+|20|VCO 3 Pitch|
+|21|VCO 3 Shape|
+|22|VCO 3 Octave|
+|23|VCO 3 Wave|
+|24|VCO 3 Level|
+|25|VCO 3 Sync|
+|26|VCO 3 Ring Mod|
+|27|VCO 3 Cross Mod Depth|
 
 ### manifest.json custom data extension
 

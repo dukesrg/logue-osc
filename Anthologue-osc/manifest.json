@@ -6,14 +6,14 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.4-3",
+        "version" : "0.5-0",
         "name" : "Anthologue",
         "num_param": 4,
         "params": [
             ["Prog", 0, 63, ""],
             ["Mode", 0, 1, ""],
-            ["AC1", 0, 23, ""],
-            ["AC2", 0, 23, ""]
+            ["AC1", 0, 26, ""],
+            ["AC2", 0, 26, ""]
         ],
         "custom_data" : [
           ["Korg minilogue/monologue programs", 64, 448, 64, 0]

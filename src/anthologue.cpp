@@ -13,6 +13,7 @@
 #include "fx_api.h"
 #include "osc_apiq.h"
 
+//#define BANK_SIZE 50
 #include "anthologue.h"
 
 #define MOTION_PARAM_LUT_FIRST 13
@@ -22,6 +23,9 @@
 
 enum {
   p_slider_assign = 0,
+  p_pitch_bend,
+  p_bend_range_pos,
+  p_bend_range_neg,
   p_program_level,
   p_keyboard_octave,
   p_vco1_pitch,
@@ -61,7 +65,7 @@ enum {
   mode_seq,
 };
 
-static uint32_t s_params[p_num];
+static q31_t s_params[p_num];
 
 static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRST + 1] = {
   { //mnlg
@@ -209,8 +213,8 @@ void initVoice() {
     s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
     s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
     s_params[p_vco3_shape] = 0;
-    s_params[p_vco1_octave] = p->vco1_octave;
-    s_params[p_vco2_octave] = p->vco2_octave;
+    s_params[p_vco1_octave] = p->vco1_octave * 12;
+    s_params[p_vco2_octave] = p->vco2_octave * 12;
     s_params[p_vco3_octave] = 0;
     s_params[p_vco1_wave] = p->vco1_wave;
     s_params[p_vco2_wave] = p->vco2_wave == wave_sqr ? (uint32_t)wave_noise : p->vco2_wave;
@@ -227,8 +231,11 @@ void initVoice() {
 //todo: drive
 //    s_params[p_drive] = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
 
+    s_params[p_pitch_bend] = 0;
+    s_params[p_bend_range_pos] = p->bend_range_pos;
+    s_params[p_bend_range_neg] = p->bend_range_neg;
     s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
-    s_params[p_keyboard_octave] = p->keyboard_octave - 2;
+    s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
     s_params[p_slider_assign] = p->slider_assign;
 
     s_seq_len = p->step_length;
@@ -248,11 +255,12 @@ void initVoice() {
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
         const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
         if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
-          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST) {
+          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
             s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
-          } else {
+          else if (motion_slot_param->parameter_id == 61 || motion_slot_param->parameter_id == 56)
+            s_seq_motion_param[j] = p_pitch_bend;
+          else
             s_seq_motion_param[j] = p_num;
-          }
           if (s_seq_motion_param[j] != p_num) {
             s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
             if (motion_slot_param->smooth_enable) {
@@ -277,8 +285,8 @@ void initVoice() {
     s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
     s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
     s_params[p_vco3_shape] = 0;
-    s_params[p_vco1_octave] = p->vco1_octave;
-    s_params[p_vco2_octave] = p->vco2_octave;
+    s_params[p_vco1_octave] = p->vco1_octave * 12;
+    s_params[p_vco2_octave] = p->vco2_octave * 12;
     s_params[p_vco3_octave] = 0;
     s_params[p_vco1_wave] = p->vco1_wave;
     s_params[p_vco2_wave] = p->vco2_wave;
@@ -295,8 +303,11 @@ void initVoice() {
 //todo: drive
 //    s_params[p_drive] = 0;
 
+    s_params[p_pitch_bend] = 0;
+    s_params[p_bend_range_pos] = p->bend_range_pos;
+    s_params[p_bend_range_neg] = p->bend_range_neg;
     s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
-    s_params[p_keyboard_octave] = p->keyboard_octave - 2;
+    s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
     s_params[p_slider_assign] = p->slider_assign;
 
     s_seq_len = p->step_length;
@@ -356,9 +367,10 @@ q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
       break;
     case wave_tri:
       if (phase < 0x40000000)
-        t1 = ((phase - 0x20000000) << 2);
+        t1 = phase - 0x20000000;
       else
-        t1 = ((0x5FFFFFFF - phase) << 2);
+        t1 = 0x5FFFFFFF - phase;
+      t1 <<= 2;
       t2 = q31mul(t1, shape) << 1;
       out = t1 + t2;
       if (t2 && ((out ^ t1) | (t2 ^ t1)) & 0x80000000)
@@ -367,9 +379,10 @@ q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
     case wave_saw:
       out = q31mul(0x20000000, shape);
       if (phase < 0x40000000 - out || phase > 0x40000000 + out)
-        out = (0x1FFFFFFF - phase) << 2;
+        out = 0x1FFFFFFF - phase;
       else
-        out = (phase - 0x20000000) << 2;
+        out = phase - 0x20000000;
+      out <<= 2;
       break;
     case wave_noise:
       out = f32_to_q31(osc_white());
@@ -425,8 +438,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 
   for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
-    uint8_t val = s_seq_motion_value[i] >> 23;
+    int8_t val = s_seq_motion_value[i] >> 23;
     switch (s_seq_motion_param[i]) {
+      case p_pitch_bend:
+        s_params[s_seq_motion_param[i]] = val << 1;
+        break;
       case p_vco1_pitch:
       case p_vco2_pitch:
         s_params[s_seq_motion_param[i]] = getPitch(s_seq_motion_value[i] >> 21);
@@ -437,7 +453,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       case p_vco1_wave:
       case p_vco1_octave:
       case p_vco2_octave:
-        s_params[s_seq_motion_param[i]] = val;
+        s_params[s_seq_motion_param[i]] = val * 12;
         break;
       case p_vco2_ring:
       case p_vco2_sync:
@@ -455,13 +471,18 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_seq_motion_value[i] = q31add(s_seq_motion_value[i], s_seq_motion_delta[i]);
   }
 
+  if (s_params[p_pitch_bend] >=0 )
+    pitch3 += s_params[p_pitch_bend] * s_params[p_bend_range_pos];
+  else
+    pitch3 += s_params[p_pitch_bend] * s_params[p_bend_range_neg];
+
   pitch1 = pitch3 + s_params[p_vco1_pitch];
   pitch2 = pitch3 + s_params[p_vco2_pitch];
   pitch3 += s_params[p_vco3_pitch];
 
-  w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + 12 * (s_params[p_vco1_octave] + s_params[p_keyboard_octave]), pitch1 & 0xFF));
-  w02 = f32_to_q31(osc_w0f_for_note((pitch2 >> 8) + 12 * (s_params[p_vco2_octave] + s_params[p_keyboard_octave]), pitch2 & 0xFF));
-  w03 = f32_to_q31(osc_w0f_for_note((pitch3 >> 8) + 12 * (s_params[p_vco3_octave] + s_params[p_keyboard_octave]), pitch3 & 0xFF));
+  w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave] + s_params[p_keyboard_octave], pitch1 & 0xFF));
+  w02 = f32_to_q31(osc_w0f_for_note((pitch2 >> 8) + s_params[p_vco2_octave] + s_params[p_keyboard_octave], pitch2 & 0xFF));
+  w03 = f32_to_q31(osc_w0f_for_note((pitch3 >> 8) + s_params[p_vco3_octave] + s_params[p_keyboard_octave], pitch3 & 0xFF));
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
@@ -529,13 +550,24 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_shiftshape:
       index = s_assignable[index - k_user_osc_param_shape];
       if (index == p_slider_assign) {
-        if (s_params[p_slider_assign] < SLIDER_PARAM_LUT_FIRST || s_params[p_slider_assign] > SLIDER_PARAM_LUT_LAST)
+//minilogue pitch/gate slider asign is 77/78, not 0/1!
+        if (s_params [p_slider_assign] == 77 || s_params[p_slider_assign] == 56)
+          index = p_pitch_bend;
+        else if (s_params[p_slider_assign] >= SLIDER_PARAM_LUT_FIRST && s_params[p_slider_assign] <= SLIDER_PARAM_LUT_LAST)
+          index = slider_param_lut[s_prog_type][s_params[p_slider_assign] - SLIDER_PARAM_LUT_FIRST];
+        else
           return;
-        index = slider_param_lut[s_prog_type][s_params[p_slider_assign] - SLIDER_PARAM_LUT_FIRST];
         if (index == p_num)
           return;
       }
       switch (index) {
+        case p_pitch_bend:
+          param = (value - 0x200) >> 1;
+          break;
+        case p_bend_range_pos:
+        case p_bend_range_neg:
+          param = value * 13 >> 10;
+          break;
         case p_vco1_pitch:
         case p_vco2_pitch:
         case p_vco3_pitch:
@@ -544,6 +576,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_vco1_octave:
         case p_vco2_octave:
         case p_vco3_octave:
+          param = (value >> 8) * 12;
+          break;
         case p_vco1_wave:
         case p_vco2_wave:
         case p_vco3_wave:
@@ -556,10 +590,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = value >> 9;
           break;
         case p_program_level:
-          param = ((value * 5 ) >> 10) - 2;
+          param = ((value * 51 >> 10) - 25) * 0x0147AE14;
           break;
         case p_keyboard_octave:
-          param = q31mul(param_val_to_q31(value), 5) - 2;
+          param = ((value * 5 >> 10) - 2) * 12;
           break;
         default:
           param = param_val_to_q31(value);
