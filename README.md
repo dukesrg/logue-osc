@@ -71,7 +71,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |3|Bend Range +|
 |4|Bend Range -|
 |5|Program Level|
-|6|Keyvoard Octave|
+|6|Keyboard Octave|
 |7|VCO 1 Pitch|
 |8|VCO 1 Shape|
 |9|VCO 1 Octave|
