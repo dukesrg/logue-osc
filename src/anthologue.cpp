@@ -16,133 +16,7 @@
 //#define BANK_SIZE 25
 #include "anthologue.h"
 
-#define MOTION_PARAM_LUT_FIRST 13
-#define MOTION_PARAM_LUT_LAST 31
-#define SLIDER_PARAM_LUT_FIRST 2
-#define SLIDER_PARAM_LUT_LAST 22
-
-enum {
-  p_slider_assign = 0,
-  p_pitch_bend,
-  p_bend_range_pos,
-  p_bend_range_neg,
-  p_program_level,
-  p_keyboard_octave,
-  p_vco1_pitch,
-  p_vco1_shape,
-  p_vco1_octave,
-  p_vco1_wave,
-  p_vco1_level,
-  p_vco2_pitch,
-  p_vco2_shape,
-  p_vco2_octave,
-  p_vco2_wave,
-  p_vco2_level,
-  p_vco2_sync,
-  p_vco2_ring,
-  p_vco2_cross,
-  p_vco3_pitch,
-  p_vco3_shape,
-  p_vco3_octave,
-  p_vco3_wave,
-  p_vco3_level,
-  p_vco3_sync,
-  p_vco3_ring,
-  p_vco3_cross,
-  p_num
-};
-
-enum {
-  wave_sqr = 0,
-  wave_tri,
-  wave_saw,
-  wave_noise,
-  wave_num,
-};
-
-enum {
-  mode_note = 0,
-  mode_seq,
-};
-
 static q31_t s_params[p_num];
-
-static uint8_t motion_param_lut[2][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRST + 1] = {
-  { //mnlg
-    p_num, p_num, p_num, p_num,
-    p_vco1_pitch, //17
-    p_vco1_shape,
-    p_vco1_octave,
-    p_vco1_wave,
-    p_vco2_pitch,
-    p_vco2_shape,
-    p_vco2_octave,
-    p_vco2_wave,
-    p_vco2_cross,
-    p_num, //PEG INT
-    p_vco2_sync,
-    p_vco2_ring,
-    p_vco1_level,
-    p_vco2_level,
-    p_vco3_level, //31
-  }, { //molg
-    p_vco1_pitch, //13
-    p_vco1_shape,
-    p_vco1_octave,
-    p_vco1_wave,
-    p_vco2_pitch,
-    p_vco2_shape,
-    p_vco2_octave,
-    p_vco2_wave,
-    p_vco1_level,
-    p_vco2_level,
-    p_num, //CUTOFF
-    p_num, //RESONANCE
-    p_vco2_sync, //25
-    p_num, //ATTACK
-    p_num, //DECAY
-    p_num, //EG INT
-    p_num, //EG TYPE
-    p_num, //EG TARGET
-    p_num, //LFO RATE
-  }
-};
-
-static uint8_t slider_param_lut[2][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRST + 1] = {
-  { //mnlg
-    p_vco1_pitch, //2
-    p_vco1_shape,
-    p_vco2_pitch,
-    p_vco2_shape,
-    p_vco2_cross,
-    p_num, //VCO2 PEG INT
-    p_vco1_level,
-    p_vco2_level,
-    p_vco3_level, //10
-    p_num, //CUTOFF
-    p_num, //RESONANCE
-    p_num, //FILTER EG INT
-    p_num, //AMP EG ATTACK
-    p_num, //AMP EG DECAY
-    p_num, //AMP EG SUSTAIN
-    p_num, //AMP EG RELEASE
-    p_num, //EG ATTACK
-    p_num, //EG DECAY
-    p_num, //EG SUSTAIN
-    p_num, //EG RELEASE
-    p_num, //LFO RATE
-  }, {
-    p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num, p_num,
-    p_vco1_pitch, //13
-    p_vco1_shape,
-    p_num, p_num,
-    p_vco2_pitch,
-    p_vco2_shape,
-    p_num, p_num,
-    p_vco1_level,
-    p_vco2_level,
-  }
-};
 
 static uint8_t s_seq_len;
 static uint32_t s_seq_res;
@@ -176,31 +50,6 @@ static uint8_t s_prog = -1;
 static uint8_t s_prog_type;
 static uint8_t s_play_mode = mode_note;
 static uint8_t s_assignable[2] = {p_slider_assign, p_slider_assign};
-
-static inline __attribute__((optimize("Ofast"), always_inline))
-int32_t getPitch(uint16_t pitch) {
-//todo: better pitch calculation implementation
-  int32_t res;
-  if (pitch < 4)
-    res = - 1200;
-  else if (pitch < 356)
-    res = - 1200 + (pitch - 4) * (1200 - 256) / (356 - 4);
-  else if (pitch < 476)
-    res = - 256 + ((pitch - 356) << 1);
-  else if (pitch < 492)
-    res = - 16 + (pitch - 476);
-  else if (pitch < 532)
-    res = 0;
-  else if (pitch < 548)
-    res = pitch - 532;
-  else if (pitch < 668)
-    res = 16 + ((pitch - 548) << 1);
-  else if (pitch < 1020)
-    res = 256 + (pitch - 668) * (1200 - 256) / (1020 - 668);
-  else
-    res = 1200;
-  return res * 256 / 100;
-}
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 void initVoice() {
@@ -259,11 +108,11 @@ void initVoice() {
         if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
           if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
             s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
-          else if (motion_slot_param->parameter_id == 61 || motion_slot_param->parameter_id == 56)
+          else if (motion_slot_param->parameter_id == 56)
             s_seq_motion_param[j] = p_pitch_bend;
           else
-            s_seq_motion_param[j] = p_num;
-          if (s_seq_motion_param[j] != p_num) {
+            s_seq_motion_param[j] = 0;
+          if (s_seq_motion_param[j]) {
             s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
             if (motion_slot_param->smooth_enable) {
               s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
@@ -272,7 +121,7 @@ void initVoice() {
             }
           }
         } else {
-          s_seq_motion_param[j] = p_num;
+          s_seq_motion_param[j] = 0;
         }
       }
     }
@@ -328,12 +177,13 @@ void initVoice() {
       for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
         const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
         if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
-          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST) {
+          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
             s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
-          } else {
-            s_seq_motion_param[j] = p_num;
-          }
-          if (s_seq_motion_param[j] != p_num) {
+          else if (motion_slot_param->parameter_id == 61)
+            s_seq_motion_param[j] = p_pitch_bend;
+          else
+            s_seq_motion_param[j] = 0;
+          if (s_seq_motion_param[j]) {
             s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
             if (motion_slot_param->smooth_enable) {
               s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
@@ -342,7 +192,7 @@ void initVoice() {
             }
           }
         } else {
-          s_seq_motion_param[j] = p_num;
+          s_seq_motion_param[j] = 0;
         }
       }
     }
@@ -355,6 +205,14 @@ void initVoice() {
       }; break;
     case minilogue_xd_ID: {
       const mnlgxd_prog_t *p = (mnlgxd_prog_t*)prog_ptr;
+
+
+
+
+//          else if (motion_slot_param->parameter_id == 126)
+//            s_seq_motion_param[j] = p_pitch_bend;
+//          else
+//            s_seq_motion_param[j] = 0;
 
       }; break;
     default:
@@ -438,7 +296,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         s_seq_started = true;
       }
       for (uint32_t i = 0; i < SEQ_MOTION_SLOT_COUNT; i++) {
-        if (s_seq_motion_param[i] != p_num) {
+        if (s_seq_motion_param[i]) {
           s_seq_motion_value[i] = (q31_t)s_seq_motion_start[s_seq_step][i] << 23;
           s_seq_motion_delta[i] = ((q31_t)s_seq_motion_diff[s_seq_step][i] << 23) / s_seq_quant;
         }
@@ -475,7 +333,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         break;
       default:
         s_params[s_seq_motion_param[i]] = s_seq_motion_value[i];
-      case p_num:
+      case 0:
         break;
     }
     s_seq_motion_value[i] = q31add(s_seq_motion_value[i], s_seq_motion_delta[i]);
@@ -567,7 +425,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           index = slider_param_lut[s_prog_type][s_params[p_slider_assign] - SLIDER_PARAM_LUT_FIRST];
         else
           return;
-        if (index == p_num)
+        if (index == 0)
           return;
       }
       switch (index) {

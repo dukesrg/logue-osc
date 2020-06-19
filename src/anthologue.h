@@ -24,6 +24,11 @@
 #define MNLG_POLY 4
 #define MNLGXD_POLY 8
 
+#define MOTION_PARAM_LUT_FIRST 13
+#define MOTION_PARAM_LUT_LAST 41
+#define SLIDER_PARAM_LUT_FIRST 2
+#define SLIDER_PARAM_LUT_LAST 22
+
 struct motion_slot_param_t {
   uint8_t motion_enable:1;
   uint8_t smooth_enable:1;
@@ -543,6 +548,221 @@ struct mnlgxd_prog_t {
 };
 
 enum {
+  p_slider_assign = 0,
+  p_pitch_bend,
+  p_bend_range_pos,
+  p_bend_range_neg,
+  p_program_level,
+  p_keyboard_octave,
+  p_vco1_pitch,
+  p_vco1_shape,
+  p_vco1_octave,
+  p_vco1_wave,
+  p_vco1_level,
+  p_vco2_pitch,
+  p_vco2_shape,
+  p_vco2_octave,
+  p_vco2_wave,
+  p_vco2_level,
+  p_vco2_sync,
+  p_vco2_ring,
+  p_vco2_cross,
+  p_vco3_pitch,
+  p_vco3_shape,
+  p_vco3_octave,
+  p_vco3_wave,
+  p_vco3_level,
+  p_vco3_sync,
+  p_vco3_ring,
+  p_vco3_cross,
+  p_num
+};
+
+enum {
+  wave_sqr = 0,
+  wave_tri,
+  wave_saw,
+  wave_noise,
+  wave_num,
+};
+
+enum {
+  mode_note = 0,
+  mode_seq,
+};
+
+static const uint8_t motion_param_lut[4][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRST + 1] = {
+  { //mnlg
+    0, 0, 0, 0,
+    p_vco1_pitch, //17
+    p_vco1_shape,
+    p_vco1_octave,
+    p_vco1_wave,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_octave,
+    p_vco2_wave,
+    p_vco2_cross,
+    0, //PEG INT
+    p_vco2_sync,
+    p_vco2_ring,
+    p_vco1_level,
+    p_vco2_level,
+    p_vco3_level, //31
+    0, //CUTOFF
+    0, //RESONANCE
+    0, //CUTOFF EG INT
+    0, //CUTOFF VELOCITY TRACK
+    0, //CUTOFF KEYBOARD TRACK
+    0, //CUTOFF TYPE
+    0,
+    0,
+    0, //AMP EG ATTACK
+    0, //AMP EG DECAY
+  }, { //molg
+    p_vco1_pitch, //13
+    p_vco1_shape,
+    p_vco1_octave,
+    p_vco1_wave,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_octave,
+    p_vco2_wave,
+    p_vco1_level,
+    p_vco2_level,
+    0, //CUTOFF
+    0, //RESONANCE
+    p_vco2_sync, //25
+    0, //ATTACK
+    0, //DECAY
+    0, //EG INT
+    0, //EG TYPE
+    0, //EG TARGET
+    0, //LFO RATE
+    0, //LFO INT
+    0, //LFO TARGET
+    0, //LFO TYPE
+    0, //LFO MODE
+    0,
+    0, //DRIVE
+    0,
+    0,
+    0, //PORTAMENTO
+    0,
+  }, { //prlg
+    0
+  }, { //mnlgxd
+    0, 0,
+    0, //PORTAMENTO
+    0, //VOICE MODE DEPTH
+    0, //VOICE MODE TYPE
+    p_vco1_wave,
+    p_vco1_octave,
+    p_vco1_pitch,
+    p_vco1_shape,
+    p_vco2_wave,
+    p_vco2_octave,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_sync,
+    p_vco2_ring,
+    p_vco2_cross,
+    0, //MULTI ENGINE TYPE
+    0, //MULTI ENGINE NOISE TYPE
+    0, //MULTI ENGINE VPM TYPE
+    0,
+    0, //33 : MULTI SHAPE NOISE
+    0, //34 : MULTI SHAPE VPM
+    0, //35 : MULTI SHAPE USER
+    0, //36 : MULTI SHIFT SHAPE NOISE
+    0, //37 : MULTI SHIFT SHAPE VPM
+    0, //38 : MULTI SHIFT SHAPE USER
+    p_vco1_level,
+    p_vco2_level,
+    0, //41 : MULTI ENGINE LEVEL
+  }
+};
+
+static const uint8_t slider_param_lut[4][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRST + 1] = {
+  { //mnlg slider
+    p_vco1_pitch, //2
+    p_vco1_shape,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_cross,
+    0, //VCO2 PEG INT
+    p_vco1_level,
+    p_vco2_level,
+    p_vco3_level, //10
+    0, //CUTOFF
+    0, //RESONANCE
+    0, //FILTER EG INT
+    0, //AMP EG ATTACK
+    0, //AMP EG DECAY
+    0, //AMP EG SUSTAIN
+    0, //AMP EG RELEASE
+    0, //EG ATTACK
+    0, //EG DECAY
+    0, //EG SUSTAIN
+    0, //EG RELEASE
+    0, //LFO RATE
+  }, { //molg slider
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    p_vco1_pitch, //13
+    p_vco1_shape,
+    0, 0,
+    p_vco2_pitch,
+    p_vco2_shape,
+    0, 0,
+    p_vco1_level,
+    p_vco2_level,
+  }, { //prlg mod wheel
+    0, 0,
+    p_vco1_pitch, //4
+    p_vco1_shape,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_cross,
+    0, //PITCH EG INT
+    p_vco3_shape,
+    p_vco1_level,
+    p_vco2_level,
+    p_vco3_level,
+    0, //CUTOFF
+    0, //RESONANCE
+    0, //CUTOFF EG INT
+    0, //AMP EG ATTACK
+    0, //AMP EG DECAY
+    0, //AMP EG SUSTAIN
+    0, //AMP EG RELEASE
+    0, //EG ATTACK
+    0, //EG DECAY
+  }, { //mnlgxd joy
+    0, //V.M DEPTH
+    p_vco1_pitch, //3
+    p_vco1_shape,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_cross,
+    p_vco3_shape,
+    p_vco1_level,
+    p_vco2_level,
+    p_vco3_level,
+    0, //CUTOFF
+    0, //RESONANCE
+    0, //AMP EG ATTACK
+    0, //AMP EG DECAY
+    0, //AMP EG SUSTAIN
+    0, //AMP EG RELEASE
+    0, //EG ATTACK
+    0, //EG DECAY
+    0, //EG INT
+    0, //LFO_RATE
+    0, //LFO_INT
+  }
+};
+
+enum {
     minilogue_ID = 0, //0x2C
     monologue_ID = 1, //0x44
     prologue_ID = 2, //0x4B
@@ -579,3 +799,28 @@ const void *getProg(uint32_t index, uint8_t *prog_type) {
   *prog_type = j;
   return prog_ptr;
 };
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+int32_t getPitch(uint16_t pitch) {
+//todo: better pitch calculation implementation
+  int32_t res;
+  if (pitch < 4)
+    res = - 1200;
+  else if (pitch < 356)
+    res = - 1200 + (pitch - 4) * (1200 - 256) / (356 - 4);
+  else if (pitch < 476)
+    res = - 256 + ((pitch - 356) << 1);
+  else if (pitch < 492)
+    res = - 16 + (pitch - 476);
+  else if (pitch < 532)
+    res = 0;
+  else if (pitch < 548)
+    res = pitch - 532;
+  else if (pitch < 668)
+    res = 16 + ((pitch - 548) << 1);
+  else if (pitch < 1020)
+    res = 256 + (pitch - 668) * (1200 - 256) / (1020 - 668);
+  else
+    res = 1200;
+  return res * 256 / 100;
+}
