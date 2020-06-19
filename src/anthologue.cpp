@@ -13,7 +13,7 @@
 #include "fx_api.h"
 #include "osc_apiq.h"
 
-//#define BANK_SIZE 50
+//#define BANK_SIZE 25
 #include "anthologue.h"
 
 #define MOTION_PARAM_LUT_FIRST 13
@@ -177,7 +177,7 @@ static uint8_t s_prog_type;
 static uint8_t s_play_mode = mode_note;
 static uint8_t s_assignable[2] = {p_slider_assign, p_slider_assign};
 
-//static inline __attribute__((optimize("Ofast"), always_inline))
+static inline __attribute__((optimize("Ofast"), always_inline))
 int32_t getPitch(uint16_t pitch) {
 //todo: better pitch calculation implementation
   int32_t res;
@@ -202,11 +202,12 @@ int32_t getPitch(uint16_t pitch) {
   return res * 256 / 100;
 }
 
-//static inline __attribute__((optimize("Ofast"), always_inline))
+static inline __attribute__((optimize("Ofast"), always_inline))
 void initVoice() {
-  if (logue_prog[s_prog].monologue.SEQD == *(uint32_t*)&"SEQD") {
-    const molg_prog_t *p = &logue_prog[s_prog].monologue;
-    s_prog_type = monologue_ID;
+  const void *prog_ptr = getProg(s_prog, &s_prog_type);
+  switch (s_prog_type) {
+    case monologue_ID: {
+      const molg_prog_t *p = (molg_prog_t*)prog_ptr;
  
     s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
     s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
@@ -275,10 +276,9 @@ void initVoice() {
         }
       }
     }
-
-  } else if (logue_prog[s_prog].minilogue.SEQD == *(uint32_t*)&"SEQD") {
-    const mnlg_prog_t *p = &logue_prog[s_prog].minilogue;
-    s_prog_type = minilogue_ID;
+      }; break;
+    case minilogue_ID: {
+      const mnlg_prog_t *p = (mnlg_prog_t*)prog_ptr;
  
     s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
     s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
@@ -347,9 +347,22 @@ void initVoice() {
       }
     }
 
+//  }
+      }; break;
+    case prologue_ID: {
+      const prlg_prog_t *p = (prlg_prog_t*)prog_ptr;
+
+      }; break;
+    case minilogue_xd_ID: {
+      const mnlgxd_prog_t *p = (mnlgxd_prog_t*)prog_ptr;
+
+      }; break;
+    default:
+      break;
   }
 }
 
+static inline __attribute__((optimize("Ofast"), always_inline))
 void initSeq() {
   s_seq_step = SEQ_STEP_COUNT;
   s_sample_pos = 0;

@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #ifndef BANK_SIZE
-  #define BANK_SIZE 64
+  #define BANK_SIZE 25
 #endif
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
@@ -23,13 +23,6 @@
 #define SEQ_MOTION_SLOT_COUNT 4
 #define MNLG_POLY 4
 #define MNLGXD_POLY 8
-
-enum {
-    minilogue_ID = 0, //0x2C
-    monologue_ID = 1, //0x44
-    prologue_ID = 2, //0x4B
-    monologue_xd_ID = 3, //0x51
-};
 
 struct motion_slot_param_t {
   uint8_t motion_enable:1;
@@ -549,8 +542,40 @@ struct mnlgxd_prog_t {
   uint8_t arp_rate;
 };
 
+enum {
+    minilogue_ID = 0, //0x2C
+    monologue_ID = 1, //0x44
+    prologue_ID = 2, //0x4B
+    minilogue_xd_ID = 3, //0x51
+    num_ID,
+};
+
+static const struct {
+  uint32_t mark;
+  uint16_t offset;
+  uint16_t size;
+} prog_seek[] = {
+  {0x44514553, offsetof(mnlg_prog_t, SEQD)/sizeof(uint32_t), sizeof(mnlg_prog_t)/sizeof(uint32_t)},
+  {0x44514553, offsetof(molg_prog_t, SEQD)/sizeof(uint32_t), sizeof(molg_prog_t)/sizeof(uint32_t)},
+  {0x44455250, offsetof(prlg_prog_t, PRED)/sizeof(uint32_t), sizeof(prlg_prog_t)/sizeof(uint32_t)},
+  {0x44455250, offsetof(mnlgxd_prog_t, PRED)/sizeof(uint32_t), sizeof(mnlgxd_prog_t)/sizeof(uint32_t)},
+};
+
 static const __attribute__((used, section(".hooks")))
-union {
-  mnlg_prog_t minilogue;
-  molg_prog_t monologue;
-} logue_prog[BANK_SIZE] = {};
+uint8_t logue_prog[BANK_SIZE * 1024] = {};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+const void *getProg(uint32_t index, uint8_t *prog_type) {
+  const uint32_t *prog_ptr = (uint32_t*)logue_prog;
+  uint8_t i, j = 0;
+  for (i = 0; i <= index && j < num_ID; i++) {
+    if (i > 0)
+      prog_ptr += prog_seek[j].size;
+    for (j = 0; j < num_ID; j++) {
+      if (prog_ptr[prog_seek[j].offset] == prog_seek[j].mark)
+        break;
+    }
+  }
+  *prog_type = j;
+  return prog_ptr;
+};
