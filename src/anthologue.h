@@ -22,6 +22,7 @@
 #define SEQ_STEP_COUNT 16
 #define SEQ_MOTION_SLOT_COUNT 4
 #define MNLG_POLY 4
+#define MNLGXD_POLY 8
 
 enum {
     minilogue_ID = 0, //0x2C
@@ -29,110 +30,6 @@ enum {
     prologue_ID = 2, //0x4B
     monologue_xd_ID = 3, //0x51
 };
-/*
-enum {
-  XY_SLIDER = 0,
-  XY_JOY_Y = 0,
-  XY_MOD_WHEEL = 0,
-  XY_JOY_X = 1,
-  XY_E_PEDAL = 1,
-
-  CC_PORTAMENTO_TIME = 5,
-
-  CC_AMP_EG_ATTACK = 16,
-  CC_AMP_EG_DECAY = 17,
-  CC_AMP_EG_SUSTAIN = 18,
-  CC_AMP_EG_RELEASE = 19,
-  CC_EG_ATTACK = 20,
-  CC_EG_DECAY = 21,
-  CC_EG_INT = 22,
-  CC_EG_SUSTAIN = 22,
-  CC_EG_RELEASE = 23,
-  CC_EG_TARGET_MNLGXD = 23,
-  CC_LFO_RATE = 24,
-  CC_EG_INT_MOLG = 25,
-  CC_LFO_INT = 26,
-  CC_VOICE_MODE_DEPTH = 27,
-  CC_DRIVE_MOLG = 28,
-  CC_MOD_FX_TIME_MNLGXD = 28,
-  CC_MOD_FX_SPEED_PRLG = 28,
-  CC_DELAY_HI_PASS_CUTOFF_MNLG = 29,
-  CC_MOD_FX_DEPTH = 29,
-  CC_DELAY_TIME = 30,
-  CC_DELAY_DEPTH = 31,
-  CC_DELAY_FEEDBACK = 31,
-
-  CC_NOISE_LEVEL = 33,
-  CC_MULTI_LEVEL = 33,
-  CC_VCO1_PITCH = 34,
-  CC_VCO2_PITCH = 35,
-  CC_VCO1_SHAPE = 36,
-  CC_VCO2_SHAPE = 37,
-
-  CC_VCO1_LEVEL = 39,
-  CC_VCO2_LEVEL = 40,
-  CC_VCO2_CROSS_MOD_DEPTH = 41,
-  CC_VCO2_PITCH_EG_INT = 42,
-  CC_CUTOFF = 43,
-  CC_RESONANCE = 44,
-  CC_CUTOFF_EG_INT = 44,
-
-  CC_VCO1_OCTAVE = 48,
-  CC_VCO2_OCTAVE = 49,
-  CC_VCO1_WAVE = 50,
-  CC_VCO2_WAVE = 51,
-  CC_MULTI_OCTAVE = 52,
-  CC_MULTI_TYPE = 53,
-  CC_MULTI_SHAPE = 54,
-
-  CC_LFO_TARGET = 56,
-  CC_LFO_EG_MNLG = 57,
-  CC_LFO_WAVE_MNLGXD_PRLG = 57,
-  CC_LFO_WAVE_MNLG_MOLG = 58,
-  CC_LFO_MODE_MNLGXD_PRLG = 58,
-  CC_LFO_MODE_MOLG = 59,
-  CC_VOICE_MODE_DEPTH_MNLGXD = 59,
-  CC_RING_SYNC_MOLG = 60,
-  CC_EG_TYPE_MOLG = 61,
-  CC_EG_TARGET_MOLG = 62,
-
-  CC_DAMPER = 64,
-
-  CC_SYNC = 80,
-  CC_RING_SYNC_PRLG = 80,
-  CC_RING = 81,
-  CC_PITCH_EG_PRLG = 81,
-  CC_CUTOFF_VELOCITY_MNLG = 82,
-  CC_CUTOFF_LOW_CUT_PRLG = 82,
-  CC_CUTOFF_KEYTRACK = 83,
-  CC_CUTOFF_TYPE_MNLG = 84,
-  CC_CUTOFF_DRIVE = 84,
-  CC_TIMBRE_EDIT = 85,
-  CC_TIMBRE_TYPE = 86,
-
-  CC_DELAY_OUTPUT_ROUTING_MNLG = 88,
-  CC_MOD_FX_TYPE = 88,
-  CC_DELAY_SUB_TYPE_MNLGXD = 89,
-  CC_DELAY_TYPE_PRLG = 89,
-  CC_REVERB_SUB_TYPE_MNLGXD = 90,
-
-  CC_MOD_FX_ON_OFF = 92,
-  CC_DELAY_ON_OFF = 93,
-  CC_REVERB_ON_OFF = 94,
-
-  CC_MOD_FX_SUB_TYPE = 96,
-
-  CC_MULTI_SUB_TYPE_SELECT = 103,
-  CC_MULTI_SHIFT_SHAPE = 104,
-  CC_DELAY_TIME_MNLGXD = 105,
-  CC_DELAY_DEPTH_MNLGXD = 106,
-  CC_DELAY_DRY_WET_MNLG = 107,
-  CC_REVERB_TIME = 108,
-  CC_REVERB_DEPTH = 109,
-  CC_REVERB_DRY_WET = 110,
-  CC_DELAY_WET_PRLG = 111,
-};
-*/
 
 struct motion_slot_param_t {
   uint8_t motion_enable:1;
@@ -194,7 +91,7 @@ struct mnlg_prog_t {
   uint8_t vco2_octave:2;
   uint8_t vco2_wave:2;
   uint8_t cross_mod_depth_lo:2;
-  uint8_t vco2_pitch_eg_int__lo:2;
+  uint8_t vco2_pitch_eg_int_lo:2;
   uint8_t vco1_level_lo:2;
   uint8_t vco2_level_lo:2;
   uint8_t sync:1;
@@ -350,102 +247,153 @@ struct molg_prog_t {
   molg_step_event_data_t step_event_data[SEQ_STEP_COUNT];
 };
 
-/*
-static const uint8_t motion_to_cc_lut[2][32] = {
-  { //mnlg
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    CC_VCO1_PITCH, //17
-    CC_VCO1_SHAPE, //18
-    CC_VCO1_OCTAVE, //19
-    CC_VCO1_WAVE, //20
-    CC_VCO1_PITCH, //21
-    CC_VCO1_SHAPE, //22
-    CC_VCO1_OCTAVE, //23
-    CC_VCO1_WAVE, //24
-    CC_VCO2_CROSS_MOD_DEPTH, //25
-    CC_VCO2_PITCH_EG_INT, //26
-    CC_SYNC, //27
-    CC_RING, //28
-    CC_VCO1_LEVEL, //29
-    CC_VCO2_LEVEL, //30
-    CC_NOISE_LEVEL, //31
-    CC_CUTOFF, //32
-    CC_RESONANCE, //33
-    CC_CUTOFF_EG_INT, //34
-    CC_CUTOFF_VELOCITY_MNLG, //35
-    CC_CUTOFF_KEYTRACK, //36
-    CC_CUTOFF_TYPE_MNLG, //37
-    0, 0,
-    CC_AMP_EG_ATTACK, //40
-    CC_AMP_EG_DECAY, //41
-    CC_AMP_EG_SUSTAIN, //42
-    CC_AMP_EG_RELEASE, //43
-    CC_EG_ATTACK, //44
-    CC_EG_DECAY, //45
-    CC_EG_SUSTAIN, //46
-    CC_EG_RELEASE, //47
-    CC_LFO_RATE, //48,
-    CC_LFO_INT, //49,
-    CC_LFO_TARGET, //50,
-    CC_LFO_EG_MNLG, //51,
-    CC_LFO_WAVE_MNLG_MOLG, //52,
-    CC_DELAY_OUTPUT_ROUTING_MNLG, //53,
-    CC_DELAY_HI_PASS_CUTOFF_MNLG, //54,
-    0,
-    CC_DELAY_TIME, //56,
-    CC_DELAY_FEEDBACK, //57,
-    0, 0, 0,
-0,//    CC_PITCH_BEND, //61
-0,//    CC_GATE_TIME, //62
-  }, { //molg
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    CC_VCO1_PITCH, //13
-    CC_VCO1_SHAPE, //14
-    CC_VCO1_OCTAVE, //15
-    CC_VCO1_WAVE, //16
-    CC_VCO1_PITCH, //17
-    CC_VCO1_SHAPE, //18
-    CC_VCO1_OCTAVE, //19
-    CC_VCO1_WAVE, //20
-    CC_VCO1_LEVEL, //21
-    CC_VCO2_LEVEL, //22
-    CC_CUTOFF, //23
-    CC_RESONANCE, //24
-    CC_RING_SYNC_MOLG, //25
-    CC_AMP_EG_ATTACK, //26
-    CC_AMP_EG_DECAY, //27
-    CC_EG_INT, //28,
-    CC_EG_TYPE_MOLG, //29,
-    CC_EG_TARGET_MOLG, //30,
-    CC_LFO_RATE, //31,
-    CC_LFO_INT, //32,
-    CC_LFO_TARGET, //33,
-    CC_LFO_WAVE_MNLG_MOLG, //34,
-    CC_LFO_MODE_MOLG, //35,
-    0,
-    CC_DRIVE_MOLG, //37
-    0, 0,
-0,//    CC_PORTAMENTO, //40
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-0,//    CC_PITCH_BEND, //56
-0,//    CC_GATE_TIME, //57
-//  }, { //prlg
-//  0
-//  }, { //mnlgxd
-//  0
-  }
+struct osc_param_t {
+  uint8_t value;
+  uint8_t reserved;
 };
-static const uint8_t wheel_to_cc_lut[2][63] = {
-  {0}, //mnlg
-  {0}, //molg
-//  {0}, //prlg
-//  {0} //mnlgxd
+
+struct prlg_timbre_t {
+  uint8_t portamento_time;
+  uint8_t reserved1;
+  uint8_t voice_spread;
+  uint8_t reserved3;
+  uint16_t voice_mode_depth;
+  uint8_t voice_mode_type;
+  uint8_t reserved7[3];
+  uint8_t vco1_wave;
+  uint8_t vco1_octave;
+  uint16_t vco1_pitch;
+  uint16_t vco1_shape;
+  uint8_t pitch_eg_target;
+  uint8_t pitch_eg_int_lo  ;
+  uint8_t pitch_eg_int_hi  ;
+  uint8_t vco2_wave;
+  uint8_t vco2_octave;
+  uint8_t vco2_pitch_lo;
+  uint8_t vco2_pitch_hi;
+  uint8_t vco2_shape_lo;
+  uint8_t vco2_shape_hi;
+  uint8_t ring_sync;
+  uint16_t cross_mod_depth;
+  uint8_t multi_routing;
+  uint8_t multi_type;
+  uint8_t multi_octave;
+  uint8_t select_noise;
+  uint8_t select_vpm;
+  uint8_t select_user;
+  uint16_t noise_shape;
+  uint8_t reserved36[2];
+  uint16_t vco1_level;
+  uint16_t vco2_level;
+  uint16_t multi_level;
+  uint16_t cutoff;
+  uint16_t resonance;
+  uint16_t cutoff_eg_int;
+  uint8_t cutoff_drive;
+  uint8_t low_cut;
+  uint8_t cutoff_keyboard_track;
+  uint8_t cutoff_velocity;
+  uint16_t amp_eg_attack;
+  uint16_t amp_eg_decay;
+  uint16_t amp_eg_sustain;
+  uint16_t amp_eg_release;
+  uint16_t eg_attack;
+  uint16_t eg_decay;
+  uint16_t eg_sustain;
+  uint16_t eg_release;
+  uint8_t lfo_wave;
+  uint8_t lfo_mode;
+  uint16_t lfo_rate;
+  uint16_t lfo_int;
+  uint8_t lfo_target;
+  uint8_t mod_wheel_assign;
+  uint8_t e_pedal_assign;
+  uint8_t bend_range_pos;
+  uint8_t bend_range_neg;
+  osc_param_t vpm_param_t[6];
+  osc_param_t user_param_t[6];
+  uint8_t :0;
+  uint8_t user_param5_type:2;
+  uint8_t user_param6_type:2;
+  uint8_t user_param1_type:2;
+  uint8_t user_param2_type:2;
+  uint8_t user_param3_type:2;
+  uint8_t user_param4_type:2;
+  uint8_t vpm_shape_lo;
+  uint8_t vpm_shape_hi;
+  uint8_t vpm_shift_shape_lo;
+  uint8_t vpm_shift_shape_hi;
+  uint8_t user_shape_lo;
+  uint8_t user_shape_hi;
+  uint8_t user_shift_shape_lo;
+  uint8_t user_shift_shape_hi;
+  uint8_t mod_wheel_range;
+  uint8_t lfo_key_sync;
+  uint8_t lfo_voice_sync;
+  uint8_t lfo_target_osc;
+  uint8_t mono_legato;
+  uint8_t midi_aftertouch;
+  uint8_t reserved121[5];
 };
-*/
-// Prologue only
-//static const uint8_t pedal_to_cc_lut[63] = {
-//  0
-//};
+
+struct prlg_prog_t {
+  uint32_t PROG;
+  char name[12];
+  uint8_t keyboard_octave;
+  uint8_t sub_on_pgm_fetch;
+  uint8_t edit_timbre;
+  uint8_t timbre_type;
+  uint8_t main_sub_balance;
+  uint8_t reserved21;
+  uint8_t main_sub_position;
+  uint8_t split_point;
+  uint16_t bpm;
+  uint8_t arp_target;
+  uint8_t reserved27[2];
+  uint8_t category;
+  uint16_t frequent_upper;
+  uint16_t frequent_lower;
+  uint8_t reserved34[3];
+  uint8_t amp_velocity;
+  uint8_t portamento_mode;
+  uint8_t reserved39;
+  uint8_t program_level;
+  uint8_t mod_type;
+  uint16_t mod_speed;
+  uint16_t mod_depth;
+  uint8_t mod_chorus;
+  uint8_t mod_ensemble;
+  uint8_t mod_phaser;
+  uint8_t mod_flanger;
+  uint8_t mod_user;
+  uint8_t micro_tuning;
+  uint8_t scale_key;
+  uint8_t program_tuning;
+  uint8_t program_transpose;
+  uint8_t arp_gate_time;
+  uint8_t arp_rate;
+  uint8_t delay_reverb_dry_wet_lo;
+  uint8_t delay_reverb_dry_wet_hi;
+  uint8_t reserved59[3];
+  uint8_t delay_reverb_type;
+  uint8_t delay_reverb_time_lo;
+  uint8_t delay_reverb_time_hi;
+  uint8_t delay_reverb_depth_lo;
+  uint8_t delay_reverb_depth_hi;
+  uint8_t reverb_type;
+  uint8_t delay_type;
+  uint8_t mod_routing;
+  uint8_t delay_reverb_routing;
+  uint8_t mod_on_off;
+  uint8_t delay_reverb_on_off;
+  uint8_t arp;
+  uint8_t arp_range;
+  uint8_t arp_type;
+  uint16_t like_upper;
+  uint16_t like_lower;
+  prlg_timbre_t timbre[2];
+  uint32_t PRED;
+};
 
 static const __attribute__((used, section(".hooks")))
 union {
