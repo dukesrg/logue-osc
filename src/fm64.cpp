@@ -39,8 +39,8 @@
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 
 //static const dx7_voice_t *voice;
-static uint32_t s_bank;
-static uint32_t s_voice;
+static uint32_t s_bank = -1;
+static uint32_t s_voice = -1;
 static uint32_t s_opcount;
 static const uint8_t *s_algorithm;
 static uint8_t s_opi;
@@ -276,9 +276,6 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
-  s_bank = 0;
-  s_voice = 0;
-  initvoice();
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -474,7 +471,6 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         s_voice = value;
         initvoice();
       }
-      break;
       break;
     case k_user_osc_param_shiftshape:
 //      s_shiftshape = param_val_to_f32(value);

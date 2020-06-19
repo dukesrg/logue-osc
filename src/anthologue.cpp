@@ -172,10 +172,10 @@ static q31_t s_phase2;
 static q31_t s_phase3;
 //static bool s_tie;
 
-static uint8_t s_prog;
+static uint8_t s_prog = -1;
 static uint8_t s_prog_type;
-static uint8_t s_play_mode;
-static uint8_t s_assignable[2];
+static uint8_t s_play_mode = mode_note;
+static uint8_t s_assignable[2] = {p_slider_assign, p_slider_assign};
 
 //static inline __attribute__((optimize("Ofast"), always_inline))
 int32_t getPitch(uint16_t pitch) {
@@ -202,6 +202,7 @@ int32_t getPitch(uint16_t pitch) {
   return res * 256 / 100;
 }
 
+//static inline __attribute__((optimize("Ofast"), always_inline))
 void initVoice() {
   if (logue_prog[s_prog].monologue.SEQD == *(uint32_t*)&"SEQD") {
     const molg_prog_t *p = &logue_prog[s_prog].monologue;
@@ -396,11 +397,7 @@ q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
-  s_prog = 0;
-  s_play_mode = mode_note;
-  s_assignable[0] = p_slider_assign;
-  s_assignable[1] = p_slider_assign;
-  initVoice();
+
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
