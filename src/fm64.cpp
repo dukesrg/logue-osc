@@ -38,10 +38,12 @@
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 
+//static q31_t s_params[p_num];
+//static uint8_t s_assignable[2] = {0, 0};
+
 //static const dx7_voice_t *voice;
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
-static uint32_t s_opcount;
 static const uint8_t *s_algorithm;
 static uint8_t s_opi;
 static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
@@ -94,7 +96,6 @@ static float s_phase[DX7_OPERATOR_COUNT];
 void initvoice() {
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
     const dx7_voice_t *voice = &dx_voices[s_bank][s_voice].dx7;
-    s_opcount = DX7_OPERATOR_COUNT;
     s_opi = voice->opi;
     s_algorithm = dx7_algorithm[voice->als];
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
@@ -121,7 +122,7 @@ void initvoice() {
 #endif
   }
 */
-    for (uint32_t i = s_opcount; i--;) {
+    for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
       if (s_algorithm[i] & ALG_FBK_MASK) {
         s_feedback_src = 0;
         for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
@@ -185,8 +186,8 @@ void initvoice() {
     }
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
-    s_opcount = DX11_OPERATOR_COUNT;
-    s_algorithm = dx11_algorithm[voice->alg];
+    uint32_t algorithm_idx = dx11_algorithm_lut[voice->alg];
+    s_algorithm = dx7_algorithm[algorithm_idx];
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
 
@@ -196,7 +197,13 @@ void initvoice() {
     s_feedback = (1 << (voice->fbl - 7)) * FEEDBACK_RECIP;
 #endif
 
-    for (uint32_t i = s_opcount; i--;) {
+    for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
+      uint32_t i;
+      if (algorithm_idx == 2)
+        i = dx11_alg3_op_lut[k];
+      else
+        i = k;
+
       if (s_algorithm[i] & ALG_FBK_MASK) {
         s_feedback_src = 0;
         for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
@@ -226,7 +233,7 @@ void initvoice() {
           s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1)))));
         else 
           s_egrate[i][j] = 0;
-        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != s_opcount - 1 ? voice->opadd[i].egsft : 0)));
+        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
       s_opval[i] = 0;
       s_oplevel[i] = f32_to_q31(voice->op[i].out * SCALE_RECIP);
@@ -243,7 +250,7 @@ void initvoice() {
           s_egrate[i][j] = - k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
         else 
           s_egrate[i][j] = 0.f;
-        s_eglevel[i][j] = 1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != s_opcount - 1 ? voice->opadd[i].egsft : 0));
+        s_eglevel[i][j] = 1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0));
       }
       s_opval[i] = 0.f;
       s_oplevel[i] = voice->op[i].out * SCALE_RECIP;
@@ -266,6 +273,21 @@ void initvoice() {
 //todo: Waveform
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
+#endif
+#ifdef USE_Q31_PITCH
+      s_opval[4] = 0;
+      s_oplevel[4] = 0;
+      s_modlevel[4] = 0;
+      s_opval[5] = 0;
+      s_oplevel[5] = 0;
+      s_modlevel[5] = 0;
+#else
+      s_opval[4] = 0.f;
+      s_oplevel[4] = 0.f;
+      s_modlevel[4] = 0.f;
+      s_opval[5] = 0.f;
+      s_oplevel[5] = 0.f;
+      s_modlevel[5] = 0.f;
 #endif
     }
   }
@@ -294,7 +316,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
 #endif
   q31_t opw0[DX7_OPERATOR_COUNT];
-  for (uint32_t i = s_opcount; i--;) {
+  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
 #ifdef USE_Q31_PITCH
     if (s_fixedfreq[i])
       opw0[i] = s_oppitch[i];
@@ -310,7 +332,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #else 
   float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
   float opw0[DX7_OPERATOR_COUNT];
-  for (uint32_t i = s_opcount; i--;) {
+  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_fixedfreq[i])
       opw0[i] = s_oppitch[i];
     else
@@ -325,7 +347,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #else
     osc_out = 0.f;
 #endif
-    for (uint32_t i = 0; i < s_opcount; i++) {
+    for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
 #ifdef USE_Q31
 #ifdef USE_Q31_PHASE
       modw0 = s_phase[i];
@@ -431,7 +453,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  for (uint32_t i = s_opcount; i--;) {
+  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_opi)
 #ifdef USE_Q31_PHASE
       s_phase[i] = 0;
@@ -455,9 +477,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  for (uint32_t i = s_opcount; i--;) {
+  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
- }
+  }
 }
 
 void OSC_PARAM(uint16_t index, uint16_t value)
