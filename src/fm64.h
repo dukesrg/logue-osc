@@ -37,6 +37,8 @@
 #define ALG_MOD5_MASK 0x02 //3
 #define ALG_MOD6_MASK 0x01 //4
 
+#define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
+
 static const uint8_t dx7_algorithm[32][DX7_OPERATOR_COUNT] = {
   {0x41, 0x01, 0x02, 0x84, 0x00, 0x90}, //1 = 1
   {0x00, 0x01, 0x02, 0x84, 0x50, 0x90}, //2
@@ -217,3 +219,76 @@ union {
   dx7_voice_t dx7;
   dx11_voice_t dx11;
 } dx_voices[BANK_COUNT][BANK_SIZE] = {};
+
+enum {
+  p_feedback = 0,
+  p_cc1,
+  p_cc2,
+  p_cc3,
+  p_cc4,
+  p_cc5,
+  p_cc6,
+  p_cc7,
+  p_cc8,
+  p_op6_level,
+  p_op6_modlevel,
+  p_cc11,
+  p_cc12,
+  p_cc13,
+  p_cc14,
+  p_cc15,
+  p_cc16,
+  p_cc17,
+  p_cc18,
+  p_op5_level,
+  p_op5_modlevel,
+  p_cc21,
+  p_cc22,
+  p_cc23,
+  p_cc24,
+  p_cc25,
+  p_cc26,
+  p_cc27,
+  p_cc28,
+  p_op4_level,
+  p_op4_modlevel,
+  p_cc31,
+  p_cc32,
+  p_cc33,
+  p_cc34,
+  p_cc35,
+  p_cc36,
+  p_cc37,
+  p_cc38,
+  p_op3_level,
+  p_op3_modlevel,
+  p_cc41,
+  p_cc42,
+  p_cc43,
+  p_cc44,
+  p_cc45,
+  p_cc46,
+  p_cc47,
+  p_cc48,
+  p_op2_level,
+  p_op2_modlevel,
+  p_cc51,
+  p_cc52,
+  p_cc53,
+  p_cc54,
+  p_cc55,
+  p_cc56,
+  p_cc57,
+  p_cc58,
+  p_op1_level,
+  p_op1_modlevel,
+  p_cc61,
+  p_cc62,
+  p_cc63,
+  p_cc64,
+  p_cc65,
+  p_cc66,
+  p_cc67,
+  p_cc68,
+  p_num
+};

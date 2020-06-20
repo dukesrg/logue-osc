@@ -32,7 +32,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FM64|Voice select|Bank select|Voice select 1&hellip;32|Bank select 1&hellip;4|-|-|-|-|
+|FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|-|-|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger|Assignable controller 1 select 1&hellip;39|Assignable controller 2 select 1&hellip;39|-|-|
 
 ### Oscillator notes
@@ -43,6 +43,8 @@ For user-customizable oscillators online constructor is available at https://duk
 * Morpheus LFO rate control is in non-linear scale with more precise control in lower frequencies.
 * FM64 is very rough and only limited number of features are supported, currently most voices sounds far different from the originals.
 * Using FX with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations. Currently using 1 FX looks safe.
+* DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels set to silent, but may be altered manually.
+* DX21/DX11 voices with algorithm 3 initialized with different operator order to match DX7 algorithm 8.
 * Anthologue patch select sets VCOs parameters according to selected patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for monologue program).
 * Any types and combinations of logue-series can be injected in Anthologue.
 * Maximum number of Anthologue programs depends on their types and combinations and can vary from 25 to 76.
@@ -59,6 +61,19 @@ For user-customizable oscillators online constructor is available at https://duk
 |20&hellip;35|Wave Bank F|
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
+
+|#|FM64 Assignable controller 1&2|1x|2x|3x|4x|5x|6x|
+|-|-|-|-|-|-|-|-|
+|0|N/A|Op.6 level|Op.5 level|Op.4 level|Op.3 level|Op.2 level|Op.1 level|
+|1|Feedback|Op.6 mod.level|Op.5 mod.level|Op.4 mod.level|Op.3 mod.level|Op.2 mod.level|Op.1 mod.level|
+|2|-|-|-|-|-|-|-|
+|3|-|-|-|-|-|-|-|
+|4|-|-|-|-|-|-|-|
+|5|-|-|-|-|-|-|-|
+|6|-|-|-|-|-|-|-|
+|7|-|-|-|-|-|-|-|
+|8|-|-|-|-|-|-|-|
+|9|-|-|-|-|-|-|-|
 
 |#|Anthologue Waves|
 |-|-|
