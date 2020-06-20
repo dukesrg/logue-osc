@@ -18,6 +18,7 @@
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
 #define to10bit(h, l) (uint16_t)((((uint16_t)h) << 2) | l)
+#define prlgto10bit(h, l) (uint16_t)((((uint16_t)h) << 8) | l)
 
 #define SEQ_STEP_COUNT 16
 #define SEQ_MOTION_SLOT_COUNT 4
@@ -245,6 +246,12 @@ struct molg_prog_t {
   molg_step_event_data_t step_event_data[SEQ_STEP_COUNT];
 };
 
+enum {
+  multi_noise = 0,
+  multi_vpm,
+  multi_user,
+};
+
 struct prlg_osc_param_t {
   uint8_t value;
   uint8_t reserved;
@@ -263,8 +270,8 @@ struct prlg_timbre_t {
   uint16_t vco1_pitch;
   uint16_t vco1_shape;
   uint8_t pitch_eg_target;
-  uint8_t pitch_eg_int_lo  ;
-  uint8_t pitch_eg_int_hi  ;
+  uint8_t pitch_eg_int_lo;
+  uint8_t pitch_eg_int_hi;
   uint8_t vco2_wave;
   uint8_t vco2_octave;
   uint8_t vco2_pitch_lo;
@@ -798,7 +805,7 @@ const void *getProg(uint32_t index, uint8_t *prog_type) {
   }
   *prog_type = j;
   return prog_ptr;
-};
+}
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 int32_t getPitch(uint16_t pitch) {

@@ -24,9 +24,9 @@ static uint8_t s_seq_step;
 static uint16_t s_seq_step_bit;
 static uint16_t s_seq_step_mask;
 static uint32_t s_sample_pos;
-static uint8_t s_seq_note[16];
-static uint8_t s_seq_vel[16];
-static q31_t s_seq_gate[16];
+static uint8_t s_seq_note[SEQ_STEP_COUNT];
+static uint8_t s_seq_vel[SEQ_STEP_COUNT];
+static q31_t s_seq_gate[SEQ_STEP_COUNT];
 static uint32_t s_seq_gate_len;
 static bool s_seq_gate_on;
 static uint32_t s_seq_quant;
@@ -55,166 +55,213 @@ static inline __attribute__((optimize("Ofast"), always_inline))
 void initVoice() {
   const void *prog_ptr = getProg(s_prog, &s_prog_type);
   switch (s_prog_type) {
-    case monologue_ID: {
-      const molg_prog_t *p = (molg_prog_t*)prog_ptr;
- 
-    s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
-    s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
-    s_params[p_vco2_pitch] = 0;
-    s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
-    s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
-    s_params[p_vco3_shape] = 0;
-    s_params[p_vco1_octave] = p->vco1_octave * 12;
-    s_params[p_vco2_octave] = p->vco2_octave * 12;
-    s_params[p_vco3_octave] = 0;
-    s_params[p_vco1_wave] = p->vco1_wave;
-    s_params[p_vco2_wave] = p->vco2_wave == wave_sqr ? (uint32_t)wave_noise : p->vco2_wave;
-    s_params[p_vco3_wave] = wave_sqr;
-    s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
-    s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
-    s_params[p_vco3_level] = 0;
-    s_params[p_vco2_sync] = p->ring_sync==2;
-    s_params[p_vco3_sync] = 0;
-    s_params[p_vco2_ring] = p->ring_sync==0;
-    s_params[p_vco3_ring] = 0;
-    s_params[p_vco2_cross] = 0;
-    s_params[p_vco3_cross] = 0;
-//todo: drive
-//    s_params[p_drive] = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
-
-    s_params[p_pitch_bend] = 0;
-    s_params[p_bend_range_pos] = p->bend_range_pos;
-    s_params[p_bend_range_neg] = p->bend_range_neg;
-    s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
-    s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
-    s_params[p_slider_assign] = p->slider_assign;
-
-    s_seq_len = p->step_length;
-    s_seq_res = (k_samplerate * 150) << p->step_resolution;
-    s_seq_step_mask = p->step_mask;
-
-    for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
-      s_seq_note[i] = p->step_event_data[i].note;
-      s_seq_vel[i] = p->step_event_data[i].velocity;
-      if (p->step_event_data[i].gate.gate_time < 72) {
-        s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate.gate_time) * 0x01C71C72;
-      } else if (p->step_event_data[i].gate.gate_time == 72) {
-        s_seq_gate[i] = 0x7FFFFFFF;
-      } else {
-
-      }
-      for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
-        const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
-        if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
-          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
-            s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
-          else if (motion_slot_param->parameter_id == 56)
-            s_seq_motion_param[j] = p_pitch_bend;
-          else
-            s_seq_motion_param[j] = 0;
-          if (s_seq_motion_param[j]) {
-            s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
-            if (motion_slot_param->smooth_enable) {
-              s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
-            } else {
-              s_seq_motion_diff[i][j] = 0;
-            }
-          }
-        } else {
-          s_seq_motion_param[j] = 0;
-        }
-      }
-    }
-      }; break;
     case minilogue_ID: {
       const mnlg_prog_t *p = (mnlg_prog_t*)prog_ptr;
  
-    s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
-    s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
-    s_params[p_vco2_pitch] = 0;
-    s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
-    s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
-    s_params[p_vco3_shape] = 0;
-    s_params[p_vco1_octave] = p->vco1_octave * 12;
-    s_params[p_vco2_octave] = p->vco2_octave * 12;
-    s_params[p_vco3_octave] = 0;
-    s_params[p_vco1_wave] = p->vco1_wave;
-    s_params[p_vco2_wave] = p->vco2_wave;
-    s_params[p_vco3_wave] = wave_noise;
-    s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
-    s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
-    s_params[p_vco3_level] = param_val_to_q31(to10bit(p->noise_level_hi, p->noise_level_lo));
-    s_params[p_vco2_sync] = p->sync;
-    s_params[p_vco3_sync] = 0;
-    s_params[p_vco2_ring] = p->ring;
-    s_params[p_vco3_ring] = 0;
-    s_params[p_vco2_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
-    s_params[p_vco3_cross] = 0;
+      s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
+      s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
+      s_params[p_vco3_pitch] = 0;
+      s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
+      s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
+      s_params[p_vco3_shape] = 0;
+      s_params[p_vco1_octave] = p->vco1_octave * 12;
+      s_params[p_vco2_octave] = p->vco2_octave * 12;
+      s_params[p_vco3_octave] = 0;
+      s_params[p_vco1_wave] = p->vco1_wave;
+      s_params[p_vco2_wave] = p->vco2_wave;
+      s_params[p_vco3_wave] = wave_noise;
+      s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
+      s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
+      s_params[p_vco3_level] = param_val_to_q31(to10bit(p->noise_level_hi, p->noise_level_lo));
+      s_params[p_vco2_sync] = p->sync;
+      s_params[p_vco3_sync] = 0;
+      s_params[p_vco2_ring] = p->ring;
+      s_params[p_vco3_ring] = 0;
+      s_params[p_vco2_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
+      s_params[p_vco3_cross] = 0;
 //todo: drive
-//    s_params[p_drive] = 0;
+//      s_params[p_drive] = 0;
+      s_params[p_pitch_bend] = 0;
+      s_params[p_bend_range_pos] = p->bend_range_pos;
+      s_params[p_bend_range_neg] = p->bend_range_neg;
+      s_params[p_slider_assign] = p->slider_assign;
 
-    s_params[p_pitch_bend] = 0;
-    s_params[p_bend_range_pos] = p->bend_range_pos;
-    s_params[p_bend_range_neg] = p->bend_range_neg;
-    s_params[p_program_level] = (uint32_t)(p->program_level - 102) * 0x0147AE14;
-    s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
-    s_params[p_slider_assign] = p->slider_assign;
+      s_params[p_program_level] = (p->program_level - 102) * 0x0147AE14;
+      s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
 
-    s_seq_len = p->step_length;
-    s_seq_res = (k_samplerate * 150) << p->step_resolution;
-    s_seq_step_mask = p->step_mask;
-
-    for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
-      s_seq_note[i] = p->step_event_data[i].note[0];
-      s_seq_vel[i] = p->step_event_data[i].velocity[0];
-      if (p->step_event_data[i].gate[0].gate_time < 72) {
-        s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate[0].gate_time) * 0x01C71C72;
-      } else if (p->step_event_data[i].gate[0].gate_time == 72) {
-        s_seq_gate[i] = 0x7FFFFFFF;
-      } else {
-
-      }
-      for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
-        const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
-        if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
-          if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
-            s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
-          else if (motion_slot_param->parameter_id == 61)
-            s_seq_motion_param[j] = p_pitch_bend;
-          else
-            s_seq_motion_param[j] = 0;
-          if (s_seq_motion_param[j]) {
-            s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
-            if (motion_slot_param->smooth_enable) {
-              s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
-            } else {
-              s_seq_motion_diff[i][j] = 0;
+      s_seq_len = p->step_length;
+      s_seq_res = (k_samplerate * 150) << p->step_resolution;
+      s_seq_step_mask = p->step_mask;
+      for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
+        s_seq_note[i] = p->step_event_data[i].note[0];
+        s_seq_vel[i] = p->step_event_data[i].velocity[0];
+        if (p->step_event_data[i].gate[0].gate_time < 72)
+          s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate[0].gate_time) * 0x01C71C72;
+        else if (p->step_event_data[i].gate[0].gate_time == 72)
+          s_seq_gate[i] = 0x7FFFFFFF;
+//todo: tie
+//        else
+//
+        for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+          const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
+          if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
+            if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
+             s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
+             else if (motion_slot_param->parameter_id == 61)
+              s_seq_motion_param[j] = p_pitch_bend;
+            else
+              s_seq_motion_param[j] = 0;
+            if (s_seq_motion_param[j]) {
+              s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
+              if (motion_slot_param->smooth_enable)
+                s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
+              else
+                s_seq_motion_diff[i][j] = 0;
             }
-          }
-        } else {
-          s_seq_motion_param[j] = 0;
+          } else
+            s_seq_motion_param[j] = 0;
         }
       }
-    }
+    }; break;
+    case monologue_ID: {
+      const molg_prog_t *p = (molg_prog_t*)prog_ptr;
+ 
+      s_params[p_vco1_pitch] = getPitch(to10bit(p->vco1_pitch_hi, p->vco1_pitch_lo));
+      s_params[p_vco2_pitch] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
+      s_params[p_vco3_pitch] = 0;
+      s_params[p_vco1_shape] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
+      s_params[p_vco2_shape] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
+      s_params[p_vco3_shape] = 0;
+      s_params[p_vco1_octave] = p->vco1_octave * 12;
+      s_params[p_vco2_octave] = p->vco2_octave * 12;
+      s_params[p_vco3_octave] = 0;
+      s_params[p_vco1_wave] = p->vco1_wave;
+      s_params[p_vco2_wave] = p->vco2_wave == wave_sqr ? (uint32_t)wave_noise : p->vco2_wave;
+      s_params[p_vco3_wave] = wave_noise;
+      s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
+      s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
+      s_params[p_vco3_level] = 0;
+      s_params[p_vco2_sync] = p->ring_sync==2;
+      s_params[p_vco3_sync] = 0;
+      s_params[p_vco2_ring] = p->ring_sync==0;
+      s_params[p_vco3_ring] = 0;
+      s_params[p_vco2_cross] = 0;
+      s_params[p_vco3_cross] = 0;
+//todo: drive
+//      s_params[p_drive] = param_val_to_q31(to10bit(p->drive_hi, p->drive_lo));
+      s_params[p_pitch_bend] = 0;
+      s_params[p_bend_range_pos] = p->bend_range_pos;
+      s_params[p_bend_range_neg] = p->bend_range_neg;
+      s_params[p_slider_assign] = p->slider_assign;
 
-//  }
-      }; break;
+      s_params[p_program_level] = (p->program_level - 102) * 0x0147AE14;
+      s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+
+      s_seq_len = p->step_length;
+      s_seq_res = (k_samplerate * 150) << p->step_resolution;
+      s_seq_step_mask = p->step_mask;
+      for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
+        s_seq_note[i] = p->step_event_data[i].note;
+        s_seq_vel[i] = p->step_event_data[i].velocity;
+        if (p->step_event_data[i].gate.gate_time < 72)
+          s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate.gate_time) * 0x01C71C72;
+        else if (p->step_event_data[i].gate.gate_time == 72)
+          s_seq_gate[i] = 0x7FFFFFFF;
+//todo: tie
+//        else
+//
+        for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+          const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
+          if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
+            if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
+              s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
+            else if (motion_slot_param->parameter_id == 56)
+              s_seq_motion_param[j] = p_pitch_bend;
+            else
+              s_seq_motion_param[j] = 0;
+            if (s_seq_motion_param[j]) {
+              s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j][0];
+              if (motion_slot_param->smooth_enable)
+                s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j][1] - s_seq_motion_start[i][j];
+              else
+                s_seq_motion_diff[i][j] = 0;
+            }
+          } else
+            s_seq_motion_param[j] = 0;
+        }
+      }
+    }; break;
     case prologue_ID: {
       const prlg_prog_t *p = (prlg_prog_t*)prog_ptr;
+      const prlg_timbre_t *t = &p->timbre[0];
 
-      }; break;
+      s_params[p_vco1_pitch] = getPitch(t->vco1_pitch);
+      s_params[p_vco2_pitch] = getPitch(prlgto10bit(t->vco2_pitch_hi, t->vco2_pitch_lo));
+      s_params[p_vco3_pitch] = 0;
+      s_params[p_vco1_shape] = t->vco1_shape;
+      s_params[p_vco2_shape] = prlgto10bit(t->vco2_shape_hi, t->vco2_shape_lo);
+      s_params[p_vco3_shape] = t->multi_type==multi_noise ? t->noise_shape : 0;
+      s_params[p_vco1_octave] = t->vco1_octave * 12;
+      s_params[p_vco2_octave] = t->vco2_octave * 12;
+      s_params[p_vco3_octave] = t->multi_octave * 12;
+      s_params[p_vco1_wave] = t->vco1_wave;
+      s_params[p_vco2_wave] = t->vco2_wave;
+      s_params[p_vco3_wave] = t->multi_type==multi_noise ? wave_noise : wave_sqr;
+      s_params[p_vco1_level] = t->vco1_level;
+      s_params[p_vco2_level] = t->vco2_level;
+      s_params[p_vco3_level] = t->multi_type==multi_noise ? t->multi_level : 0;
+      s_params[p_vco2_sync] = t->ring_sync==2;
+      s_params[p_vco3_sync] = 0;
+      s_params[p_vco2_ring] = t->ring_sync==0;
+      s_params[p_vco3_ring] = 0;
+      s_params[p_vco2_cross] = t->cross_mod_depth;
+      s_params[p_vco3_cross] = 0;
+//todo: drive
+//      s_params[p_drive] = 0;
+      s_params[p_pitch_bend] = 0;
+      s_params[p_bend_range_pos] = t->bend_range_pos;
+      s_params[p_bend_range_neg] = t->bend_range_neg;
+      s_params[p_slider_assign] = t->mod_wheel_assign;
+//todo: e. pedal assign & LUT
+//      s_params[p_slider_assign] = t->e_pedal_assign;
+//todo: mod wheel range
+//    s_param[p_mod_wheel_range] = (t->mod_wheel_range - 100) * 0x0147AE14;
+
+//todo: timbre 2 & sub oscillator
+
+//todo: true dB level conversion
+      s_params[p_program_level] = p->program_level - 100;
+      if (s_params[p_program_level] >= 32)
+        s_params[p_program_level] = 0x7FFFFFFF; // +6dB
+      if (s_params[p_program_level] > 0)
+        s_params[p_program_level] *= 0x04000000; // (+0...+6dB)
+      else if (s_params[p_program_level] < 0)
+        s_params[p_program_level] *= 0x12492492; // 1/7 ~-18dB
+      s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+
+      s_seq_len = 0;
+      s_seq_res = 0;
+      s_seq_step_mask = 0;
+      for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
+        s_seq_note[i] = 0;
+        s_seq_vel[i] = 0;
+        s_seq_gate[i] = 0;
+        for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+          s_seq_motion_param[j] = 0;
+          s_seq_motion_start[i][j] = 0;
+          s_seq_motion_diff[i][j] = 0;
+        }
+      }
+    }; break;
     case minilogue_xd_ID: {
       const mnlgxd_prog_t *p = (mnlgxd_prog_t*)prog_ptr;
-
-
-
 
 //          else if (motion_slot_param->parameter_id == 126)
 //            s_seq_motion_param[j] = p_pitch_bend;
 //          else
 //            s_seq_motion_param[j] = 0;
 
-      }; break;
+    }; break;
     default:
       break;
   }
@@ -418,8 +465,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_shiftshape:
       index = s_assignable[index - k_user_osc_param_shape];
       if (index == p_slider_assign) {
-//minilogue pitch/gate slider asign is 77/78, not 0/1!
-        if (s_params [p_slider_assign] == 77 || s_params[p_slider_assign] == 56)
+//minilogue pitch/gate slider asign is 77/78, not 0/1 as documented
+        if (s_params[p_slider_assign] == 77 || s_params[p_slider_assign] == 56)
           index = p_pitch_bend;
         else if (s_params[p_slider_assign] >= SLIDER_PARAM_LUT_FIRST && s_params[p_slider_assign] <= SLIDER_PARAM_LUT_LAST)
           index = slider_param_lut[s_prog_type][s_params[p_slider_assign] - SLIDER_PARAM_LUT_FIRST];
