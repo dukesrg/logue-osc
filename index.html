@@ -88,6 +88,7 @@
 "use strict";
 var data;
 var count;
+var maxsize;
 
 function inject(osc) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
@@ -108,7 +109,7 @@ function inject(osc) {
       zip.file(osc.name + "/payload.bin").async("Uint8Array").then((text) => {
         payload = text;
         var offs = 0x40;
-        for (var i = 0; i < data.length && i < 4; i++) {
+        for (var i = 0; i < data.length; i++) {
           for (var j = 0; j < data[i].length; j++) {
             payload[offs++] = data[i][j];
           }
@@ -149,7 +150,9 @@ function getInfo(osc) {
       count[osc] = manifest.header.custom_data[0][3];
       if (!count[osc])
         count[osc] = 1;
-      document.querySelector('#' + osc + '-size').innerHTML = manifest.header.custom_data[0][2] + ' x ' + count[osc];
+      maxsize[osc] = manifest.header.custom_data[0][2];
+      document.querySelector('#' + osc + '-size').innerHTML = maxsize[osc] + ' x ' + count[osc];
+      maxsize[osc] *= count[osc];
       document.querySelector('#' + osc + '-description').innerHTML = manifest.header.custom_data[0][0];
     })
   })
@@ -189,6 +192,7 @@ function handleFiles(f) {
   var name = document.querySelector('input[type=text][name=' + osc + ']');
   name.value = "";
   data = new Array();
+  var datalength = 0;
   status.innerHTML = "";
   for (var i = 0; i < files.length; i++) {
     var reader = new FileReader();
@@ -275,22 +279,36 @@ function handleFiles(f) {
           status.innerHTML += "skipped unsupported file format";
         }
       } else if (osc === "Anthologue") {
-        if (array.length != 448) {
+        if (array.length != 448 && array.length != 336 && array.length != 1024) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
           if (String.fromCharCode.apply(String, array.slice(0, 4)) == "PROG") {
-            if (data.length >= count[osc]) {
+            if (datalength + array.length > maxsize[osc]) {
               status.innerHTML += "skipped (maximum program limit reached)";
             } else {
-              var progname = String.fromCharCode.apply(String, array.slice(4, 16)).replace(/\0/g,'');
-              if (String.fromCharCode.apply(String, array.slice(48, 52)) == "SEQD") {
+              var progname = document.createElement('progname');
+              progname.textContent = String.fromCharCode.apply(String, array.slice(4, 16)).replace(/\0/g,'');
+              progname = progname.innerHTML;
+              if (String.fromCharCode.apply(String, array.slice(96, 100)) == "SEQD") {
+                status.innerHTML += "added minilogue program " + progname;
+                name.value += progname;
+                data.push(array);
+                datalength += array.length;
+              } else if (String.fromCharCode.apply(String, array.slice(48, 52)) == "SEQD") {
                 status.innerHTML += "added monologue program " + progname;
                 name.value += progname;
                 data.push(array);
-              } else if (String.fromCharCode.apply(String, array.slice(96, 100)) == "SEQD") {
-                status.innerHTML += "added minilogue program " + progname;
+                datalength += array.length;
+              } else if (String.fromCharCode.apply(String, array.slice(332, 336)) == "PRED") {
+                status.innerHTML += "added prologue program " + progname;
                 name.value += progname;
-                data.push(array);               
+                data.push(array);
+                datalength += array.length;
+              } else if (String.fromCharCode.apply(String, array.slice(156, 160)) == "PRED") {
+                status.innerHTML += "added minilogue xd program " + progname;
+                name.value += progname;
+                data.push(array);
+                datalength += array.length;
               } else {
                 status.innerHTML += "skipped unsupported file format";
               }
@@ -321,6 +339,7 @@ function onLoad() {
   if (platform)
     platform.checked = true;
   count = new Array();
+  maxsize = new Array();
   ["FM64", "Morpheus", "Anthologue"].map(e => getInfo(e));
 }
 </script>
