@@ -62,10 +62,10 @@ For user-customizable oscillators online constructor is available at https://duk
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|#|FM64 Assignable controller 1&2|1x|2x|3x|4x|5x|6x|
+|#|FM64<br>Assignable controllers 1&2|1x (Op.6)|2x (Op.5)|3x (Op.4)|4x (Op.3)|5x (Op.2)|6x (Op.1)|
 |-|-|-|-|-|-|-|-|
-|0|N/A|Op.6 level|Op.5 level|Op.4 level|Op.3 level|Op.2 level|Op.1 level|
-|1|Feedback|Op.6 mod.level|Op.5 mod.level|Op.4 mod.level|Op.3 mod.level|Op.2 mod.level|Op.1 mod.level|
+|0|N/A|level|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|
+|1|Feedback|Mod. level|Mod. level|Mod. level|Mod. level|Mod. level|Mod. level|
 |2|-|-|-|-|-|-|-|
 |3|-|-|-|-|-|-|-|
 |4|-|-|-|-|-|-|-|
@@ -75,25 +75,25 @@ For user-customizable oscillators online constructor is available at https://duk
 |8|-|-|-|-|-|-|-|
 |9|-|-|-|-|-|-|-|
 
-|#|Anthologue Waves|
+|#|Anthologue<br>Assignable controllers 1&2|1x (VCO 1)|2x (VCO 2)|3x (VCO 3)|
+|-|-|-|-|-|
+|0|N/A|Pitch|Pitch|Pitch|
+|1|Slider|Shape|Shape|Shape|
+|2|Pitch Bend|Octave|Octave|Octave|
+|3|Bend Range +|Wave|Wave|Wave|
+|4|Bend Range -|Level|Level|Level|
+|5|Program Level|-|Sync|Sync|Sync|
+|6|Keyboard Octave|-|Ring Mod|Ring Mod|
+|7|-|-|Cross Mod Depth|Cross Mod Depth|
+|8|-|-|-|-|
+|9|-|-|-|-|
+
+|#|Anthologue<br>Waves|
 |-|-|
 |1|Square|
 |2|Triangle|
 |3|Saw|
 |4|Noise|
-
-|#|Anthologue Assignable controller 1&2|1x|2x|3x|
-|-|-|-|-|-|
-|0|N/A|VCO 1 Pitch|VCO 2 Pitch|VCO 3 Pitch|
-|1|Slider|VCO 1 Shape|VCO 2 Shape|VCO 3 Shape|
-|2|Pitch Bend|VCO 1 Octave|VCO 2 Octave|VCO 3 Octave|
-|3|Bend Range +|VCO 1 Wave|VCO 2 Wave|VCO 3 Wave|
-|4|Bend Range -|VCO 1 Level|VCO 2 Level|VCO 3 Level|
-|5|Program Level|-|VCO 2 Sync|VCO 3 Sync|
-|6|Keyboard Octave|-|VCO 2 Ring Mod|VCO 3 Ring Mod|
-|7|-|-|VCO 2 Cross Mod Depth|VCO 3 Cross Mod Depth|
-|8|-|-|-|-|
-|9|-|-|-|-|
 
 ### manifest.json custom data extension
 
