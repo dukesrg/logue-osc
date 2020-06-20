@@ -73,9 +73,9 @@ void initVoice() {
       s_params[p_vco1_level] = param_val_to_q31(to10bit(p->vco1_level_hi, p->vco1_level_lo));
       s_params[p_vco2_level] = param_val_to_q31(to10bit(p->vco2_level_hi, p->vco2_level_lo));
       s_params[p_vco3_level] = param_val_to_q31(to10bit(p->noise_level_hi, p->noise_level_lo));
-      s_params[p_vco2_sync] = p->sync;
+      s_params[p_vco2_sync] = ~p->sync;
       s_params[p_vco3_sync] = 0;
-      s_params[p_vco2_ring] = p->ring;
+      s_params[p_vco2_ring] = ~p->ring;
       s_params[p_vco3_ring] = 0;
       s_params[p_vco2_cross] = param_val_to_q31(to10bit(p->cross_mod_depth_hi, p->cross_mod_depth_lo));
       s_params[p_vco3_cross] = 0;
@@ -198,23 +198,23 @@ void initVoice() {
       s_params[p_vco1_pitch] = getPitch(t->vco1_pitch);
       s_params[p_vco2_pitch] = getPitch(prlgto10bit(t->vco2_pitch_hi, t->vco2_pitch_lo));
       s_params[p_vco3_pitch] = 0;
-      s_params[p_vco1_shape] = t->vco1_shape;
-      s_params[p_vco2_shape] = prlgto10bit(t->vco2_shape_hi, t->vco2_shape_lo);
-      s_params[p_vco3_shape] = t->multi_type==multi_noise ? t->noise_shape : 0;
+      s_params[p_vco1_shape] = param_val_to_q31(t->vco1_shape);
+      s_params[p_vco2_shape] = param_val_to_q31(prlgto10bit(t->vco2_shape_hi, t->vco2_shape_lo));
+      s_params[p_vco3_shape] = param_val_to_q31(t->multi_type==multi_noise ? t->noise_shape : 0);
       s_params[p_vco1_octave] = t->vco1_octave * 12;
       s_params[p_vco2_octave] = t->vco2_octave * 12;
       s_params[p_vco3_octave] = t->multi_octave * 12;
       s_params[p_vco1_wave] = t->vco1_wave;
       s_params[p_vco2_wave] = t->vco2_wave;
       s_params[p_vco3_wave] = t->multi_type==multi_noise ? wave_noise : wave_sqr;
-      s_params[p_vco1_level] = t->vco1_level;
-      s_params[p_vco2_level] = t->vco2_level;
-      s_params[p_vco3_level] = t->multi_type==multi_noise ? t->multi_level : 0;
+      s_params[p_vco1_level] = param_val_to_q31(t->vco1_level);
+      s_params[p_vco2_level] = param_val_to_q31(t->vco2_level);
+      s_params[p_vco3_level] = param_val_to_q31(t->multi_type==multi_noise ? t->multi_level : 0);
       s_params[p_vco2_sync] = t->ring_sync==2;
       s_params[p_vco3_sync] = 0;
       s_params[p_vco2_ring] = t->ring_sync==0;
       s_params[p_vco3_ring] = 0;
-      s_params[p_vco2_cross] = t->cross_mod_depth;
+      s_params[p_vco2_cross] = param_val_to_q31(t->cross_mod_depth);
       s_params[p_vco3_cross] = 0;
 //todo: drive
 //      s_params[p_drive] = 0;
@@ -234,9 +234,9 @@ void initVoice() {
       if (s_params[p_program_level] >= 32)
         s_params[p_program_level] = 0x7FFFFFFF; // +6dB
       if (s_params[p_program_level] > 0)
-        s_params[p_program_level] *= 0x04000000; // (+0...+6dB)
+        s_params[p_program_level] *= 0x04000000; // (+0...+6dB) 1/32
       else if (s_params[p_program_level] < 0)
-        s_params[p_program_level] *= 0x12492492; // 1/7 ~-18dB
+        s_params[p_program_level] *= 0x0145D174; // (-0dB...-18dB] 7/8 / 88
       s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
 
       s_seq_len = 0;
@@ -256,11 +256,83 @@ void initVoice() {
     case minilogue_xd_ID: {
       const mnlgxd_prog_t *p = (mnlgxd_prog_t*)prog_ptr;
 
-//          else if (motion_slot_param->parameter_id == 126)
-//            s_seq_motion_param[j] = p_pitch_bend;
-//          else
-//            s_seq_motion_param[j] = 0;
+      s_params[p_vco1_pitch] = getPitch(p->vco1_pitch);
+      s_params[p_vco2_pitch] = getPitch(p->vco2_pitch);
+      s_params[p_vco3_pitch] = 0;
+      s_params[p_vco1_shape] = param_val_to_q31(p->vco1_shape);
+      s_params[p_vco2_shape] = param_val_to_q31(p->vco2_shape);
+      s_params[p_vco3_shape] = param_val_to_q31(p->multi_type==multi_noise ? p->noise_shape : 0);
+      s_params[p_vco1_octave] = p->vco1_octave * 12;
+      s_params[p_vco2_octave] = p->vco2_octave * 12;
+      s_params[p_vco3_octave] = p->multi_octave * 12;
+      s_params[p_vco1_wave] = p->vco1_wave;
+      s_params[p_vco2_wave] = p->vco2_wave;
+      s_params[p_vco3_wave] = p->multi_type==multi_noise ? wave_noise : wave_sqr;
+      s_params[p_vco1_level] = param_val_to_q31(p->vco1_level);
+      s_params[p_vco2_level] = param_val_to_q31(p->vco2_level);
+      s_params[p_vco3_level] = param_val_to_q31(p->multi_type==multi_noise ? p->multi_level : 0);
+      s_params[p_vco2_sync] = ~p->sync;
+      s_params[p_vco3_sync] = 0;
+      s_params[p_vco2_ring] = ~p->ring;
+      s_params[p_vco3_ring] = 0;
+      s_params[p_vco2_cross] = param_val_to_q31(p->cross_mod_depth);
+      s_params[p_vco3_cross] = 0;
+//todo: drive
+//      s_params[p_drive] = 0;
+      s_params[p_pitch_bend] = 0;
+      s_params[p_bend_range_pos] = p->bend_range_pos;
+      s_params[p_bend_range_neg] = p->bend_range_neg;
+      s_params[p_slider_assign] = p->joystick_assign_pos;
+//todo: joystick range pos, assign & range neg
+//      s_param[joystick_range_pos] = (p->joystick_range_pos - 100) * 0x0147AE14;
+//      s_params[p_joystick_assign_neg] = p->joystick_assign_neg;
+//      s_param[joystick_range_neg] = (p->joystick_range_neg - 100) * 0x0147AE14;
 
+//todo: true dB level conversion
+      s_params[p_program_level] = p->program_level - 100;
+      if (s_params[p_program_level] >= 32)
+        s_params[p_program_level] = 0x7FFFFFFF; // +6dB
+      if (s_params[p_program_level] > 0)
+        s_params[p_program_level] *= 0x04000000; // (+0...+6dB)
+      else if (s_params[p_program_level] < 0)
+        s_params[p_program_level] *= 0x0145D174; // (-0dB...-18dB] 7/8 / 88
+      s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+
+      s_seq_len = p->step_length;
+      s_seq_res = (k_samplerate * 150) << p->step_resolution;
+      s_seq_step_mask = p->step_mask;
+      for (uint32_t i = 0; i < SEQ_STEP_COUNT; i++) {
+        s_seq_note[i] = p->step_event_data[i].note[0];
+        s_seq_vel[i] = p->step_event_data[i].velocity[0];
+        if (p->step_event_data[i].gate[0].gate_time < 72)
+          s_seq_gate[i] = (uint32_t)(p->step_event_data[i].gate[0].gate_time) * 0x01C71C72;
+        else if (p->step_event_data[i].gate[0].gate_time == 72)
+          s_seq_gate[i] = 0x7FFFFFFF;
+//todo: tie
+//        else
+//
+        for (uint32_t j = 0; j < SEQ_MOTION_SLOT_COUNT; j++) {
+          const motion_slot_param_t *motion_slot_param = &(p->motion_slot_param[j]);
+          if ((p->motion_slot_step_mask[j] & (1 << i)) && motion_slot_param->motion_enable) {
+            if (motion_slot_param->parameter_id >= MOTION_PARAM_LUT_FIRST && motion_slot_param->parameter_id <= MOTION_PARAM_LUT_LAST)
+             s_seq_motion_param[j] = motion_param_lut[s_prog_type][motion_slot_param->parameter_id - MOTION_PARAM_LUT_FIRST];
+             else if (motion_slot_param->parameter_id == 126)
+              s_seq_motion_param[j] = p_pitch_bend;
+            else
+              s_seq_motion_param[j] = 0;
+            if (s_seq_motion_param[j]) {
+//todo: 10-bit motion data
+//todo: substep motion data
+              s_seq_motion_start[i][j] = p->step_event_data[i].motion_slot_data[j].value_hi[0];
+              if (motion_slot_param->smooth_enable)
+                s_seq_motion_diff[i][j] = p->step_event_data[i].motion_slot_data[j].value_hi[4] - s_seq_motion_start[i][j];
+              else
+                s_seq_motion_diff[i][j] = 0;
+            }
+          } else
+            s_seq_motion_param[j] = 0;
+        }
+      }
     }; break;
     default:
       break;
@@ -372,11 +444,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         break;
       case p_vco2_ring:
       case p_vco2_sync:
-        if (s_prog_type == monologue_ID) {
+        if (s_prog_type == monologue_ID || s_prog_type == prologue_ID) {
           s_params[p_vco2_ring] = val==0;
           s_params[p_vco2_sync] = val==2;
         } else
-          s_params[s_seq_motion_param[i]] = val;
+          s_params[s_seq_motion_param[i]] = ~val;
         break;
       default:
         s_params[s_seq_motion_param[i]] = s_seq_motion_value[i];
@@ -505,6 +577,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = value >> 9;
           break;
         case p_program_level:
+//todo: dB level for prlg/mnlgxd
           param = ((value * 51 >> 10) - 25) * 0x0147AE14;
           break;
         case p_keyboard_octave:
