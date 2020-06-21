@@ -130,11 +130,6 @@ void initvoice() {
   }
 */
     for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
-      if (s_algorithm[i] & ALG_FBK_MASK) {
-        s_feedback_src = 0;
-        for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
-      }
-
       s_fixedfreq[i] = voice->op[i].pm;
 //      s_waveform[i] = 0;
 
@@ -220,7 +215,7 @@ void initvoice() {
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
 
-    s_params[p_feedback] = (1 << (voice->fbl - 7)) * FEEDBACK_RECIP;
+    s_params[p_feedback] = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
 
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
       uint32_t i;
@@ -228,11 +223,6 @@ void initvoice() {
         i = dx11_alg3_op_lut[k];
       else
         i = k;
-
-      if (s_algorithm[i] & ALG_FBK_MASK) {
-        s_feedback_src = 0;
-        for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
-      }
 
       s_fixedfreq[i] = voice->opadd[i].fixrg;
 //      s_waveform[i] =  voice->opadd[i].osw;
@@ -326,6 +316,13 @@ void initvoice() {
       s_opval[4] = 0.f;
       s_opval[5] = 0.f;
 #endif
+    }
+  }
+
+  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
+    if (s_algorithm[i] & ALG_FBK_MASK) {
+      s_feedback_src = 0;
+      for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
     }
   }
 }
