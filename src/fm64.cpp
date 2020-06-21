@@ -29,12 +29,14 @@
 #ifdef USE_Q31
   #define FEEDBACK_RECIP 0x000fffff // <1/128
   #define SCALE_RECIP 0x14AFD6A // 1/99
-  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
+//  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define SCALE_RECIP .01010101f // 1/99
-  #define DX7_DACAY_RATE_FACTOR -.125f
+//  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
+
+#define DX7_DACAY_RATE_FACTOR -.125f
 
 #define DX7_MAX_RATE 99
 #define DX11_MAX_RATE 31
