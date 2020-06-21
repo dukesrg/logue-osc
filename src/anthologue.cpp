@@ -17,6 +17,7 @@
 #include "anthologue.h"
 
 static q31_t s_params[p_num];
+static uint32_t s_platform;
 
 static uint8_t s_seq_len;
 static uint32_t s_seq_res;
@@ -49,7 +50,7 @@ static q31_t s_phase3;
 static uint8_t s_prog = -1;
 static uint8_t s_prog_type;
 static uint8_t s_play_mode = mode_note;
-static uint8_t s_assignable[2] = {p_slider_assign, p_slider_assign};
+static uint8_t s_assignable[2] = {p_slider_assign, p_pedal_assign};
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 void initVoice() {
@@ -85,9 +86,14 @@ void initVoice() {
       s_params[p_bend_range_pos] = p->bend_range_pos;
       s_params[p_bend_range_neg] = p->bend_range_neg;
       s_params[p_slider_assign] = p->slider_assign;
+      s_params[p_pedal_assign] = p->slider_assign;
+//todo: slider range
+//      s_params[p_slider_range] = 0x7FFFFFFF;
+//      s_params[p_pedal_range] = 0x7FFFFFFF;
 
       s_params[p_program_level] = (p->program_level - 102) * 0x0147AE14;
       s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+      s_params[p_bpm] = p->bpm;
 
       s_seq_len = p->step_length;
       s_seq_res = (k_samplerate * 150) << p->step_resolution;
@@ -153,9 +159,14 @@ void initVoice() {
       s_params[p_bend_range_pos] = p->bend_range_pos;
       s_params[p_bend_range_neg] = p->bend_range_neg;
       s_params[p_slider_assign] = p->slider_assign;
+      s_params[p_pedal_assign] = p->slider_assign;
+//todo: slider range
+//      s_params[p_slider_range] = 0x7FFFFFFF;
+//      s_params[p_pedal_range] = 0x7FFFFFFF;
 
       s_params[p_program_level] = (p->program_level - 102) * 0x0147AE14;
       s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+      s_params[p_bpm] = p->bpm;
 
       s_seq_len = p->step_length;
       s_seq_res = (k_samplerate * 150) << p->step_resolution;
@@ -222,10 +233,10 @@ void initVoice() {
       s_params[p_bend_range_pos] = t->bend_range_pos;
       s_params[p_bend_range_neg] = t->bend_range_neg;
       s_params[p_slider_assign] = t->mod_wheel_assign;
-//todo: e. pedal assign & LUT
-//      s_params[p_slider_assign] = t->e_pedal_assign;
+      s_params[p_pedal_assign] = t->e_pedal_assign;
 //todo: mod wheel range
-//    s_param[p_mod_wheel_range] = (t->mod_wheel_range - 100) * 0x0147AE14;
+//      s_params[p_slider_range] = (t->mod_wheel_range - 100) * 0x0147AE14;
+//      s_params[p_pedal_range] = 0x7FFFFFFF;
 
 //todo: timbre 2 & sub oscillator
 
@@ -238,6 +249,7 @@ void initVoice() {
       else if (s_params[p_program_level] < 0)
         s_params[p_program_level] *= 0x0145D174; // (-0dB...-18dB] 7/8 / 88
       s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+      s_params[p_bpm] = p->bpm;
 
       s_seq_len = 0;
       s_seq_res = 0;
@@ -283,10 +295,10 @@ void initVoice() {
       s_params[p_bend_range_pos] = p->bend_range_pos;
       s_params[p_bend_range_neg] = p->bend_range_neg;
       s_params[p_slider_assign] = p->joystick_assign_pos;
-//todo: joystick range pos, assign & range neg
-//      s_param[joystick_range_pos] = (p->joystick_range_pos - 100) * 0x0147AE14;
-//      s_params[p_joystick_assign_neg] = p->joystick_assign_neg;
-//      s_param[joystick_range_neg] = (p->joystick_range_neg - 100) * 0x0147AE14;
+      s_params[p_pedal_assign] = p->joystick_assign_neg;
+//todo: joystick range pos & neg
+//      s_params[p_slider_range] = (p->joystick_range_pos - 100) * 0x0147AE14;
+//      s_params[p_pedal_range] = (p->joystick_range_neg - 100) * 0x0147AE14;
 
 //todo: true dB level conversion
       s_params[p_program_level] = p->program_level - 100;
@@ -297,6 +309,7 @@ void initVoice() {
       else if (s_params[p_program_level] < 0)
         s_params[p_program_level] *= 0x0145D174; // (-0dB...-18dB] 7/8 / 88
       s_params[p_keyboard_octave] = (p->keyboard_octave - 2) * 12;
+      s_params[p_bpm] = p->bpm;
 
       s_seq_len = p->step_length;
       s_seq_res = (k_samplerate * 150) << p->step_resolution;
@@ -385,9 +398,9 @@ q31_t getVco(q31_t phase, uint32_t wave, q31_t shape) {
   return out;
 }
 
-void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
+void OSC_INIT(uint32_t platform, __attribute__((unused)) uint32_t api)
 {
-
+  s_platform = platform;
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -396,7 +409,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t w01, w02, w03;
   int32_t pitch1, pitch2, pitch3 = params->pitch;
 
-  if (s_play_mode == mode_seq) {
+  if (s_play_mode != mode_note) {
     if (s_sample_pos >= s_seq_quant) {
       s_sample_pos = 0;
       if (++s_seq_step >= s_seq_len) {
@@ -405,7 +418,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       } else {
         s_seq_step_bit <<= 1;
       }  
-      s_seq_quant = s_seq_res / fx_get_bpm();
+      s_seq_quant = s_seq_res / (s_play_mode == mode_seq_nts1 ? fx_get_bpm() : s_params[p_bpm]);
 //bug: previous program influence on gate length
       s_seq_gate_len = q31mul(s_seq_quant, s_seq_gate[s_seq_step]);
       s_seq_gate_on = ((s_seq_step_mask & s_seq_step_bit) && s_seq_vel[s_seq_step]);
@@ -536,12 +549,12 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_shape:
     case k_user_osc_param_shiftshape:
       index = s_assignable[index - k_user_osc_param_shape];
-      if (index == p_slider_assign) {
+      if (index == p_slider_assign || index == p_pedal_assign) {
 //minilogue pitch/gate slider asign is 77/78, not 0/1 as documented
-        if (s_params[p_slider_assign] == 77 || s_params[p_slider_assign] == 56)
+        if (s_params[index] == 77 || s_params[index] == 56)
           index = p_pitch_bend;
-        else if (s_params[p_slider_assign] >= SLIDER_PARAM_LUT_FIRST && s_params[p_slider_assign] <= SLIDER_PARAM_LUT_LAST)
-          index = slider_param_lut[s_prog_type][s_params[p_slider_assign] - SLIDER_PARAM_LUT_FIRST];
+        else if (s_params[index] >= SLIDER_PARAM_LUT_FIRST && s_params[index] <= SLIDER_PARAM_LUT_LAST)
+          index = slider_param_lut[s_prog_type == prologue_ID && index == p_pedal_assign ? s_prog_type + 2 : s_prog_type][s_params[index] - SLIDER_PARAM_LUT_FIRST];
         else
           return;
         if (index == 0)
@@ -554,6 +567,16 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_bend_range_pos:
         case p_bend_range_neg:
           param = value * 13 >> 10;
+          break;
+        case p_bpm: // 10.0-240.0, step 0.5, center=240.0, right 240.0-600.0 step 1.0
+          if (value < 52)
+            param = 100;
+          else if (value < 512)
+            param = ((value - 52) * 5) + 100;
+          else if (value < 812)
+            param = ((value - 512) * 10) + 3000;
+          else
+            param = 6000;
           break;
         case p_vco1_pitch:
         case p_vco2_pitch:
@@ -597,7 +620,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       }
       break;
     case k_user_osc_param_id2:
-       s_play_mode = value;
+       if (value == mode_seq_nts1 && s_platform != k_user_target_nutektdigital)
+         s_play_mode = mode_seq;
+       else
+         s_play_mode = value;
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:

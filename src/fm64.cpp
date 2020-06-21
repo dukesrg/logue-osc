@@ -10,6 +10,7 @@
 
 #include "userosc.h"
 #include "fixed_mathq.h"
+
 #include "fm64.h"
 
 #define USE_Q31

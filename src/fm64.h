@@ -1,7 +1,7 @@
 /*
  * File: fm64.h
  *
- * DX7/DX11 series data structures
+ * DX7/DX21/DX11-series data structures
  * 
  * 2020 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com

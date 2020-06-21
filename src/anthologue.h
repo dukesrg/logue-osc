@@ -561,7 +561,7 @@ enum {
   p_bend_range_neg,
   p_program_level,
   p_keyboard_octave,
-  p_cc6,
+  p_bpm,
   p_cc7,
   p_cc8,
   p_vco1_pitch,
@@ -626,6 +626,7 @@ enum {
   p_cc67,
   p_cc68,
 */
+  p_pedal_assign,
   p_num
 };
 
@@ -640,6 +641,7 @@ enum {
 enum {
   mode_note = 0,
   mode_seq,
+  mode_seq_nts1,
 };
 
 static const uint8_t motion_param_lut[4][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LUT_FIRST + 1] = {
@@ -722,19 +724,19 @@ static const uint8_t motion_param_lut[4][MOTION_PARAM_LUT_LAST - MOTION_PARAM_LU
     0, //MULTI ENGINE NOISE TYPE
     0, //MULTI ENGINE VPM TYPE
     0,
-    0, //33 : MULTI SHAPE NOISE
-    0, //34 : MULTI SHAPE VPM
-    0, //35 : MULTI SHAPE USER
-    0, //36 : MULTI SHIFT SHAPE NOISE
-    0, //37 : MULTI SHIFT SHAPE VPM
-    0, //38 : MULTI SHIFT SHAPE USER
+    0, //MULTI SHAPE NOISE
+    0, //MULTI SHAPE VPM
+    0, //MULTI SHAPE USER
+    0, //MULTI SHIFT SHAPE NOISE
+    0, //MULTI SHIFT SHAPE VPM
+    0, //MULTI SHIFT SHAPE USER
     p_vco1_level,
     p_vco2_level,
-    0, //41 : MULTI ENGINE LEVEL
+    0, //MULTI ENGINE LEVEL
   }
 };
 
-static const uint8_t slider_param_lut[4][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRST + 1] = {
+static const uint8_t slider_param_lut[5][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LUT_FIRST + 1] = {
   { //mnlg slider
     p_vco1_pitch, //2
     p_vco1_shape,
@@ -810,6 +812,28 @@ static const uint8_t slider_param_lut[4][SLIDER_PARAM_LUT_LAST - SLIDER_PARAM_LU
     0, //EG INT
     0, //LFO_RATE
     0, //LFO_INT
+  }, { //prlg e.pedal
+    0, //BALANCE
+    0, //PORTAMENTO
+    0, //V.SPREAD
+    0, //V.M DEPTH
+    p_vco1_pitch,
+    p_vco1_shape,
+    p_vco2_pitch,
+    p_vco2_shape,
+    p_vco2_cross,
+    0, //PITCH EG INT
+    p_vco3_shape,
+    p_vco1_level,
+    p_vco2_level,
+    p_vco3_level,
+    0, //CUTOFF
+    0, //RESONANCE
+    0, //CUTOFF EG INT
+    0, //A.EG ATTACK
+    0, //A.EG DECAY
+    0, //A.EG SUSTAIN
+    0, //A.EG RELEASE
   }
 };
 
