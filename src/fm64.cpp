@@ -29,9 +29,11 @@
 #ifdef USE_Q31
   #define FEEDBACK_RECIP 0x000fffff // <1/128
   #define SCALE_RECIP 0x14AFD6A // 1/99
+  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define SCALE_RECIP .01010101f // 1/99
+  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
 #define DX7_MAX_RATE 99
@@ -146,9 +148,12 @@ void initvoice() {
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
         if (dl > 0)
-          s_egrate[i][j] = f32_to_q31(k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
+//          s_egrate[i][j] = f32_to_q31(k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
+//Attack time ~40/(2^(x*0.158)), decay time ~8 times longer
+          s_egrate[i][j] = f32_to_q31(.025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]));
         else if (dl < 0)
-          s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
+//          s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
+          s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]));
         else 
           s_egrate[i][j] = 0;
         s_eglevel[i][j] = f32_to_q31(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
@@ -160,9 +165,11 @@ void initvoice() {
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
         if (dl > 0)
-          s_egrate[i][j] = k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
+//          s_egrate[i][j] = k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
+          s_egrate[i][j] = .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]);
         else if (dl < 0)
-          s_egrate[i][j] = - k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
+//          s_egrate[i][j] = - k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
+          s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]);
         else 
           s_egrate[i][j] = 0.f;
         s_eglevel[i][j] = voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP;
