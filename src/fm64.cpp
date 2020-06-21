@@ -186,27 +186,26 @@ void initvoice() {
         s_oppitch[i] = ((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f));
 #endif
     }
-      s_params[p_op6_level] = voice->op[0].tl * SCALE_RECIP;
-      s_params[p_op5_level] = voice->op[1].tl * SCALE_RECIP;
-      s_params[p_op4_level] = voice->op[2].tl * SCALE_RECIP;
-      s_params[p_op3_level] = voice->op[3].tl * SCALE_RECIP;
-      s_params[p_op2_level] = voice->op[4].tl * SCALE_RECIP;
-      s_params[p_op1_level] = voice->op[5].tl * SCALE_RECIP;
+    s_params[p_op6_level] = voice->op[0].tl * SCALE_RECIP;
+    s_params[p_op5_level] = voice->op[1].tl * SCALE_RECIP;
+    s_params[p_op4_level] = voice->op[2].tl * SCALE_RECIP;
+    s_params[p_op3_level] = voice->op[3].tl * SCALE_RECIP;
+    s_params[p_op2_level] = voice->op[4].tl * SCALE_RECIP;
+    s_params[p_op1_level] = voice->op[5].tl * SCALE_RECIP;
 #ifdef USE_Q31
-      s_params[p_op6_modlevel] = f32_to_q31(dx7_modindex(voice->op[0].tl));
-      s_params[p_op5_modlevel] = f32_to_q31(dx7_modindex(voice->op[1].tl));
-      s_params[p_op4_modlevel] = f32_to_q31(dx7_modindex(voice->op[2].tl));
-      s_params[p_op3_modlevel] = f32_to_q31(dx7_modindex(voice->op[3].tl));
-      s_params[p_op2_modlevel] = f32_to_q31(dx7_modindex(voice->op[4].tl));
-      s_params[p_op1_modlevel] = f32_to_q31(dx7_modindex(voice->op[5].tl));
-
+    s_params[p_op6_modlevel] = f32_to_q31(dx7_modindex(voice->op[0].tl));
+    s_params[p_op5_modlevel] = f32_to_q31(dx7_modindex(voice->op[1].tl));
+    s_params[p_op4_modlevel] = f32_to_q31(dx7_modindex(voice->op[2].tl));
+    s_params[p_op3_modlevel] = f32_to_q31(dx7_modindex(voice->op[3].tl));
+    s_params[p_op2_modlevel] = f32_to_q31(dx7_modindex(voice->op[4].tl));
+    s_params[p_op1_modlevel] = f32_to_q31(dx7_modindex(voice->op[5].tl));
 #else
-      s_params[p_op6_modlevel] = dx7_modindex(voice->op[0].tl);
-      s_params[p_op5_modlevel] = dx7_modindex(voice->op[1].tl);
-      s_params[p_op4_modlevel] = dx7_modindex(voice->op[2].tl);
-      s_params[p_op3_modlevel] = dx7_modindex(voice->op[3].tl);
-      s_params[p_op2_modlevel] = dx7_modindex(voice->op[4].tl);
-      s_params[p_op1_modlevel] = dx7_modindex(voice->op[5].tl);
+    s_params[p_op6_modlevel] = dx7_modindex(voice->op[0].tl);
+    s_params[p_op5_modlevel] = dx7_modindex(voice->op[1].tl);
+    s_params[p_op4_modlevel] = dx7_modindex(voice->op[2].tl);
+    s_params[p_op3_modlevel] = dx7_modindex(voice->op[3].tl);
+    s_params[p_op2_modlevel] = dx7_modindex(voice->op[4].tl);
+    s_params[p_op1_modlevel] = dx7_modindex(voice->op[5].tl);
 #endif
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
@@ -288,35 +287,35 @@ void initvoice() {
 //todo: Waveform
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
-#endif
-      s_params[p_op6_level] = voice->op[0].out * SCALE_RECIP;
-      s_params[p_op5_level] = voice->op[1].out * SCALE_RECIP;
-      s_params[p_op4_level] = voice->op[2].out * SCALE_RECIP;
-      s_params[p_op3_level] = voice->op[3].out * SCALE_RECIP;
-#ifdef USE_Q31
-      s_params[p_op2_level] = 0;
-      s_params[p_op1_level] = 0;
-      s_params[p_op6_modlevel] = f32_to_q31(dx11_modindex(voice->op[0].out));
-      s_params[p_op5_modlevel] = f32_to_q31(dx11_modindex(voice->op[1].out));
-      s_params[p_op4_modlevel] = f32_to_q31(dx11_modindex(voice->op[2].out));
-      s_params[p_op3_modlevel] = f32_to_q31(dx11_modindex(voice->op[3].out));
-      s_params[p_op2_modlevel] = 0;
-      s_params[p_op1_modlevel] = 0;
-      s_opval[4] = 0;
-      s_opval[5] = 0;
-#else
-      s_params[p_op2_level] = 0.f;
-      s_params[p_op1_level] = 0.f;
-      s_params[p_op6_modlevel] = dx7_modindex(voice->op[0].out);
-      s_params[p_op5_modlevel] = dx7_modindex(voice->op[1].out);
-      s_params[p_op4_modlevel] = dx7_modindex(voice->op[2].out);
-      s_params[p_op3_modlevel] = dx7_modindex(voice->op[3].out);
-      s_params[p_op2_modlevel] = 0.f;
-      s_params[p_op1_modlevel] = 0.f;
-      s_opval[4] = 0.f;
-      s_opval[5] = 0.f;
-#endif
     }
+#endif
+    s_params[p_op6_level] = voice->op[0].out * SCALE_RECIP;
+    s_params[p_op5_level] = voice->op[1].out * SCALE_RECIP;
+    s_params[p_op4_level] = voice->op[2].out * SCALE_RECIP;
+    s_params[p_op3_level] = voice->op[3].out * SCALE_RECIP;
+#ifdef USE_Q31
+    s_params[p_op2_level] = 0;
+    s_params[p_op1_level] = 0;
+    s_params[p_op6_modlevel] = f32_to_q31(dx11_modindex(voice->op[0].out));
+    s_params[p_op5_modlevel] = f32_to_q31(dx11_modindex(voice->op[1].out));
+    s_params[p_op4_modlevel] = f32_to_q31(dx11_modindex(voice->op[2].out));
+    s_params[p_op3_modlevel] = f32_to_q31(dx11_modindex(voice->op[3].out));
+    s_params[p_op2_modlevel] = 0;
+    s_params[p_op1_modlevel] = 0;
+    s_opval[4] = 0;
+    s_opval[5] = 0;
+#else
+    s_params[p_op2_level] = 0.f;
+    s_params[p_op1_level] = 0.f;
+    s_params[p_op6_modlevel] = dx7_modindex(voice->op[0].out);
+    s_params[p_op5_modlevel] = dx7_modindex(voice->op[1].out);
+    s_params[p_op4_modlevel] = dx7_modindex(voice->op[2].out);
+    s_params[p_op3_modlevel] = dx7_modindex(voice->op[3].out);
+    s_params[p_op2_modlevel] = 0.f;
+    s_params[p_op1_modlevel] = 0.f;
+    s_opval[4] = 0.f;
+    s_opval[5] = 0.f;
+#endif
   }
 
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
