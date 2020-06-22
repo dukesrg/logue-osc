@@ -22,7 +22,7 @@
 //  #define USE_Q31_PITCH //another bit less CPU consuming
   #endif
 //  #define OSC_NOTE_Q
-//  #define USE_FASTSINQ
+//  #define USE_FASTSINQ //not suitable for FM
   #ifndef USE_FASTSINQ
     #define OSC_SIN_Q
   #endif
@@ -33,6 +33,13 @@
   typedef q31_t param_t;
   #define f32_to_param(a) f32_to_q31(a)
   #define param_to_q31(a) (a)
+  #define param_add(a,b) q31add(a,b)
+  #define param_mul(a,b) q31mul(a,b)
+  #ifdef USE_FASTSINQ
+    #define osc_sin(a) osc_fastsinq(a)
+  #else
+    #define osc_sin(a) osc_sinq(a)
+  #endif
   #ifdef USE_Q31_PHASE
     #define ZERO_PHASE 0
   #else
@@ -41,15 +48,21 @@
   #define ZERO 0
   #define FEEDBACK_RECIP 0x000fffff // <1/128
   #define SCALE_RECIP 0x14AFD6A // 1/99
+  #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
   typedef float param_t;
   #define f32_to_param(a) (a)
   #define param_to_q31(a) f32_to_q31(a)
+  #define param_add(a,b) ((a),(b))
+  #define param_mul(a,b) ((a)*(b))
+  #define osc_sin(a) osc_sinf(a)
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define SCALE_RECIP .01010101f // 1/99
+  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
+
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
@@ -292,17 +305,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t f = frames; f--; y++) {
     osc_out = ZERO;
     for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
-#ifdef USE_Q31
 #ifdef USE_Q31_PHASE
       modw0 = s_phase[i];
 #else
       modw0 = f32_to_q31(s_phase[i]);
 #endif
       if (s_algorithm[i] & ALG_FBK_MASK) {
-//        modw0 += q31mul(s_opval[s_feedback_src], s_feedback);
-//        modw0 += q31mul(q31add(s_feedback_opval[0], s_feedback_opval[1]), s_params[p_feedback]);
-        modw0 += q31mul(s_feedback_opval[0], s_params[p_feedback]);
-        modw0 += q31mul(s_feedback_opval[1], s_params[p_feedback]);
+        modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
+        modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
@@ -312,53 +322,22 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-#ifdef USE_FASTSINQ
-//      s_opval[i] = q31mul(osc_fastsinq(modw0), q31mul(s_egval[i], s_params[p_op6_level + i * 10]));
-      s_opval[i] = osc_fastsinq(modw0);
-#else
-      s_opval[i] = osc_sinq(modw0);
-//      s_opval[i] = q31mul(osc_sinq(modw0), f32_to_q31(0.99f*dx7_modindex(q31mul(q31mul(s_egval[i], s_params[p_op6_level + i * 10]), 100))));
-#endif
+      s_opval[i] = osc_sin(modw0);
 //todo: move output level to EG calculation
-      param_t lvl = q31mul(s_egval[i], s_params[p_op6_level + i * 10]);
+      param_t lvl = param_mul(s_egval[i], s_params[p_op6_level + i * 10]);
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = q31mul(s_opval[i], lvl);
+        s_feedback_opval[0] = param_mul(s_opval[i], lvl);
       }
 //todo: modindex[egval*out_level] ?
       if (s_level_scale)
-//      s_opval[i] = q31mul(s_opval[i], dx7_modindex(q31mul(lvl, 100)) * 0x1020408); // 1/127
-        s_opval[i] = q31mul(s_opval[i], scale_level(q31mul(lvl, 100)) * 0x1020408); // 1/127
+//      s_opval[i] = param_mul(s_opval[i], dx7_modindex(q31mul(lvl, 100)) * LEVEL_SCALE_FACTOR);
+        s_opval[i] = param_mul(s_opval[i], scale_level(param_mul(lvl, 100)) * LEVEL_SCALE_FACTOR);
       else
-        s_opval[i] = q31mul(s_opval[i], lvl);
+        s_opval[i] = param_mul(s_opval[i], lvl);
 
       if (s_algorithm[i] & ALG_OUT_MASK)
-//        osc_out = q31add(osc_out, q31mul(s_opval[i], s_params[p_op6_level + i * 10]));
-        osc_out = q31add(osc_out, s_opval[i]);
-#else
-      modw0 = s_phase[i];
-      if (s_algorithm[i] & ALG_FBK_MASK) {
-//        modw0 += s_opval[s_feedback_src] * s_feedback;
-        modw0 += (s_feedback_opval[0] + s_feedback_opval[1]) * s_params[p_feedback];
-      } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
-        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
-        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
-        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
-        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
-        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
-      }
-
-      s_opval[i] = osc_sinf(modw0);
-      param_t lvl = s_egval[i] * s_params[p_op6_level + i * 10];
-      if (i == s_feedback_src) {
-        s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = s_opval[i] * lvl;
-      }
-      s_opval[i] = s_opval[i] * lvl;
-      if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out += s_opval[i];
-#endif
+        osc_out = param_add(osc_out, s_opval[i]);
 
       s_phase[i] += opw0[i];
 #ifndef USE_Q31_PHASE
@@ -366,11 +345,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 
 //todo: flatten the level/rate arrays and get rid of the excessive indexing
-#ifdef USE_Q31
-      s_egval[i] = q31add(s_egval[i], s_egrate[i][s_egstage[i]]);
-#else
-      s_egval[i] += s_egrate[i][s_egstage[i]];
-#endif
+      s_egval[i] = param_add(s_egval[i], s_egrate[i][s_egstage[i]]);
       if (
         (s_egrate[i][s_egstage[i]] > ZERO && s_egval[i] >= s_eglevel[i][s_egstage[i]])
         || (s_egrate[i][s_egstage[i]] < ZERO && s_egval[i] <= s_eglevel[i][s_egstage[i]])
