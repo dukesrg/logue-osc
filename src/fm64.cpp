@@ -451,7 +451,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = s_phase[i];
       if (s_algorithm[i] & ALG_FBK_MASK) {
 //        modw0 += s_opval[s_feedback_src] * s_feedback;
-        modw0 += (s_feedback_opval[0] >> 1 + s_feedback_opval[1] >> 1) * s_params[p_feedback];
+        modw0 += (s_feedback_opval[0] + s_feedback_opval[1]) * s_params[p_feedback];
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
@@ -462,11 +462,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
 
       s_opval[i] = osc_sinf(modw0);
+      float lvl = s_egval[i] * s_params[p_op6_level + i * 10];
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = s_opval[i] * s_egval[i] * s_params[p_op6_level + i * 10];
+        s_feedback_opval[0] = s_opval[i] * lvl;
       }
-      s_opval[i] = s_opval[i] * s_egval[i] * s_params[p_op6_level + i * 10];
+      s_opval[i] = s_opval[i] * lvl;
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out += s_opval[i];
 #endif
