@@ -30,6 +30,7 @@
 #endif
 
 #ifdef USE_Q31
+  typedef q31_t param_t;
   #ifdef USE_Q31_PHASE
     #define ZERO_PHASE 0
   #else
@@ -40,6 +41,7 @@
   #define SCALE_RECIP 0x14AFD6A // 1/99
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
+  typedef float param_t;
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
@@ -79,31 +81,18 @@ static uint8_t s_feedback_src;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
 static uint8_t s_assignable[2] = {p_op6_level, p_op5_level};
-#ifdef USE_Q31
-static q31_t s_params[p_num];
-static q31_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static q31_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static q31_t s_egval[DX7_OPERATOR_COUNT];
-static q31_t s_opval[DX7_OPERATOR_COUNT];
-static q31_t s_feedback_opval[2];
+static param_t s_params[p_num];
+static param_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_egval[DX7_OPERATOR_COUNT];
+static param_t s_opval[DX7_OPERATOR_COUNT];
+static param_t s_feedback_opval[2];
 /*
-static float s_pegrate[EG_STAGE_COUNT];
-static float s_peglevel[EG_STAGE_COUNT];
-static float s_pegval[DX7_OPERATOR_COUNT];
+static param_t s_pegrate[EG_STAGE_COUNT];
+static param_t s_peglevel[EG_STAGE_COUNT];
+static param_t s_pegval[DX7_OPERATOR_COUNT];
 */
-#else
-static float s_params[p_num];
-static float s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static float s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static float s_egval[DX7_OPERATOR_COUNT];
-static float s_opval[DX7_OPERATOR_COUNT];
-static float s_feedback_opval[2];
-/*
-static q31_t s_pegrate[EG_STAGE_COUNT];
-static q31_t s_peglevel[EG_STAGE_COUNT];
-static q31_t s_pegval[DX7_OPERATOR_COUNT];
-*/
-#endif
+
 #ifdef USE_Q31_PITCH
 static q31_t s_oppitch[DX7_OPERATOR_COUNT];
 #else
@@ -305,11 +294,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-#ifdef USE_Q31
-  q31_t osc_out, modw0;
-#else 
-  float osc_out, modw0;
-#endif
+  param_t osc_out, modw0;
 
 #ifdef USE_Q31_PHASE
 #ifdef USE_Q31_PITCH
@@ -491,11 +476,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
-#ifdef USE_Q31
-  q31_t param;
-#else
-  float param;
-#endif
+  param_t param;
   switch (index) {
     case k_user_osc_param_shape:
     case k_user_osc_param_shiftshape:
