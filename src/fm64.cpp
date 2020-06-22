@@ -30,10 +30,18 @@
 #endif
 
 #ifdef USE_Q31
+  #ifdef USE_Q31_PHASE
+    #define ZERO_PHASE 0
+  #else
+    #define ZERO_PHASE 0.f
+  #endif
+  #define ZERO 0
   #define FEEDBACK_RECIP 0x000fffff // <1/128
   #define SCALE_RECIP 0x14AFD6A // 1/99
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
+  #define ZERO 0.f
+  #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define SCALE_RECIP .01010101f // 1/99
 //  #define DX7_DACAY_RATE_FACTOR -.125f
@@ -70,16 +78,13 @@ static uint8_t s_feedback_src;
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
-static uint8_t s_assignable[2] = {p_op6_level, p_op6_modlevel};
+static uint8_t s_assignable[2] = {p_op6_level, p_op5_level};
 #ifdef USE_Q31
 static q31_t s_params[p_num];
 static q31_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[DX7_OPERATOR_COUNT];
-//static q31_t s_oplevel[DX7_OPERATOR_COUNT];
 static q31_t s_opval[DX7_OPERATOR_COUNT];
-//static q31_t s_modlevel[DX7_OPERATOR_COUNT];
-//static q31_t s_feedback;
 static q31_t s_feedback_opval[2];
 /*
 static float s_pegrate[EG_STAGE_COUNT];
@@ -91,10 +96,7 @@ static float s_params[p_num];
 static float s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static float s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static float s_egval[DX7_OPERATOR_COUNT];
-//static float s_oplevel[DX7_OPERATOR_COUNT];
 static float s_opval[DX7_OPERATOR_COUNT];
-//static float s_modlevel[DX7_OPERATOR_COUNT];
-//static float s_feedback;
 static float s_feedback_opval[2];
 /*
 static q31_t s_pegrate[EG_STAGE_COUNT];
@@ -122,13 +124,8 @@ void initvoice() {
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 
     s_params[p_feedback] = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
-#ifdef USE_Q31
-    s_feedback_opval[0] = 0;
-    s_feedback_opval[1] = 0;
-#else
-    s_feedback_opval[0] = 0.f;
-    s_feedback_opval[1] = 0.f;
-#endif
+    s_feedback_opval[0] = ZERO;
+    s_feedback_opval[1] = ZERO;
 /*
 #ifdef USE_Q31
 //todo: PEG level precalc & Q31
@@ -145,11 +142,7 @@ void initvoice() {
       s_fixedfreq[i] = voice->op[i].pm;
 //      s_waveform[i] = 0;
 
-#ifdef USE_Q31_PHASE
-      s_phase[i] = 0;
-#else
-      s_phase[i] = 0.f;
-#endif
+      s_phase[i] = ZERO_PHASE;
 
       int32_t dl;
 #ifdef USE_Q31
@@ -167,12 +160,10 @@ void initvoice() {
 //          s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
           s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
         else 
-          s_egrate[i][j] = 0;
+          s_egrate[i][j] = ZERO;
         s_eglevel[i][j] = f32_to_q31(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
       }
-      s_opval[i] = 0;
-//      s_oplevel[i] = f32_to_q31(voice->op[i].tl * SCALE_RECIP);
-//      s_modlevel[i] = f32_to_q31(dx7_modindex(voice->op[i].tl));
+      s_opval[i] = ZERO;
 #else
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
@@ -185,12 +176,10 @@ void initvoice() {
 //          s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]);
           s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]);
         else 
-          s_egrate[i][j] = 0.f;
+          s_egrate[i][j] = ZERO;
         s_eglevel[i][j] = voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP;
       }
-      s_opval[i] = 0.f;
-//      s_oplevel[i] = voice->op[i].tl * SCALE_RECIP;
-//      s_modlevel[i] = dx7_modindex(voice->op[i].tl);
+      s_opval[i] = ZERO;
 #endif
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
@@ -213,21 +202,6 @@ void initvoice() {
     s_params[p_op3_level] = voice->op[3].tl * SCALE_RECIP;
     s_params[p_op2_level] = voice->op[4].tl * SCALE_RECIP;
     s_params[p_op1_level] = voice->op[5].tl * SCALE_RECIP;
-#ifdef USE_Q31
-    s_params[p_op6_modlevel] = f32_to_q31(dx7_modindex(voice->op[0].tl));
-    s_params[p_op5_modlevel] = f32_to_q31(dx7_modindex(voice->op[1].tl));
-    s_params[p_op4_modlevel] = f32_to_q31(dx7_modindex(voice->op[2].tl));
-    s_params[p_op3_modlevel] = f32_to_q31(dx7_modindex(voice->op[3].tl));
-    s_params[p_op2_modlevel] = f32_to_q31(dx7_modindex(voice->op[4].tl));
-    s_params[p_op1_modlevel] = f32_to_q31(dx7_modindex(voice->op[5].tl));
-#else
-    s_params[p_op6_modlevel] = dx7_modindex(voice->op[0].tl);
-    s_params[p_op5_modlevel] = dx7_modindex(voice->op[1].tl);
-    s_params[p_op4_modlevel] = dx7_modindex(voice->op[2].tl);
-    s_params[p_op3_modlevel] = dx7_modindex(voice->op[3].tl);
-    s_params[p_op2_modlevel] = dx7_modindex(voice->op[4].tl);
-    s_params[p_op1_modlevel] = dx7_modindex(voice->op[5].tl);
-#endif
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
@@ -247,11 +221,7 @@ void initvoice() {
       s_fixedfreq[i] = voice->opadd[i].fixrg;
 //      s_waveform[i] =  voice->opadd[i].osw;
 
-#ifdef USE_Q31_PHASE
-      s_phase[i] = 0;
-#else
-      s_phase[i] = 0.f;
-#endif
+      s_phase[i] = ZERO_PHASE;
 
       int32_t dl;
 #ifdef USE_Q31
@@ -267,12 +237,10 @@ void initvoice() {
         else if (dl < 0)
           s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * powf(2.f, (j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR) * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
         else 
-          s_egrate[i][j] = 0;
+          s_egrate[i][j] = ZERO;
         s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
-      s_opval[i] = 0;
-//      s_oplevel[i] = f32_to_q31(voice->op[i].out * SCALE_RECIP);
-//      s_modlevel[i] = f32_to_q31(dx11_modindex(voice->op[i].out));
+      s_opval[i] = ZERO;
 #else
       for (uint32_t j = EG_STAGE_COUNT; j--;) {
         if (j == (EG_STAGE_COUNT - 2) && s_egrate[i][j] == 0)
@@ -286,12 +254,10 @@ void initvoice() {
 //          s_egrate[i][j] = - k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
           s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * powf(2.f, (j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR) * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1)));
         else 
-          s_egrate[i][j] = 0.f;
+          s_egrate[i][j] = ZERO;
         s_eglevel[i][j] = 1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0));
       }
-      s_opval[i] = 0.f;
-//      s_oplevel[i] = voice->op[i].out * SCALE_RECIP;
-//      s_modlevel[i] = dx11_modindex(voice->op[i].out);
+      s_opval[i] = ZERO;
 #endif
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
@@ -316,29 +282,10 @@ void initvoice() {
     s_params[p_op5_level] = voice->op[1].out * SCALE_RECIP;
     s_params[p_op4_level] = voice->op[2].out * SCALE_RECIP;
     s_params[p_op3_level] = voice->op[3].out * SCALE_RECIP;
-#ifdef USE_Q31
-    s_params[p_op2_level] = 0;
-    s_params[p_op1_level] = 0;
-    s_params[p_op6_modlevel] = f32_to_q31(dx11_modindex(voice->op[0].out));
-    s_params[p_op5_modlevel] = f32_to_q31(dx11_modindex(voice->op[1].out));
-    s_params[p_op4_modlevel] = f32_to_q31(dx11_modindex(voice->op[2].out));
-    s_params[p_op3_modlevel] = f32_to_q31(dx11_modindex(voice->op[3].out));
-    s_params[p_op2_modlevel] = 0;
-    s_params[p_op1_modlevel] = 0;
-    s_opval[4] = 0;
-    s_opval[5] = 0;
-#else
-    s_params[p_op2_level] = 0.f;
-    s_params[p_op1_level] = 0.f;
-    s_params[p_op6_modlevel] = dx7_modindex(voice->op[0].out);
-    s_params[p_op5_modlevel] = dx7_modindex(voice->op[1].out);
-    s_params[p_op4_modlevel] = dx7_modindex(voice->op[2].out);
-    s_params[p_op3_modlevel] = dx7_modindex(voice->op[3].out);
-    s_params[p_op2_modlevel] = 0.f;
-    s_params[p_op1_modlevel] = 0.f;
-    s_opval[4] = 0.f;
-    s_opval[5] = 0.f;
-#endif
+    s_params[p_op2_level] = ZERO;
+    s_params[p_op1_level] = ZERO;
+    s_opval[4] = ZERO;
+    s_opval[5] = ZERO;
   }
 
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
@@ -398,11 +345,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-#ifdef USE_Q31
-    osc_out = 0;
-#else
-    osc_out = 0.f;
-#endif
+    osc_out = ZERO;
     for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
 #ifdef USE_Q31
 #ifdef USE_Q31_PHASE
@@ -480,17 +423,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //todo: flatten the level/rate arrays and get rid of the excessive indexing
 #ifdef USE_Q31
       s_egval[i] = q31add(s_egval[i], s_egrate[i][s_egstage[i]]);
-      if (
-        (s_egrate[i][s_egstage[i]] > 0 && s_egval[i] >= s_eglevel[i][s_egstage[i]])
-        || (s_egrate[i][s_egstage[i]] < 0 && s_egval[i] <= s_eglevel[i][s_egstage[i]])
-      ) {
 #else
       s_egval[i] += s_egrate[i][s_egstage[i]];
-      if (
-        (s_egrate[i][s_egstage[i]] > 0.f && s_egval[i] >= s_eglevel[i][s_egstage[i]])
-        || (s_egrate[i][s_egstage[i]] < 0.f && s_egval[i] <= s_eglevel[i][s_egstage[i]])
-      ) {
 #endif
+      if (
+        (s_egrate[i][s_egstage[i]] > ZERO && s_egval[i] >= s_eglevel[i][s_egstage[i]])
+        || (s_egrate[i][s_egstage[i]] < ZERO && s_egval[i] <= s_eglevel[i][s_egstage[i]])
+      ) {
         s_egval[i] = s_eglevel[i][s_egstage[i]];
         if (s_egstage[i] < EG_STAGE_COUNT - 2)
           s_egstage[i]++;
@@ -531,17 +470,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_opi)
-#ifdef USE_Q31_PHASE
-      s_phase[i] = 0;
-#else
-      s_phase[i] = 0.f;
-#endif
+      s_phase[i] = ZERO_PHASE;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
-#ifdef USE_Q31
-    s_opval[i] = 0;
-#else
-    s_opval[i] = 0.f;
-#endif
+    s_opval[i] = ZERO;
     s_egstage[i] = 0;
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
   }
@@ -574,17 +505,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           break;
         case p_op6_level:
-        case p_op6_modlevel:
         case p_op5_level:
-        case p_op5_modlevel:
         case p_op4_level:
-        case p_op4_modlevel:
         case p_op3_level:
-        case p_op3_modlevel:
         case p_op2_level:
-        case p_op2_modlevel:
         case p_op1_level:
-        case p_op1_modlevel:
         default:
 #ifdef USE_Q31
           param = param_val_to_q31(value);
