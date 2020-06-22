@@ -1,7 +1,7 @@
 /*
  * File: fm64.cpp
  *
- * DX7/DX11-series compatible FM oscillator
+ * DX7/DX21/DX11-series compatible FM oscillator
  * 
  * 2020 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
@@ -36,7 +36,11 @@
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
-#define DX7_DACAY_RATE_FACTOR -.125f
+#define DX7_RATE_EXP_FACTOR .158f
+#define DX11_RATE_EXP_FACTOR .505f
+#define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
+#define DX7_ATTACK_RATE_FACTOR 5.2083333e-5f // 1/(40*48000)
+#define DX7_DACAY_RATE_FACTOR -6.5104166e-8f // -1/(320*48000)
 
 #define DX7_MAX_RATE 99
 #define DX11_MAX_RATE 31
@@ -152,10 +156,12 @@ void initvoice() {
         if (dl > 0)
 //          s_egrate[i][j] = f32_to_q31(k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
 //Attack time ~40/(2^(x*0.158)), decay time ~8 times longer
-          s_egrate[i][j] = f32_to_q31(.025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]));
+//          s_egrate[i][j] = f32_to_q31(.025f * k_samplerate_recipf * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
+          s_egrate[i][j] = f32_to_q31(DX7_ATTACK_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
         else if (dl < 0)
 //          s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j])));
-          s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]));
+//          s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
+          s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
         else 
           s_egrate[i][j] = 0;
         s_eglevel[i][j] = f32_to_q31(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
@@ -168,10 +174,12 @@ void initvoice() {
         dl = voice->op[i].l[j] - voice->op[i].l[j ? (j - 1) : EG_STAGE_COUNT - 1];
         if (dl > 0)
 //          s_egrate[i][j] = k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
-          s_egrate[i][j] = .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]);
+//          s_egrate[i][j] = .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]);
+          s_egrate[i][j] = DX7_ATTACK_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]);
         else if (dl < 0)
 //          s_egrate[i][j] = - k_samplerate_recipf / (DX7_RATE_FACTOR * (DX7_MAX_RATE + 1 - voice->op[i].r[j]));
-          s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, .158f * voice->op[i].r[j]);
+//          s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * .025f * k_samplerate_recipf * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]);
+          s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]);
         else 
           s_egrate[i][j] = 0.f;
         s_eglevel[i][j] = voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP;
@@ -251,9 +259,9 @@ void initvoice() {
         else
           dl = (j==0 ? DX11_MAX_LEVEL : j == 1 ? voice->op[i].d1l - DX11_MAX_LEVEL : - voice->op[i].d1l);
         if (dl > 0)
-          s_egrate[i][j] = f32_to_q31(k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1)))));
+          s_egrate[i][j] = f32_to_q31(DX7_ATTACK_RATE_FACTOR * powf(2.f, DX11_RATE_EXP_FACTOR * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
         else if (dl < 0)
-          s_egrate[i][j] = f32_to_q31(- k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1)))));
+          s_egrate[i][j] = f32_to_q31(DX7_DACAY_RATE_FACTOR * powf(2.f, (j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR) * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
         else 
           s_egrate[i][j] = 0;
         s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
@@ -268,9 +276,11 @@ void initvoice() {
         else
           dl = (j==0 ? DX11_MAX_LEVEL : j == 1 ? voice->op[i].d1l - DX11_MAX_LEVEL : - voice->op[i].d1l);
         if (dl > 0)
-          s_egrate[i][j] = k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
+//          s_egrate[i][j] = k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
+          s_egrate[i][j] = DX7_ATTACK_RATE_FACTOR * powf(2.f, DX11_RATE_EXP_FACTOR * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1)));
         else if (dl < 0)
-          s_egrate[i][j] = - k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
+//          s_egrate[i][j] = - k_samplerate_recipf / (DX11_RATE_FACTOR * (DX11_MAX_RATE + 1 - (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
+          s_egrate[i][j] = DX7_DACAY_RATE_FACTOR * powf(2.f, (j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR) * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1)));
         else 
           s_egrate[i][j] = 0.f;
         s_eglevel[i][j] = 1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0));
