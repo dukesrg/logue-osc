@@ -22,7 +22,10 @@
 //  #define USE_Q31_PITCH //another bit less CPU consuming
   #endif
 //  #define OSC_NOTE_Q
-  #define OSC_SIN_Q
+//  #define USE_FASTSINQ
+  #ifndef USE_FASTSINQ
+    #define OSC_SIN_Q
+  #endif
   #include "osc_apiq.h"
 #endif
 
@@ -420,7 +423,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += q31mul(s_opval[5], s_params[p_op1_modlevel]);
       }
 
+#ifdef USE_FASTSINQ
+      s_opval[i] = q31mul(osc_fastsinq(modw0), s_egval[i]);
+#else
       s_opval[i] = q31mul(osc_sinq(modw0), s_egval[i]);
+#endif
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = q31add(osc_out, q31mul(s_opval[i], s_params[p_op6_level + i * 10]));
       if (i == s_feedback_src) {

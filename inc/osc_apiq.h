@@ -51,6 +51,23 @@ q31_t osc_w0q_for_note(uint8_t note, q31_t mod) {
 }
 #endif
 
+  /**
+   * Fixed point rough LUT-free approximation of sin(2*pi*x) ~= x+x*(1-x)
+   *
+   * @param   x  Phase ratio
+   * @return     Result of sin(2*pi*x).
+   */
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t osc_fastsinq(q31_t x) {
+  if (x > 0x20000000 && x < 0x60000000)
+    x = -x;
+  x = x << 2;
+  if (x < 0)
+    return q31add(x, q31mul(x, (q31add(0x7FFFFFFF, x))));
+  else
+    return q31add(x, q31mul(x, (q31sub(0x7FFFFFFF, x))));
+}
+
 #ifdef OSC_SIN_Q
 q31_t wt_sine_lut_q[k_wt_sine_lut_size];
   /**
