@@ -60,6 +60,7 @@
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
 static uint8_t s_algorithm_idx = -1;
+static uint8_t s_level_scale = -1;
 static const uint8_t *s_algorithm;
 static uint8_t s_opi;
 static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
@@ -415,46 +416,59 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         modw0 += q31mul(s_feedback_opval[0], s_params[p_feedback]);
         modw0 += q31mul(s_feedback_opval[1], s_params[p_feedback]);
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += q31mul(s_opval[0], s_params[p_op6_modlevel]);
-        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += q31mul(s_opval[1], s_params[p_op5_modlevel]);
-        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += q31mul(s_opval[2], s_params[p_op4_modlevel]);
-        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += q31mul(s_opval[3], s_params[p_op3_modlevel]);
-        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += q31mul(s_opval[4], s_params[p_op2_modlevel]);
-        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += q31mul(s_opval[5], s_params[p_op1_modlevel]);
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
 #ifdef USE_FASTSINQ
-      s_opval[i] = q31mul(osc_fastsinq(modw0), s_egval[i]);
+//      s_opval[i] = q31mul(osc_fastsinq(modw0), q31mul(s_egval[i], s_params[p_op6_level + i * 10]));
+      s_opval[i] = osc_fastsinq(modw0);
 #else
-      s_opval[i] = q31mul(osc_sinq(modw0), s_egval[i]);
+      s_opval[i] = osc_sinq(modw0);
+//      s_opval[i] = q31mul(osc_sinq(modw0), f32_to_q31(0.99f*dx7_modindex(q31mul(q31mul(s_egval[i], s_params[p_op6_level + i * 10]), 100))));
 #endif
-      if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out = q31add(osc_out, q31mul(s_opval[i], s_params[p_op6_level + i * 10]));
+//todo: move output level to EG calculation
+      q31_t lvl = q31mul(s_egval[i], s_params[p_op6_level + i * 10]);
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = s_opval[i] >> 1;
+        s_feedback_opval[0] = q31mul(s_opval[i], lvl);
       }
+//todo: modindex[egval*out_level] ?
+      if (s_level_scale)
+//      s_opval[i] = q31mul(s_opval[i], dx7_modindex(q31mul(lvl, 100)) * 0x1020408); // 1/127
+        s_opval[i] = q31mul(s_opval[i], scale_level(q31mul(lvl, 100)) * 0x1020408); // 1/127
+      else
+        s_opval[i] = q31mul(s_opval[i], lvl);
+
+      if (s_algorithm[i] & ALG_OUT_MASK)
+//        osc_out = q31add(osc_out, q31mul(s_opval[i], s_params[p_op6_level + i * 10]));
+        osc_out = q31add(osc_out, s_opval[i]);
 #else
       modw0 = s_phase[i];
       if (s_algorithm[i] & ALG_FBK_MASK) {
 //        modw0 += s_opval[s_feedback_src] * s_feedback;
         modw0 += (s_feedback_opval[0] >> 1 + s_feedback_opval[1] >> 1) * s_params[p_feedback];
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0] * s_params[p_op6_modlevel];
-        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1] * s_params[p_op5_modlevel];
-        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2] * s_params[p_op4_modlevel];
-        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3] * s_params[p_op3_modlevel];
-        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4] * s_params[p_op2_modlevel];
-        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5] * s_params[p_op1_modlevel];
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-      s_opval[i] = osc_sinf(modw0) * s_egval[i];
-      if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out += s_opval[i] * s_params[p_op6_level + i * 10];
+      s_opval[i] = osc_sinf(modw0);
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = s_opval[i];
+        s_feedback_opval[0] = s_opval[i] * s_egval[i] * s_params[p_op6_level + i * 10];
       }
+      s_opval[i] = s_opval[i] * s_egval[i] * s_params[p_op6_level + i * 10];
+      if (s_algorithm[i] & ALG_OUT_MASK)
+        osc_out += s_opval[i];
 #endif
 
       s_phase[i] += opw0[i];
@@ -609,6 +623,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       }
       break;
     case k_user_osc_param_id6:
+      if (s_level_scale != value)
+        s_level_scale = value;
       break;
     default:
       break;

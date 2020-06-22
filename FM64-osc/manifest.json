@@ -6,15 +6,16 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.6-10",
+        "version" : "0.6-11",
         "name" : "FM64",
-        "num_param" : 5,
+        "num_param" : 6,
         "params" : [
             ["Voice", 0, 31, ""],
             ["Bank", 0, 3, ""],
             ["AC 1", 0, 68, ""],
             ["AC 2", 0, 68, ""],
-            ["Algorithm", 0, 31, ""]
+            ["Algorithm", 0, 31, ""],
+            ["Level scale", 0, 1, ""]
         ],
         "custom_data" : [
           ["Yamaha DX7/DX21/DX11-series voice banks", 64, 4096, 4, 1]

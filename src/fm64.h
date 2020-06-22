@@ -98,6 +98,15 @@ float dx11_modindex(uint8_t x) {
   return 8.f * M_PI * powf(2.f, -.125f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x));
 }
 
+static const uint8_t level_lut[] = {
+  0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+uint8_t scale_level(uint8_t x) {
+    return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
+}
+
 static const float dx11_ratio_lut[64] = {
   .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
   2.f, 2.82f, 3.f, 3.14f, 3.46f, 4.f, 4.24f, 4.71f,
