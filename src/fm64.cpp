@@ -54,7 +54,7 @@
   typedef float param_t;
   #define f32_to_param(a) (a)
   #define param_to_q31(a) f32_to_q31(a)
-  #define param_add(a,b) ((a),(b))
+  #define param_add(a,b) ((a)+(b))
   #define param_mul(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
   #define ZERO 0.f
@@ -62,7 +62,6 @@
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define SCALE_RECIP .01010101f // 1/99
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
-
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
@@ -308,7 +307,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef USE_Q31_PHASE
       modw0 = s_phase[i];
 #else
-      modw0 = f32_to_q31(s_phase[i]);
+      modw0 = f32_to_param(s_phase[i]);
 #endif
       if (s_algorithm[i] & ALG_FBK_MASK) {
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
