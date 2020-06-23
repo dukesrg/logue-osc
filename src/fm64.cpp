@@ -257,11 +257,15 @@ void initvoice() {
   }
 }
 
+static param_t out_lut[DX7_MAX_RATE + 1];
+
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
 #ifdef USE_Q31
   osc_api_initq();
 #endif
+  for (uint32_t i = 0; i <= DX7_MAX_RATE; i++)
+    out_lut[i] = scale_level(i) * LEVEL_SCALE_FACTOR;
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -305,7 +309,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //todo: modindex[egval*out_level] ?
       if (s_level_scale)
 //      s_opval[i] = param_mul(s_opval[i], dx7_modindex(q31mul(lvl, 100)) * LEVEL_SCALE_FACTOR);
-        s_opval[i] = param_mul(s_opval[i], scale_level(param_mul(lvl, 100)) * LEVEL_SCALE_FACTOR);
+        s_opval[i] = param_mul(s_opval[i], out_lut[param_mul(lvl, 100)]);
       else
         s_opval[i] = param_mul(s_opval[i], lvl);
 
