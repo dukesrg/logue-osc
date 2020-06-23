@@ -293,7 +293,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = phase_to_param(s_phase[i]);
       if (s_algorithm[i] & ALG_FBK_MASK) {
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
-//        modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
+        modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
@@ -308,7 +308,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       param_t lvl = param_mul(s_egval[i], s_params[p_op6_level + i * 10]);
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = param_mul(s_opval[i], lvl);
+//        s_feedback_opval[0] = param_mul(s_opval[i], lvl);
       }
 //todo: modindex[egval*out_level] ?
 //      if (s_level_scale)
