@@ -320,7 +320,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //todo: flatten the level/rate arrays and get rid of the excessive indexing
       s_egval[i] = param_add(s_egval[i], s_egrate[i][s_egstage[i]]);
       if (
-        (s_egrate[i][s_egstage[i]] > ZERO && s_egval[i] >= s_eglevel[i][s_egstage[i]])
+        (s_egrate[i][s_egstage[i]] > ZERO && (s_egval[i] >= s_eglevel[i][s_egstage[i]] || s_egval[i] < 0)) //fixed-point overflow check
         || (s_egrate[i][s_egstage[i]] < ZERO && s_egval[i] <= s_eglevel[i][s_egstage[i]])
       ) {
         s_egval[i] = s_eglevel[i][s_egstage[i]];
