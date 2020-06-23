@@ -41,8 +41,12 @@
     #define osc_sin(a) osc_sinq(a)
   #endif
   #ifdef USE_Q31_PHASE
+    typedef q31_t phase_t;
+    #define phase_to_param(a) (a)
     #define ZERO_PHASE 0
   #else
+    typedef float phase_t;
+    #define phase_to_param(a) f32_to_q31(a)
     #define ZERO_PHASE 0.f
   #endif
   #define ZERO 0
@@ -52,11 +56,13 @@
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
   typedef float param_t;
+  typedef float phase_t;
   #define f32_to_param(a) (a)
   #define param_to_q31(a) f32_to_q31(a)
   #define param_add(a,b) ((a)+(b))
   #define param_mul(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
+  #define phase_to_param(a) (a)
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
@@ -114,11 +120,7 @@ static q31_t s_oppitch[DX7_OPERATOR_COUNT];
 #else
 static float s_oppitch[DX7_OPERATOR_COUNT];
 #endif
-#ifdef USE_Q31_PHASE
-static q31_t s_phase[DX7_OPERATOR_COUNT];
-#else
-static float s_phase[DX7_OPERATOR_COUNT];
-#endif
+static phase_t s_phase[DX7_OPERATOR_COUNT];
 
 void initvoice() {
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
@@ -267,6 +269,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
   param_t osc_out, modw0;
+  phase_t opw0[DX7_OPERATOR_COUNT];
 
 #ifdef USE_Q31_PHASE
 #ifdef USE_Q31_PITCH
@@ -275,7 +278,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #else
   float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
 #endif
-  q31_t opw0[DX7_OPERATOR_COUNT];
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
 #ifdef USE_Q31_PITCH
     if (s_fixedfreq[i])
@@ -291,7 +293,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 #else 
   float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
-  float opw0[DX7_OPERATOR_COUNT];
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_fixedfreq[i])
       opw0[i] = s_oppitch[i];
@@ -304,11 +305,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t f = frames; f--; y++) {
     osc_out = ZERO;
     for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
-#ifdef USE_Q31_PHASE
-      modw0 = s_phase[i];
-#else
-      modw0 = f32_to_param(s_phase[i]);
-#endif
+      modw0 = phase_to_param(s_phase[i]);
       if (s_algorithm[i] & ALG_FBK_MASK) {
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
         modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
