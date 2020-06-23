@@ -18,8 +18,8 @@
 //todo: check and fix osc_apiq
   #define USE_Q31_PHASE //a bit less CPU consuming, but looks like have a slight phase drift over time
   #ifdef USE_Q31_PHASE 
-//todo: doesn't work as expected
-//  #define USE_Q31_PITCH //another bit less CPU consuming
+//todo: check - sounds a bit different, but working now
+//    #define USE_Q31_PITCH //another bit less CPU consuming
   #endif
 //  #define OSC_NOTE_Q
 //  #define USE_FASTSINQ //not suitable for FM
@@ -44,8 +44,20 @@
     typedef q31_t phase_t;
     #define phase_to_param(a) (a)
     #define ZERO_PHASE 0
+    #ifdef USE_Q31_PITCH
+      typedef q31_t pitch_t;
+      #define f32_to_pitch(a) f32_to_q31(a)
+      #define pitch_to_phase(a) (a)
+      #define pitch_mul(a,b) q31mul(a,b)
+    #else
+      typedef float_t pitch_t;
+      #define f32_to_pitch(a) (a)
+      #define pitch_to_phase(a) f32_to_q31(a)
+      #define pitch_mul(a,b) ((a)*(b))
+    #endif
   #else
     typedef float phase_t;
+    typedef float pitch_t;
     #define phase_to_param(a) f32_to_q31(a)
     #define ZERO_PHASE 0.f
   #endif
@@ -57,12 +69,16 @@
 #else
   typedef float param_t;
   typedef float phase_t;
+  typedef float pitch_t;
   #define f32_to_param(a) (a)
   #define param_to_q31(a) f32_to_q31(a)
   #define param_add(a,b) ((a)+(b))
   #define param_mul(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
+  #define f32_to_pitch(a) (a)
+  #define pitch_to_phase(a) (a)
+  #define pitch_mul(a,b) ((a)*(b))
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
@@ -115,11 +131,7 @@ static param_t s_peglevel[EG_STAGE_COUNT];
 static param_t s_pegval[DX7_OPERATOR_COUNT];
 */
 
-#ifdef USE_Q31_PITCH
-static q31_t s_oppitch[DX7_OPERATOR_COUNT];
-#else
-static float s_oppitch[DX7_OPERATOR_COUNT];
-#endif
+static pitch_t s_oppitch[DX7_OPERATOR_COUNT];
 static phase_t s_phase[DX7_OPERATOR_COUNT];
 
 void initvoice() {
@@ -167,17 +179,10 @@ void initvoice() {
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
-#ifdef USE_Q31_PITCH
       if (s_fixedfreq[i])
-        s_oppitch[i] = f32_to_q31(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
+        s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
       else
-        s_oppitch[i] = f32_to_q31(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
-#else
-      if (s_fixedfreq[i])
-        s_oppitch[i] = ((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf;
-      else
-        s_oppitch[i] = ((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f));
-#endif
+        s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
     }
     s_params[p_op6_level] = voice->op[0].tl * SCALE_RECIP;
     s_params[p_op5_level] = voice->op[1].tl * SCALE_RECIP;
@@ -225,22 +230,15 @@ void initvoice() {
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
-#ifdef USE_Q31_PITCH
-      if (s_fixedfreq[i])
-        s_oppitch[i] = f32_to_q31(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg) * k_samplerate_recipf);
-      else
-        s_oppitch[i] = f32_to_q31(dx11_ratio_lut[voice->op[i].f]);
-#else
-      if (s_fixedfreq[i])
-        s_oppitch[i] = ((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg) * k_samplerate_recipf;
-      else
 //todo: Fine freq ratio
-        s_oppitch[i] = dx11_ratio_lut[voice->op[i].f];
+      if (s_fixedfreq[i])
+        s_oppitch[i] = f32_to_pitch(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg) * k_samplerate_recipf);
+      else
+        s_oppitch[i] = f32_to_pitch(dx11_ratio_lut[voice->op[i].f]);
 //todo: Waveform
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
     }
-#endif
     s_params[p_op6_level] = voice->op[0].out * SCALE_RECIP;
     s_params[p_op5_level] = voice->op[1].out * SCALE_RECIP;
     s_params[p_op4_level] = voice->op[2].out * SCALE_RECIP;
@@ -268,38 +266,17 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
+//todo: PEG level
   param_t osc_out, modw0;
   phase_t opw0[DX7_OPERATOR_COUNT];
+  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
 
-#ifdef USE_Q31_PHASE
-#ifdef USE_Q31_PITCH
-//todo: PEG level
-  q31_t basew0 = f32_to_q31(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
-#else
-  float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
-#endif
-  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
-#ifdef USE_Q31_PITCH
-    if (s_fixedfreq[i])
-      opw0[i] = s_oppitch[i];
-    else
-      opw0[i] = q31mul(s_oppitch[i], basew0);
-#else
-    if (s_fixedfreq[i])
-      opw0[i] = f32_to_q31(s_oppitch[i]);
-    else
-      opw0[i] = f32_to_q31(s_oppitch[i] * basew0);
-#endif
-  }
-#else 
-  float basew0 = osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF);
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_fixedfreq[i])
-      opw0[i] = s_oppitch[i];
+      opw0[i] = pitch_to_phase(s_oppitch[i]);
     else
-      opw0[i] = s_oppitch[i] * basew0;
+      opw0[i] = pitch_to_phase(pitch_mul(s_oppitch[i], basew0));
   }
-#endif
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
