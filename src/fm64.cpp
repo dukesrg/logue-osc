@@ -108,7 +108,6 @@
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
 static uint8_t s_algorithm_idx = -1;
-static uint8_t s_level_scale = -1;
 static const uint8_t *s_algorithm;
 static uint8_t s_opi;
 static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
@@ -257,11 +256,15 @@ void initvoice() {
   }
 }
 
+static param_t eg_lut[256];
+
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
 #ifdef USE_Q31
   osc_api_initq();
 #endif
+  for (uint32_t i = 0; i < sizeof(eg_lut)/sizeof(eg_lut[0]); i++)
+    eg_lut[i] = f32_to_param(powf(2.f, i / 256.f));
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -299,10 +302,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //todo: move output level to EG calculation
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
+//        s_feedback_opval[0] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
+        s_feedback_opval[0] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
       }
 //todo: modindex[egval*out_level] ?
-      s_opval[i] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
+//      s_opval[i] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
+      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
 
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, s_opval[i]);
