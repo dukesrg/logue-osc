@@ -98,6 +98,15 @@ float dx11_modindex(uint8_t x) {
   return 8.f * M_PI * powf(2.f, -.125f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x));
 }
 
+static const uint8_t level_lut[] = {
+  0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+uint8_t scale_level(uint8_t x) {
+    return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
+}
+
 static const float dx11_ratio_lut[64] = {
   .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
   2.f, 2.82f, 3.f, 3.14f, 3.46f, 4.f, 4.24f, 4.71f,
@@ -231,7 +240,7 @@ enum {
   p_cc7,
   p_cc8,
   p_op6_level,
-  p_op6_modlevel,
+  p_cc10,
   p_cc11,
   p_cc12,
   p_cc13,
@@ -241,7 +250,7 @@ enum {
   p_cc17,
   p_cc18,
   p_op5_level,
-  p_op5_modlevel,
+  p_cc20,
   p_cc21,
   p_cc22,
   p_cc23,
@@ -251,7 +260,7 @@ enum {
   p_cc27,
   p_cc28,
   p_op4_level,
-  p_op4_modlevel,
+  p_cc30,
   p_cc31,
   p_cc32,
   p_cc33,
@@ -261,7 +270,7 @@ enum {
   p_cc37,
   p_cc38,
   p_op3_level,
-  p_op3_modlevel,
+  p_cc40,
   p_cc41,
   p_cc42,
   p_cc43,
@@ -271,7 +280,7 @@ enum {
   p_cc47,
   p_cc48,
   p_op2_level,
-  p_op2_modlevel,
+  p_cc50,
   p_cc51,
   p_cc52,
   p_cc53,
@@ -281,7 +290,7 @@ enum {
   p_cc57,
   p_cc58,
   p_op1_level,
-  p_op1_modlevel,
+  p_cc60,
   p_cc61,
   p_cc62,
   p_cc63,

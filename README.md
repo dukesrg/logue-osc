@@ -66,7 +66,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |#|FM64<br>Assignable controllers 1&2|1x (Op.6)|2x (Op.5)|3x (Op.4)|4x (Op.3)|5x (Op.2)|6x (Op.1)|
 |-|-|-|-|-|-|-|-|
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|
-|x1|Feedback|Mod. level|Mod. level|Mod. level|Mod. level|Mod. level|Mod. level|
+|x1|Feedback|-|-|-|-|-|-|
 |x2|-|-|-|-|-|-|-|
 |x3|-|-|-|-|-|-|-|
 |x4|-|-|-|-|-|-|-|
