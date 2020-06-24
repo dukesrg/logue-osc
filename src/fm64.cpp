@@ -172,7 +172,9 @@ void initvoice() {
           s_egrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
         else 
           s_egrate[i][j] = ZERO;
-        s_eglevel[i][j] = f32_to_param(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
+//        s_eglevel[i][j] = f32_to_param(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
+//        s_eglevel[i][j] = (scale_level(voice->op[i].l[j]) + scale_level(voice->op[i].tl)) * 0x00810204; // 1/254
+        s_eglevel[i][j] = scale_level(voice->op[i].l[j]) * LEVEL_SCALE_FACTOR;
       }
       s_opval[i] = ZERO;
       s_egstage[i] = 0;
@@ -256,7 +258,7 @@ void initvoice() {
   }
 }
 
-static param_t eg_lut[256];
+static param_t eg_lut[128];
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
@@ -264,7 +266,9 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   osc_api_initq();
 #endif
   for (uint32_t i = 0; i < sizeof(eg_lut)/sizeof(eg_lut[0]); i++)
-    eg_lut[i] = f32_to_param(powf(2.f, i / 256.f));
+//    eg_lut[i] = f32_to_param(powf(2.f, i / 256.f));
+    eg_lut[i] = f32_to_param(dbampf((i - 127) * 0.75f)); //10^(0.05*(x-127)*32*6/256)
+
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -303,11 +307,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
 //        s_feedback_opval[0] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
-        s_feedback_opval[0] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
+//        s_feedback_opval[0] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
+        s_feedback_opval[0] = param_mul(s_opval[i], s_egval[i]);
       }
 //todo: modindex[egval*out_level] ?
 //      s_opval[i] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
-      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
+//      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
+      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>24]);
 
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, s_opval[i]);
