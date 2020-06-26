@@ -304,16 +304,22 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
         modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_modval[0];
-        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_modval[1];
-        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_modval[2];
-        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_modval[3];
-        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_modval[4];
-        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_modval[5];
+//        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_modval[0];
+//        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_modval[1];
+//        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_modval[2];
+//        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_modval[3];
+//        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_modval[4];
+//        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_modval[5];
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
       s_opval[i] = osc_sin(modw0);
-      s_modval[i] = param_mul(s_opval[i], mod_lut[s_egval[i]>>24]);
+//      s_modval[i] = param_mul(s_opval[i], mod_lut[s_egval[i]>>24]);
       s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>24]);
       s_opval[i] = param_mul(s_opval[i], s_params[p_op6_level + i * 10]);
 
