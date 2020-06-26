@@ -187,12 +187,18 @@ void initvoice() {
       else
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
     }
-    s_params[p_op6_level] = voice->op[0].tl * SCALE_RECIP;
-    s_params[p_op5_level] = voice->op[1].tl * SCALE_RECIP;
-    s_params[p_op4_level] = voice->op[2].tl * SCALE_RECIP;
-    s_params[p_op3_level] = voice->op[3].tl * SCALE_RECIP;
-    s_params[p_op2_level] = voice->op[4].tl * SCALE_RECIP;
-    s_params[p_op1_level] = voice->op[5].tl * SCALE_RECIP;
+//    s_params[p_op6_level] = voice->op[0].tl * SCALE_RECIP;
+//    s_params[p_op5_level] = voice->op[1].tl * SCALE_RECIP;
+//    s_params[p_op4_level] = voice->op[2].tl * SCALE_RECIP;
+//    s_params[p_op3_level] = voice->op[3].tl * SCALE_RECIP;
+//    s_params[p_op2_level] = voice->op[4].tl * SCALE_RECIP;
+//    s_params[p_op1_level] = voice->op[5].tl * SCALE_RECIP;
+    s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
+    s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
+    s_params[p_op4_level] = scale_level(voice->op[2].tl) * LEVEL_SCALE_FACTOR;
+    s_params[p_op3_level] = scale_level(voice->op[3].tl) * LEVEL_SCALE_FACTOR;
+    s_params[p_op2_level] = scale_level(voice->op[4].tl) * LEVEL_SCALE_FACTOR;
+    s_params[p_op1_level] = scale_level(voice->op[5].tl) * LEVEL_SCALE_FACTOR;
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
@@ -268,7 +274,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
-  for (uint32_t i = 0; i < sizeof(eg_lut)/sizeof(eg_lut[0]); i++) {
+  for (int32_t i = 0; i < 128; i++) {
 //    eg_lut[i] = f32_to_param(powf(2.f, i / 256.f));
     eg_lut[i] = f32_to_param(dbampf((i - 127) * 0.75f)); //10^(0.05*(x-127)*32*6/256)
     mod_lut[i] = f32_to_param(dx7_modindex(i) * LEVEL_SCALE_FACTOR);
@@ -309,6 +315,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_opval[i] = osc_sin(modw0);
       s_modval[i] = param_mul(s_opval[i], mod_lut[s_egval[i]>>24]);
       s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>24]);
+      s_opval[i] = param_mul(s_opval[i], s_params[p_op6_level + i * 10]);
 
 //todo: move output level to EG calculation
       if (i == s_feedback_src) {
