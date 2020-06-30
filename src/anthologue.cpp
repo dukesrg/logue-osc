@@ -16,6 +16,8 @@
 //#define BANK_SIZE 25
 #include "anthologue.h"
 
+#define VCO_COUNT 3
+
 static q31_t s_params[p_num];
 static uint32_t s_platform;
 
@@ -42,9 +44,7 @@ static uint8_t s_seq_motion_param[SEQ_MOTION_SLOT_COUNT];
 static q31_t s_seq_motion_delta[SEQ_MOTION_SLOT_COUNT];
 static q31_t s_seq_motion_value[SEQ_MOTION_SLOT_COUNT];
 
-static q31_t s_phase1;
-static q31_t s_phase2;
-static q31_t s_phase3;
+static q31_t s_phase[VCO_COUNT];
 //static bool s_tie;
 
 static uint8_t s_prog = -1;
@@ -405,9 +405,10 @@ void OSC_INIT(uint32_t platform, __attribute__((unused)) uint32_t api)
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  q31_t out, out1, out2, out3;
-  q31_t w01, w02, w03;
-  int32_t pitch1, pitch2, pitch3 = params->pitch;
+  q31_t out[VCO_COUNT];
+  q31_t w0[VCO_COUNT];
+  q31_t val;
+  int32_t pitch1, pitch3 = params->pitch;
 
   if (s_play_mode != mode_note) {
     if (s_sample_pos >= s_seq_quant) {
@@ -476,51 +477,39 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   else
     pitch3 += s_params[p_pitch_bend] * s_params[p_bend_range_neg];
 
-  pitch1 = pitch3 + s_params[p_vco1_pitch];
-  pitch2 = pitch3 + s_params[p_vco2_pitch];
-  pitch3 += s_params[p_vco3_pitch];
-
-  w01 = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave] + s_params[p_keyboard_octave], pitch1 & 0xFF));
-  w02 = f32_to_q31(osc_w0f_for_note((pitch2 >> 8) + s_params[p_vco2_octave] + s_params[p_keyboard_octave], pitch2 & 0xFF));
-  w03 = f32_to_q31(osc_w0f_for_note((pitch3 >> 8) + s_params[p_vco3_octave] + s_params[p_keyboard_octave], pitch3 & 0xFF));
+  for (uint32_t i = 0; i < VCO_COUNT; i++) {
+    pitch1 = pitch3 + s_params[p_vco1_pitch + i * 10];
+    w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave], pitch1 & 0xFF));
+  }
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
+    val = 0;
     if (s_play_mode == mode_seq && (!s_seq_gate_on || s_sample_pos >= s_seq_gate_len)) {
-      out = out1 = out2 = out3 = 0;
+      for (uint32_t i = 0; i < VCO_COUNT; i++)
+        out[i] = 0;
     } else {
-      out1 = getVco(s_phase1, s_params[p_vco1_wave], s_params[p_vco1_shape]);
-      out2 = getVco(s_phase2, s_params[p_vco2_wave], s_params[p_vco2_shape]);
-      out3 = getVco(s_phase3, s_params[p_vco3_wave], s_params[p_vco3_shape]);
-
-      if (s_params[p_vco2_ring])
-        out2 = q31mul(out2, out1);
-
-      if (s_params[p_vco3_ring])
-        out3 = q31mul(out3, out2);
-
-      out = q31add(q31add(q31mul(out1, s_params[p_vco1_level]), q31mul(out2, s_params[p_vco2_level])), q31mul(out3, s_params[p_vco3_level]));
-      out = q31add(out, q31mul(out, s_params[p_program_level]));
+      for (uint32_t i = 0; i < VCO_COUNT; i++) {
+        out[i] = getVco(s_phase[i], s_params[p_vco1_wave + i * 10], s_params[p_vco1_shape + i * 10]);
+        if (i && s_params[p_vco2_ring - 10 + i * 10])
+          out[i] = q31mul(out[i], out[i - 1]);
+        val = q31add(val, q31mul(out[i], s_params[p_vco1_level + i * 10]));
+      }
+      val = q31add(val, q31mul(val, s_params[p_program_level]));
     }
 
-    *y = out;
+    *y = val;
 
-    s_phase1 += w01;
-    if (s_params[p_vco2_sync] && s_phase1 <= 0) {
-      s_phase2 = s_phase1;
-    } else {
-      s_phase2 += w02 + q31mul(out1, s_params[p_vco2_cross]);
+    for (uint32_t i = 0; i < VCO_COUNT; i++) {
+      if (i == 0)
+        s_phase[i] += w0[i];
+      else if (s_params[p_vco2_sync - 10 + i * 10] && s_phase[i - 1] <= 0)
+        s_phase[i] = s_phase[i - 1];
+      else
+        s_phase[i] += w0[i] + q31mul(out[i - 1], s_params[p_vco2_cross - 10 + i * 10]);
     }
-
-    if (s_params[p_vco3_sync] && s_phase2 <= 0) {
-      s_phase3 = s_phase2;
-    } else {
-      s_phase3 += w03 + q31mul(out2, s_params[p_vco3_cross]);
-    }
-
-    s_phase1 &= 0x7FFFFFFF;
-    s_phase2 &= 0x7FFFFFFF;
-    s_phase3 &= 0x7FFFFFFF;
+    for (uint32_t i = 0; i < VCO_COUNT; i++)
+      s_phase[i] &= 0x7FFFFFFF;
 
     s_sample_pos++;
 
@@ -529,9 +518,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  s_phase1 = 0;
-  s_phase2 = 0;
-  s_phase3 = 0;
+  for (uint32_t i = 0; i < VCO_COUNT; i++)
+    s_phase[i] = 0;
   s_note_pitch = params->pitch;
 //  s_tie = false;
   initSeq();
