@@ -569,9 +569,9 @@ enum {
   p_vco1_octave,
   p_vco1_wave,
   p_vco1_level,
-  p_cc14,
-  p_cc15,
-  p_cc16,
+  p_vco1_sync_stub,
+  p_vco1_ring_stub,
+  p_vco1_cross_stub,
   p_cc17,
   p_cc18,
   p_vco2_pitch,
@@ -594,15 +594,14 @@ enum {
   p_vco3_cross,
   p_cc37,
   p_cc38,
-/* timbre 2
   p_vco4_pitch,
   p_vco4_shape,
   p_vco4_octave,
   p_vco4_wave,
   p_vco4_level,
-  p_cc44,
-  p_cc45,
-  p_cc46,
+  p_vco4_sync,
+  p_vco4_ring,
+  p_vco4_cross,
   p_cc47,
   p_cc48,
   p_vco5_pitch,
@@ -625,7 +624,6 @@ enum {
   p_vco6_cross,
   p_cc67,
   p_cc68,
-*/
   p_pedal_assign,
   p_num
 };
@@ -875,7 +873,7 @@ const void *getProg(uint32_t index, uint8_t *prog_type) {
   return prog_ptr;
 }
 
-static inline __attribute__((optimize("Ofast"), always_inline))
+//static inline __attribute__((optimize("Ofast"), always_inline))
 int32_t getPitch(uint16_t pitch) {
 //todo: better pitch calculation implementation
   int32_t res;

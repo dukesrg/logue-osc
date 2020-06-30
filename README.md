@@ -25,7 +25,7 @@ For user-customizable oscillators online constructor is available at https://duk
 * FastSaw - The same as Supersaw rewritten with Q31 fixed point. Less CPU resource consuming i.e. more unison/polyphony/FX avaiable without sound degradation.
 * Morpheus - Example implementation of custom wavetable inspired by [WaveEdit](https://synthtech.com/waveedit).
 * FM64 - 6/4-operator FM oscillator with up to 4 Yamaha DX7/DX21/DX11-series voice banks suport. Current progress is in issue [FM64 features implementation](../../issues/2).
-* Anthologue - 3 VCO oscillator with Korg logue-series program suport. Current progress is in issue [Anthologue features implementation](../../issues/1).
+* Anthologue - 6 VCO oscillator with Korg logue-series program suport. Current progress is in issue [Anthologue features implementation](../../issues/1).
 
 ### Oscillator Parameters
 |Oscillator|Shape / A knob|Shift-Shape / Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
@@ -33,7 +33,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
 |FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|-|-|
-|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;39|Assignable controller 2 select 1&hellip;39|-|-|
+|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;39|Assignable controller 2 select 1&hellip;39|-|
 
 ### Oscillator notes
 * Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.
@@ -76,18 +76,18 @@ For user-customizable oscillators online constructor is available at https://duk
 |x8|-|-|-|-|-|-|-|
 |x9|-|-|-|-|-|-|-|
 
-|#|Anthologue<br>Assignable controllers 1&2|1x (VCO 1)|2x (VCO 2)|3x (VCO 3)|
-|-|-|-|-|-|
-|x0|N/A|Pitch|Pitch|Pitch|
-|x1|Slider<br>Mod.Wheel/E.Pedal<br>Joy Y+/Joy Y-|Shape|Shape|Shape|
-|x2|Pitch Bend|Octave|Octave|Octave|
-|x3|Bend Range +|Wave|Wave|Wave|
-|x4|Bend Range -|Level|Level|Level|
-|x5|Program Level|-|Sync|Sync|Sync|
-|x6|Keyboard Octave|-|Ring Mod|Ring Mod|
-|x7|BPM|-|Cross Mod Depth|Cross Mod Depth|
-|x8|-|-|-|-|
-|x9|-|-|-|-|
+|#|Anthologue<br>Assignable controllers 1&2|1x (VCO 1)|2x (VCO 2)|3x (VCO 3)|4x (VCO 4)|5x (VCO 5)|6x (VCO 6)|
+|-|-|-|-|-|-|-|-|
+|x0|N/A|Pitch|Pitch|Pitch|Pitch|Pitch|Pitch|
+|x1|Slider<br>Mod.Wheel/E.Pedal<br>Joy Y+/Joy Y-|Shape|Shape|Shape|Shape|Shape|Shape|
+|x2|Pitch Bend|Octave|Octave|Octave|Octave|Octave|Octave|
+|x3|Bend Range +|Wave|Wave|Wave|Wave|Wave|Wave|
+|x4|Bend Range -|Level|Level|Level|Level|Level|Level|
+|x5|Program Level|-|Sync|Sync|Sync|Sync|Sync|Sync|
+|x6|Keyboard Octave|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|
+|x7|BPM|-|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|
+|x8|-|-|-|-|-|-|-|
+|x9|-|-|-|-|-|-|-|
 
 |#|Anthologue<br>Waves|
 |-|-|

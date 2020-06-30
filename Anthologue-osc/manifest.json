@@ -6,14 +6,15 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.6-1",
+        "version" : "0.7-0",
         "name" : "Anthologue",
-        "num_param": 4,
+        "num_param": 5,
         "params": [
             ["Prog", 0, 24, ""],
+            ["Sub", 0, 75, ""],
             ["Mode", 0, 2, ""],
-            ["AC 1", 0, 38, ""],
-            ["AC 2", 0, 38, ""]
+            ["AC 1", 0, 68, ""],
+            ["AC 2", 0, 68, ""]
         ],
         "custom_data" : [
           ["Korg logue-series program data binaries", 64, 1024, 25, 0]
