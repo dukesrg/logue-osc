@@ -86,7 +86,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |x5|Program Level|-|Sync|Sync|Sync|Sync|Sync|Sync|
 |x6|Keyboard Octave|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|
 |x7|BPM|-|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|
-|x8|-|-|-|-|-|-|-|
+|x8|Main/Sub balance|-|-|-|-|-|-|
 |x9|-|-|-|-|-|-|-|
 
 |#|Anthologue<br>Waves|

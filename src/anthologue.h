@@ -562,7 +562,7 @@ enum {
   p_program_level,
   p_keyboard_octave,
   p_bpm,
-  p_cc7,
+  p_main_sub_balance,
   p_cc8,
   p_vco1_pitch,
   p_vco1_shape,

@@ -234,6 +234,7 @@ void initVoice(uint32_t timbre) {
 //todo: mod wheel range
 //      s_params[p_slider_range] = (t->mod_wheel_range - 100) * 0x0147AE14;
 //      s_params[p_pedal_range] = 0x7FFFFFFF;
+      s_params[p_main_sub_balance] = p->main_sub_balance * 0x01020408; // 1/127
 
       t = &p->timbre[1];
       timbre = timbre_sub;
@@ -421,6 +422,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 {
   q31_t out[VCO_COUNT];
   q31_t w0[VCO_COUNT];
+  q31_t level[VCO_COUNT];
   q31_t val;
   int32_t pitch1, pitch3 = params->pitch;
 
@@ -494,6 +496,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t i = 0; i < VCO_COUNT; i++) {
     pitch1 = pitch3 + s_params[p_vco1_pitch + i * 10];
     w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave], pitch1 & 0xFF));
+    level[i] = q31mul(s_params[p_vco1_level + i * 10], i < 3 ? 0x7FFFFFFF - s_params[p_main_sub_balance] : s_params[p_main_sub_balance]);
   }
 
   q31_t * __restrict y = (q31_t *)yn;
@@ -507,7 +510,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         out[i] = getVco(s_phase[i], s_params[p_vco1_wave + i * 10], s_params[p_vco1_shape + i * 10]);
         if (i && s_params[p_vco1_ring_stub + i * 10])
           out[i] = q31mul(out[i], out[i - 1]);
-        val = q31add(val, q31mul(out[i], s_params[p_vco1_level + i * 10]));
+//        val = q31add(val, q31mul(out[i], s_params[p_vco1_level + i * 10]));
+        val = q31add(val, q31mul(out[i], level[i]));
       }
       val = q31add(val, q31mul(val, s_params[p_program_level]));
     }
@@ -635,7 +639,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case k_user_osc_param_id4:
     case k_user_osc_param_id5:
-       s_assignable[index - k_user_osc_param_id3] = value;
+       s_assignable[index - k_user_osc_param_id4] = value;
       break;
     case k_user_osc_param_id6:
 
