@@ -126,7 +126,7 @@ static param_t s_pegval[DX7_OPERATOR_COUNT];
 static pitch_t s_oppitch[DX7_OPERATOR_COUNT];
 static phase_t s_phase[DX7_OPERATOR_COUNT];
 
-static param_t eg_lut[128];
+static param_t eg_lut[1024];
 //static param_t mod_lut[128];
 
 void initvoice() {
@@ -259,8 +259,8 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
-  for (int32_t i = 0; i < 128; i++) {
-    eg_lut[i] = f32_to_param(dbampf((i - 127) * 0.75f)); //10^(0.05*(x-127)*32*6/256)
+  for (int32_t i = 0; i < 1024; i++) {
+    eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
 //    mod_lut[i] = f32_to_param(dx7_modindex(i) * LEVEL_SCALE_FACTOR);
   }
 }
@@ -296,7 +296,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 24]);
+      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 21]);
 
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
