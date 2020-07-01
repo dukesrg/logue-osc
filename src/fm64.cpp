@@ -63,7 +63,6 @@
   #endif
   #define ZERO 0
   #define FEEDBACK_RECIP 0x000fffff // <1/128
-  #define SCALE_RECIP 0x14AFD6A // 1/99
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
@@ -82,7 +81,6 @@
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
-  #define SCALE_RECIP .01010101f // 1/99
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
@@ -93,14 +91,8 @@
 #define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
 #define DX7_DACAY_RATE_FACTOR -8.3668005e-8f // -1/(6*41.5*48000)
 
-#define DX7_MAX_RATE 99
-#define DX11_MAX_RATE 31
-#define DX7_EG_LEVEL_SCALE_RECIP .01010101f //1/99
-#define DX11_EG_LEVEL_SCALE_RECIP .06666667f //1/15
+#define DX11_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
-#define DX7_RATE_FACTOR .01f //linear EG rate multiplier
-//#define DX11_RATE_FACTOR 0.28125f //9s/32
-#define DX11_RATE_FACTOR .03f
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 
@@ -133,6 +125,9 @@ static param_t s_pegval[DX7_OPERATOR_COUNT];
 
 static pitch_t s_oppitch[DX7_OPERATOR_COUNT];
 static phase_t s_phase[DX7_OPERATOR_COUNT];
+
+static param_t eg_lut[128];
+//static param_t mod_lut[128];
 
 void initvoice() {
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
@@ -173,8 +168,6 @@ void initvoice() {
           s_egrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * voice->op[i].r[j]));
         else 
           s_egrate[i][j] = ZERO;
-//        s_eglevel[i][j] = f32_to_param(voice->op[i].l[j] * DX7_EG_LEVEL_SCALE_RECIP);
-//        s_eglevel[i][j] = (scale_level(voice->op[i].l[j]) + scale_level(voice->op[i].tl)) * 0x00810204; // 1/254
         s_eglevel[i][j] = scale_level(voice->op[i].l[j]) * LEVEL_SCALE_FACTOR;
       }
       s_opval[i] = ZERO;
@@ -187,12 +180,6 @@ void initvoice() {
       else
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
     }
-//    s_params[p_op6_level] = voice->op[0].tl * SCALE_RECIP;
-//    s_params[p_op5_level] = voice->op[1].tl * SCALE_RECIP;
-//    s_params[p_op4_level] = voice->op[2].tl * SCALE_RECIP;
-//    s_params[p_op3_level] = voice->op[3].tl * SCALE_RECIP;
-//    s_params[p_op2_level] = voice->op[4].tl * SCALE_RECIP;
-//    s_params[p_op1_level] = voice->op[5].tl * SCALE_RECIP;
     s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
     s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
     s_params[p_op4_level] = scale_level(voice->op[2].tl) * LEVEL_SCALE_FACTOR;
@@ -233,7 +220,7 @@ void initvoice() {
           s_egrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, (j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR) * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
         else 
           s_egrate[i][j] = ZERO;
-        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j==0 ? 1.f : j == 1 ? voice->op[i].d1l * DX11_EG_LEVEL_SCALE_RECIP : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
+        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j==0 ? 1.f : j == 1 ? scale_level(voice->op[i].d1l * DX11_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
       s_opval[i] = ZERO;
       s_modval[i] = ZERO;
@@ -249,10 +236,10 @@ void initvoice() {
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
     }
-    s_params[p_op6_level] = voice->op[0].out * SCALE_RECIP;
-    s_params[p_op5_level] = voice->op[1].out * SCALE_RECIP;
-    s_params[p_op4_level] = voice->op[2].out * SCALE_RECIP;
-    s_params[p_op3_level] = voice->op[3].out * SCALE_RECIP;
+    s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
+    s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
+    s_params[p_op4_level] = scale_level(voice->op[2].out) * LEVEL_SCALE_FACTOR;
+    s_params[p_op3_level] = scale_level(voice->op[3].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op2_level] = ZERO;
     s_params[p_op1_level] = ZERO;
     s_opval[4] = ZERO;
@@ -267,17 +254,14 @@ void initvoice() {
   }
 }
 
-static param_t eg_lut[128];
-static param_t mod_lut[128];
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
 #ifdef USE_Q31
   osc_api_initq();
 #endif
   for (int32_t i = 0; i < 128; i++) {
-//    eg_lut[i] = f32_to_param(powf(2.f, i / 256.f));
     eg_lut[i] = f32_to_param(dbampf((i - 127) * 0.75f)); //10^(0.05*(x-127)*32*6/256)
-    mod_lut[i] = f32_to_param(dx7_modindex(i) * LEVEL_SCALE_FACTOR);
+//    mod_lut[i] = f32_to_param(dx7_modindex(i) * LEVEL_SCALE_FACTOR);
   }
 }
 
@@ -304,12 +288,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
         modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
       } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-//        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_modval[0];
-//        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_modval[1];
-//        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_modval[2];
-//        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_modval[3];
-//        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_modval[4];
-//        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_modval[5];
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
         if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
@@ -318,23 +296,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-      s_opval[i] = osc_sin(modw0);
-//      s_modval[i] = param_mul(s_opval[i], mod_lut[s_egval[i]>>24]);
-      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>24]);
-      s_opval[i] = param_mul(s_opval[i], s_params[p_op6_level + i * 10]);
+      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 24]);
 
-//todo: move output level to EG calculation
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-//        s_feedback_opval[0] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
-//        s_feedback_opval[0] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
-//        s_feedback_opval[0] = param_mul(s_opval[i], s_egval[i]);
         s_feedback_opval[0] = s_opval[i];
       }
-//todo: modindex[egval*out_level] ?
-//      s_opval[i] = param_mul(s_opval[i], param_mul(s_egval[i], s_params[p_op6_level + i * 10]));
-//      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>23]);
-//      s_opval[i] = param_mul(s_opval[i], eg_lut[s_egval[i]>>24]);
 
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, s_opval[i]);
