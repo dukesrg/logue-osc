@@ -50,6 +50,9 @@ For user-customizable oscillators online constructor is available at https://duk
 * Maximum number of Anthologue programs depends on their types and combinations and can vary from 25 to 76.
 * Due to logue-sdk parameter initialization specific, FM64 and Anthologue oscillators could alter program parameters on selection. Change the program after oscillator selection to make sure all parameters are loaded from the program to their default values.
 * With Anthologue only NTS-1 can utilize system BPM with play mode 3. All other -logue synths works the same way for both sequence modes: internal oscillator BPM initialized from the program and can be changed with assignable controllers only.
+* All 6 VCO of Anthologue are identical and sequentially chained with sync/ring mod/cross mod.
+* VCO 4-6 of Anthologue considered as a sub timbre, to utilize them either select a prologue program with sub timbre or force sub timbre and set with Sub On AC, Main/Sub Balance AC and Sub parameter.
+* Sub timbre is reset on program change. For prologue program - according to program settings. For other logues programs - Sub On: switched off, Main/Sub balance: center, VCO 4-6 are reset.
 
 |#|Morpheus LFO X&Y types|
 |-|-|
@@ -76,7 +79,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |x8|-|-|-|-|-|-|-|
 |x9|-|-|-|-|-|-|-|
 
-|#|Anthologue<br>Assignable controllers 1&2|1x (VCO 1)|2x (VCO 2)|3x (VCO 3)|4x (VCO 4)|5x (VCO 5)|6x (VCO 6)|
+|#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|
 |-|-|-|-|-|-|-|-|
 |x0|N/A|Pitch|Pitch|Pitch|Pitch|Pitch|Pitch|
 |x1|Slider<br>Mod.Wheel/E.Pedal<br>Joy Y+/Joy Y-|Shape|Shape|Shape|Shape|Shape|Shape|
@@ -86,8 +89,8 @@ For user-customizable oscillators online constructor is available at https://duk
 |x5|Program Level|-|Sync|Sync|Sync|Sync|Sync|Sync|
 |x6|Keyboard Octave|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|
 |x7|BPM|-|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|
-|x8|Main/Sub balance|-|-|-|-|-|-|
-|x9|-|-|-|-|-|-|-|
+|x8|Sub On|-|-|-|-|-|-|
+|x9|Main/Sub Balance|-|-|-|-|-|-|
 
 |#|Anthologue<br>Waves|
 |-|-|
