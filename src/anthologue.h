@@ -562,8 +562,8 @@ enum {
   p_program_level,
   p_keyboard_octave,
   p_bpm,
-  p_sub_on,
-  p_main_sub_balance,
+  p_cc7,
+  p_cc8,
   p_vco1_pitch,
   p_vco1_shape,
   p_vco1_octave,
@@ -624,8 +624,29 @@ enum {
   p_vco6_cross,
   p_cc67,
   p_cc68,
+  p_sub_on,
+  p_timbre_type,
+  p_main_sub_balance,
+  p_main_sub_position,
+  p_split_point,
+  p_cc74,
+  p_cc75,
+  p_cc76,
+  p_cc77,
+  p_cc78,
   p_pedal_assign,
   p_num
+};
+
+enum {
+  timbre_main = 0,
+  timbre_sub = p_vco4_pitch - p_vco1_pitch
+};
+
+enum {
+  timbre_layer = 0,
+  timbre_xfade,
+  timbre_split
 };
 
 enum {

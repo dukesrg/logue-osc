@@ -49,17 +49,11 @@ static q31_t s_phase[VCO_COUNT];
 
 static q31_t s_main_balance;
 static q31_t s_sub_balance;
-static uint8_t s_vco_active;
 static uint8_t s_prog = -1;
 static uint8_t s_sub = -1;
 static uint8_t s_prog_type;
 static uint8_t s_play_mode = mode_note;
 static uint8_t s_assignable[2] = {p_slider_assign, p_pedal_assign};
-
-enum {
-  timbre_main = 0,
-  timbre_sub = p_vco4_pitch - p_vco1_pitch
-};
 
 //static inline __attribute__((optimize("Ofast"), always_inline))
 void initVoice(uint32_t timbre) {
@@ -67,9 +61,14 @@ void initVoice(uint32_t timbre) {
 
   for (uint32_t i = timbre == timbre_main ? p_vco1_pitch : p_vco4_pitch; i <= p_vco6_cross; i++)
     s_params[i] = 0;
-  s_params[p_sub_on] = 0;
-  s_params[p_main_sub_balance] = 0x40000000;
-  s_vco_active = VCO_COUNT >> 1;
+
+  if (timbre == timbre_main) {
+    s_params[p_sub_on] = 0;
+    s_params[p_timbre_type] = timbre_layer;
+    s_params[p_main_sub_position] = 0;
+    s_params[p_split_point] = 60;
+    s_params[p_main_sub_balance] = 0x40000000;
+  }
 
   switch (s_prog_type) {
     case minilogue_ID: {
@@ -241,8 +240,10 @@ void initVoice(uint32_t timbre) {
 //      s_params[p_slider_range] = (t->mod_wheel_range - 100) * 0x0147AE14;
 //      s_params[p_pedal_range] = 0x7FFFFFFF;
       s_params[p_sub_on] = p->sub_on_pgm_fetch;
+      s_params[p_timbre_type] = p->timbre_type;
+      s_params[p_main_sub_position] = p->main_sub_position;
+      s_params[p_split_point] = p->split_point;
       s_params[p_main_sub_balance] = p->main_sub_balance * 0x01020408; // 1/127
-      s_vco_active = VCO_COUNT >> (1 - s_params[p_sub_on]);
 
       t = &p->timbre[1];
       timbre = timbre_sub;
@@ -437,8 +438,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t out[VCO_COUNT];
   q31_t w0[VCO_COUNT];
   q31_t level[VCO_COUNT];
-  q31_t val;
+  q31_t val, main_vol, sub_vol;
   int32_t pitch1, pitch3 = params->pitch;
+  uint32_t vco_active;
 
   if (s_play_mode != mode_note) {
     if (s_sample_pos >= s_seq_quant) {
@@ -507,20 +509,48 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   else
     pitch3 += s_params[p_pitch_bend] * s_params[p_bend_range_neg];
 
-  for (uint32_t i = 0; i < s_vco_active; i++) {
+  vco_active = VCO_COUNT >> (1 - s_params[p_sub_on]);
+  main_vol = s_main_balance;
+  sub_vol = s_sub_balance;
+  if (s_params[p_sub_on]) {
+    switch (s_params[p_timbre_type]) {
+      case timbre_xfade:
+//todo: check&implement xfade main/sub position control
+        main_vol = pitch3 * 0x00010204; // 1/(127*256)
+        sub_vol = 0x7FFFFFFF - main_vol;
+        break;
+      case timbre_split:
+        if (((s_params[p_split_point] >= (pitch3 >> 8)) && !s_params[p_main_sub_position])
+          || ((s_params[p_split_point] < (pitch3 >> 8)) && s_params[p_main_sub_position])
+        ) {
+          main_vol = 0x7FFFFFFF;
+          sub_vol = 0;
+        } else {
+          main_vol = 0;
+          sub_vol = 0x7FFFFFFF;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  for (uint32_t i = 0; i < vco_active; i++) {
     pitch1 = pitch3 + s_params[p_vco1_pitch + i * 10];
     w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave], pitch1 & 0xFF));
-    level[i] = q31mul(s_params[p_vco1_level + i * 10], i < 3 ? s_main_balance : s_sub_balance);
+    level[i] = s_params[p_vco1_level + i * 10];
+    if (p_sub_on)
+      level[i] = q31mul(level[i], i < 3 ? main_vol : sub_vol);
   }
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
     val = 0;
     if (s_play_mode == mode_seq && (!s_seq_gate_on || s_sample_pos >= s_seq_gate_len)) {
-      for (uint32_t i = 0; i < s_vco_active; i++)
+      for (uint32_t i = 0; i < vco_active; i++)
         out[i] = 0;
     } else {
-      for (uint32_t i = 0; i < s_vco_active; i++) {
+      for (uint32_t i = 0; i < vco_active; i++) {
         out[i] = getVco(s_phase[i], s_params[p_vco1_wave + i * 10], s_params[p_vco1_shape + i * 10]);
         if (i && s_params[p_vco1_ring_stub + i * 10])
           out[i] = q31mul(out[i], out[i - 1]);
@@ -532,7 +562,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
     *y = val;
 
-    for (uint32_t i = 0; i < VCO_COUNT; i++) {
+    for (uint32_t i = 0; i < vco_active; i++) {
       if (i == 0)
         s_phase[i] += w0[i];
       else if (s_params[p_vco1_sync_stub + i * 10] && s_phase[i - 1] <= 0)
@@ -540,7 +570,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       else
         s_phase[i] += w0[i] + q31mul(out[i - 1], s_params[p_vco1_cross_stub + i * 10]);
     }
-    for (uint32_t i = 0; i < VCO_COUNT; i++)
+    for (uint32_t i = 0; i < vco_active; i++)
       s_phase[i] &= 0x7FFFFFFF;
 
     s_sample_pos++;
@@ -600,7 +630,6 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           break;
         case p_sub_on:
           param = value >> 9;
-          s_vco_active = VCO_COUNT >> (1 - param);
           break;
         case p_main_sub_balance:
           param = param_val_to_q31(value);
@@ -630,6 +659,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_vco2_ring:
         case p_vco3_sync:
         case p_vco3_ring:
+        case p_main_sub_position:
           param = value >> 9;
           break;
         case p_program_level:
@@ -638,6 +668,12 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           break;
         case p_keyboard_octave:
           param = ((value * 5 >> 10) - 2) * 12;
+          break;
+        case p_timbre_type:
+          param = value * 3 >> 10;
+          break;
+        case p_split_point:
+          param = value >> 3;
           break;
         default:
           param = param_val_to_q31(value);

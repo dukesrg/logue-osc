@@ -79,18 +79,18 @@ For user-customizable oscillators online constructor is available at https://duk
 |x8|-|-|-|-|-|-|-|
 |x9|-|-|-|-|-|-|-|
 
-|#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|
-|-|-|-|-|-|-|-|-|
-|x0|N/A|Pitch|Pitch|Pitch|Pitch|Pitch|Pitch|
-|x1|Slider<br>Mod.Wheel/E.Pedal<br>Joy Y+/Joy Y-|Shape|Shape|Shape|Shape|Shape|Shape|
-|x2|Pitch Bend|Octave|Octave|Octave|Octave|Octave|Octave|
-|x3|Bend Range +|Wave|Wave|Wave|Wave|Wave|Wave|
-|x4|Bend Range -|Level|Level|Level|Level|Level|Level|
-|x5|Program Level|-|Sync|Sync|Sync|Sync|Sync|Sync|
-|x6|Keyboard Octave|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|
-|x7|BPM|-|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|
-|x8|Sub On|-|-|-|-|-|-|
-|x9|Main/Sub Balance|-|-|-|-|-|-|
+|#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
+|-|-|-|-|-|-|-|-|-|
+|x0|N/A|Pitch|Pitch|Pitch|Pitch|Pitch|Pitch|Sub On|
+|x1|Slider<br>Mod.Wheel/E.Pedal<br>Joy Y+/Joy Y-|Shape|Shape|Shape|Shape|Shape|Shape|Timbre Type<br>(Layer/XFade/Split)|
+|x2|Pitch Bend|Octave|Octave|Octave|Octave|Octave|Octave|Main/Sub Balance|
+|x3|Bend Range +|Wave|Wave|Wave|Wave|Wave|Wave|Main/Sub Position|
+|x4|Bend Range -|Level|Level|Level|Level|Level|Level|Split Point|
+|x5|Program Level|-|Sync|Sync|Sync|Sync|Sync|-|
+|x6|Keyboard Octave|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|-|
+|x7|BPM|-|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|-|
+|x8|-|-|-|-|-|-|-|-|
+|x9|-|-|-|-|-|-|-|-|
 
 |#|Anthologue<br>Waves|
 |-|-|
