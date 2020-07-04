@@ -78,8 +78,8 @@ void initVoice(uint32_t timbre) {
       s_params[p_vco2_pitch + timbre] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
       s_params[p_vco1_shape + timbre] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
       s_params[p_vco2_shape + timbre] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
-      s_params[p_vco1_octave + timbre] = p->vco1_octave * 12;
-      s_params[p_vco2_octave + timbre] = p->vco2_octave * 12;
+      s_params[p_vco1_octave + timbre] = (p->vco1_octave - 1) * 12;
+      s_params[p_vco2_octave + timbre] = (p->vco2_octave - 1) * 12;
       s_params[p_vco1_wave + timbre] = p->vco1_wave;
       s_params[p_vco2_wave + timbre] = p->vco2_wave;
       s_params[p_vco3_wave + timbre] = wave_noise;
@@ -147,8 +147,8 @@ void initVoice(uint32_t timbre) {
       s_params[p_vco2_pitch + timbre] = getPitch(to10bit(p->vco2_pitch_hi, p->vco2_pitch_lo));
       s_params[p_vco1_shape + timbre] = param_val_to_q31(to10bit(p->vco1_shape_hi, p->vco1_shape_lo));
       s_params[p_vco2_shape + timbre] = param_val_to_q31(to10bit(p->vco2_shape_hi, p->vco2_shape_lo));
-      s_params[p_vco1_octave + timbre] = p->vco1_octave * 12;
-      s_params[p_vco2_octave + timbre] = p->vco2_octave * 12;
+      s_params[p_vco1_octave + timbre] = (p->vco1_octave - 1) * 12;
+      s_params[p_vco2_octave + timbre] = (p->vco2_octave - 1) * 12;
       s_params[p_vco1_wave + timbre] = p->vco1_wave;
       s_params[p_vco2_wave + timbre] = p->vco2_wave == wave_sqr ? (uint32_t)wave_noise : p->vco2_wave;
       s_params[p_vco3_wave + timbre] = wave_noise;
@@ -216,9 +216,9 @@ void initVoice(uint32_t timbre) {
       s_params[p_vco1_shape + timbre] = param_val_to_q31(t->vco1_shape);
       s_params[p_vco2_shape + timbre] = param_val_to_q31(prlgto10bit(t->vco2_shape_hi, t->vco2_shape_lo));
       s_params[p_vco3_shape + timbre] = param_val_to_q31(t->multi_type==multi_noise ? t->noise_shape : 0);
-      s_params[p_vco1_octave + timbre] = t->vco1_octave * 12;
-      s_params[p_vco2_octave + timbre] = t->vco2_octave * 12;
-      s_params[p_vco3_octave + timbre] = t->multi_octave * 12;
+      s_params[p_vco1_octave + timbre] = (t->vco1_octave - 1) * 12;
+      s_params[p_vco2_octave + timbre] = (t->vco2_octave - 1) * 12;
+      s_params[p_vco3_octave + timbre] = (t->multi_octave - 1) * 12;
       s_params[p_vco1_wave + timbre] = t->vco1_wave;
       s_params[p_vco2_wave + timbre] = t->vco2_wave;
       s_params[p_vco3_wave + timbre] = t->multi_type==multi_noise ? wave_noise : wave_sqr;
@@ -239,8 +239,8 @@ void initVoice(uint32_t timbre) {
 //todo: mod wheel range
 //      s_params[p_slider_range] = (t->mod_wheel_range - 100) * 0x0147AE14;
 //      s_params[p_pedal_range] = 0x7FFFFFFF;
-      s_params[p_sub_on] = p->sub_on_pgm_fetch;
       s_params[p_timbre_type] = p->timbre_type;
+      s_params[p_sub_on] = (s_platform == k_user_target_nutektdigital || s_params[p_timbre_type] == timbre_split) ? p->sub_on_pgm_fetch : 0;
       s_params[p_main_sub_position] = p->main_sub_position;
       s_params[p_split_point] = p->split_point;
       s_params[p_main_sub_balance] = p->main_sub_balance * 0x01020408; // 1/127
@@ -252,9 +252,9 @@ void initVoice(uint32_t timbre) {
       s_params[p_vco1_shape + timbre] = param_val_to_q31(t->vco1_shape);
       s_params[p_vco2_shape + timbre] = param_val_to_q31(prlgto10bit(t->vco2_shape_hi, t->vco2_shape_lo));
       s_params[p_vco3_shape + timbre] = param_val_to_q31(t->multi_type==multi_noise ? t->noise_shape : 0);
-      s_params[p_vco1_octave + timbre] = t->vco1_octave * 12;
-      s_params[p_vco2_octave + timbre] = t->vco2_octave * 12;
-      s_params[p_vco3_octave + timbre] = t->multi_octave * 12;
+      s_params[p_vco1_octave + timbre] = (t->vco1_octave - 1) * 12;
+      s_params[p_vco2_octave + timbre] = (t->vco2_octave - 1) * 12;
+      s_params[p_vco3_octave + timbre] = (t->multi_octave - 1) * 12;
       s_params[p_vco1_wave + timbre] = t->vco1_wave;
       s_params[p_vco2_wave + timbre] = t->vco2_wave;
       s_params[p_vco3_wave + timbre] = t->multi_type==multi_noise ? wave_noise : wave_sqr;
@@ -299,9 +299,9 @@ void initVoice(uint32_t timbre) {
       s_params[p_vco1_shape + timbre] = param_val_to_q31(p->vco1_shape);
       s_params[p_vco2_shape + timbre] = param_val_to_q31(p->vco2_shape);
       s_params[p_vco3_shape + timbre] = param_val_to_q31(p->multi_type==multi_noise ? p->noise_shape : 0);
-      s_params[p_vco1_octave + timbre] = p->vco1_octave * 12;
-      s_params[p_vco2_octave + timbre] = p->vco2_octave * 12;
-      s_params[p_vco3_octave + timbre] = p->multi_octave * 12;
+      s_params[p_vco1_octave + timbre] = (p->vco1_octave - 1) * 12;
+      s_params[p_vco2_octave + timbre] = (p->vco2_octave - 1) * 12;
+      s_params[p_vco3_octave + timbre] = (p->multi_octave - 1) * 12;
       s_params[p_vco1_wave + timbre] = p->vco1_wave;
       s_params[p_vco2_wave + timbre] = p->vco2_wave;
       s_params[p_vco3_wave + timbre] = p->multi_type==multi_noise ? wave_noise : wave_sqr;
@@ -440,7 +440,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t level[VCO_COUNT];
   q31_t val, main_vol, sub_vol;
   int32_t pitch1, pitch3 = params->pitch;
-  uint32_t vco_active;
+  uint32_t vco_start, vco_active;
 
   if (s_play_mode != mode_note) {
     if (s_sample_pos >= s_seq_quant) {
@@ -486,7 +486,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       case p_vco1_wave:
       case p_vco1_octave:
       case p_vco2_octave:
-        s_params[s_seq_motion_param[i]] = val * 12;
+        s_params[s_seq_motion_param[i]] = (val - 1) * 12;
         break;
       case p_vco2_ring:
       case p_vco2_sync:
@@ -509,6 +509,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   else
     pitch3 += s_params[p_pitch_bend] * s_params[p_bend_range_neg];
 
+  vco_start = 0;
   vco_active = VCO_COUNT >> (1 - s_params[p_sub_on]);
   main_vol = s_main_balance;
   sub_vol = s_sub_balance;
@@ -524,10 +525,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           || ((s_params[p_split_point] < (pitch3 >> 8)) && s_params[p_main_sub_position])
         ) {
           main_vol = 0x7FFFFFFF;
-          sub_vol = 0;
+          vco_active = 3;
         } else {
-          main_vol = 0;
           sub_vol = 0x7FFFFFFF;
+          vco_start = 3;
         }
         break;
       default:
@@ -535,7 +536,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
   }
 
-  for (uint32_t i = 0; i < vco_active; i++) {
+  for (uint32_t i = vco_start; i < vco_active; i++) {
     pitch1 = pitch3 + s_params[p_vco1_pitch + i * 10];
     w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave], pitch1 & 0xFF));
     level[i] = s_params[p_vco1_level + i * 10];
@@ -547,10 +548,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t f = frames; f--; y++) {
     val = 0;
     if (s_play_mode == mode_seq && (!s_seq_gate_on || s_sample_pos >= s_seq_gate_len)) {
-      for (uint32_t i = 0; i < vco_active; i++)
+      for (uint32_t i = vco_start; i < vco_active; i++)
         out[i] = 0;
     } else {
-      for (uint32_t i = 0; i < vco_active; i++) {
+      for (uint32_t i = vco_start; i < vco_active; i++) {
         out[i] = getVco(s_phase[i], s_params[p_vco1_wave + i * 10], s_params[p_vco1_shape + i * 10]);
         if (i && s_params[p_vco1_ring_stub + i * 10])
           out[i] = q31mul(out[i], out[i - 1]);
@@ -562,7 +563,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
     *y = val;
 
-    for (uint32_t i = 0; i < vco_active; i++) {
+    for (uint32_t i = vco_start; i < vco_active; i++) {
       if (i == 0)
         s_phase[i] += w0[i];
       else if (s_params[p_vco1_sync_stub + i * 10] && s_phase[i - 1] <= 0)
@@ -570,7 +571,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       else
         s_phase[i] += w0[i] + q31mul(out[i - 1], s_params[p_vco1_cross_stub + i * 10]);
     }
-    for (uint32_t i = 0; i < vco_active; i++)
+    for (uint32_t i = vco_start; i < vco_active; i++)
       s_phase[i] &= 0x7FFFFFFF;
 
     s_sample_pos++;
@@ -648,7 +649,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_vco1_octave:
         case p_vco2_octave:
         case p_vco3_octave:
-          param = (value >> 8) * 12;
+          param = ((value >> 8) - 1) * 12;
           break;
         case p_vco1_wave:
         case p_vco2_wave:

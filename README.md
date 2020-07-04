@@ -52,7 +52,10 @@ For user-customizable oscillators online constructor is available at https://duk
 * With Anthologue only NTS-1 can utilize system BPM with play mode 3. All other -logue synths works the same way for both sequence modes: internal oscillator BPM initialized from the program and can be changed with assignable controllers only.
 * All 6 VCO of Anthologue are identical and sequentially chained with sync/ring mod/cross mod.
 * VCO 4-6 of Anthologue considered as a sub timbre, to utilize them either select a prologue program with sub timbre or force sub timbre and set with Sub On AC, Main/Sub Balance AC and Sub parameter.
+* Split sub timbre type is avalable for all models since it unilize 3 VCO at a time.
+* 6 VCO works stable only on NTS-1 with up to 2 FX.
 * Sub timbre is reset on program change. For prologue program - according to program settings. For other logues programs - Sub On: switched off, Main/Sub balance: center, VCO 4-6 are reset.
+* On -logues prologue program with timbre mode other than Split are loaded with sub timbre forcefully disabled on to avoid oscillator hang.
 
 |#|Morpheus LFO X&Y types|
 |-|-|
