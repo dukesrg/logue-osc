@@ -127,3 +127,7 @@ Custom data descriptors are themselves arrays and should contain 3-5 values:
 2. size (int) : custom data element size.
 3. count (int) : optional maximum number of custom data elements (if more than one).
 4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected).
+
+### Credits
+* [Sebo1971](https://github.com/Sebo1971) for comprehensive oscillators testing with prologue and in general
+* [Gearslutz - The Korg Logue User Oscillator Programming Thread](https://www.gearslutz.com/board/electronic-music-instruments-and-electronic-music-production/1306032-korg-logue-user-oscillator-programming-thread.html) participants for inspirations
