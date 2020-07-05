@@ -33,7 +33,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
 |FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|-|-|
-|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;39|Assignable controller 2 select 1&hellip;39|-|
+|Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
 * Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.
@@ -84,13 +84,13 @@ For user-customizable oscillators online constructor is available at https://duk
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|
-|x0|N/A|Pitch|Pitch|Pitch|Pitch|Pitch|Pitch|Sub On|
+|x0|N/A|Wave|Wave|Wave|Wave|Wave|Wave|Sub On|
 |x1|Slider<br>Mod.Wheel/E.Pedal<br>Joy Y+/Joy Y-|Shape|Shape|Shape|Shape|Shape|Shape|Timbre Type<br>(Layer/XFade/Split)|
-|x2|Pitch Bend|Octave|Octave|Octave|Octave|Octave|Octave|Main/Sub Balance|
-|x3|Bend Range +|Wave|Wave|Wave|Wave|Wave|Wave|Main/Sub Position|
-|x4|Bend Range -|Level|Level|Level|Level|Level|Level|Split Point|
-|x5|Program Level|-|Sync|Sync|Sync|Sync|Sync|-|
-|x6|Keyboard Octave|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|-|
+|x2|Keyboard Octave|Octave|Octave|Octave|Octave|Octave|Octave|Main/Sub Balance|
+|x3|Pitch Bend|Pitch|Pitch|Pitch|Pitch|Pitch|Pitch|Main/Sub Position|
+|x4|Program Level|Level|Level|Level|Level|Level|Level|Split Point|
+|x5|Bend Range +|-|Sync|Sync|Sync|Sync|Sync|-|
+|x6|Bend Range -|-|Ring Mod|Ring Mod|Ring Mod|Ring Mod|Ring Mod|-|
 |x7|BPM|-|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|Cross Mod Depth|-|
 |x8|-|-|-|-|-|-|-|-|
 |x9|-|-|-|-|-|-|-|-|

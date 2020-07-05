@@ -59,7 +59,7 @@ static uint8_t s_assignable[2] = {p_slider_assign, p_pedal_assign};
 void initVoice(uint32_t timbre) {
   const void *prog_ptr = getProg(timbre == timbre_main ? s_prog : s_sub, &s_prog_type);
 
-  for (uint32_t i = timbre == timbre_main ? p_vco1_pitch : p_vco4_pitch; i <= p_vco6_cross; i++)
+  for (uint32_t i = timbre == timbre_main ? p_vco1_wave : p_vco4_wave; i <= p_vco6_cross; i++)
     s_params[i] = 0;
 
   if (timbre == timbre_main) {
@@ -538,7 +538,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   for (uint32_t i = vco_start; i < vco_active; i++) {
     pitch1 = pitch3 + s_params[p_vco1_pitch + i * 10];
-    w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave] - (s_params[p_vco1_wave + i * 10] == wave_saw ? 12 : 0), pitch1 & 0xFF));
+    w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave], pitch1 & 0xFF));
+    if (s_params[p_vco1_wave + i * 10] == wave_saw)
+      w0[i] >>= 1;
     level[i] = s_params[p_vco1_level + i * 10];
     if (p_sub_on)
       level[i] = q31mul(level[i], i < 3 ? main_vol : sub_vol);
