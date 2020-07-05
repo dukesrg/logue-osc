@@ -538,7 +538,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   for (uint32_t i = vco_start; i < vco_active; i++) {
     pitch1 = pitch3 + s_params[p_vco1_pitch + i * 10];
-    w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave], pitch1 & 0xFF));
+    w0[i] = f32_to_q31(osc_w0f_for_note((pitch1 >> 8) + s_params[p_vco1_octave + i * 10] + s_params[p_keyboard_octave] - (s_params[p_vco1_wave + i * 10] == wave_saw ? 12 : 0), pitch1 & 0xFF));
     level[i] = s_params[p_vco1_level + i * 10];
     if (p_sub_on)
       level[i] = q31mul(level[i], i < 3 ? main_vol : sub_vol);
