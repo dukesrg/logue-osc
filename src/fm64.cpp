@@ -62,7 +62,7 @@
     #define ZERO_PHASE 0.f
   #endif
   #define ZERO 0
-  #define FEEDBACK_RECIP 0x000fffff // <1/128
+  #define FEEDBACK_RECIP 0x00ffffff // <1/128
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
