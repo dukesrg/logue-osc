@@ -13,6 +13,8 @@
 
 #include "fm64.h"
 
+#define NO_FEEDBACK //disable feedback, helps to reduce performance issues on -logues
+
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
 //todo: check and fix osc_apiq
@@ -284,10 +286,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
+#ifndef NO_FEEDBACK
       if (s_algorithm[i] & ALG_FBK_MASK) {
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
         modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
-      } else if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
+      } else
+#endif
+      if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
         if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
@@ -297,12 +302,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
 
       s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 21]);
-
+#ifndef NO_FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
         s_feedback_opval[0] = s_opval[i];
       }
-
+#endif
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, s_opval[i]);
 
