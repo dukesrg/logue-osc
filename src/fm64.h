@@ -231,7 +231,7 @@ union {
 
 enum {
   p_feedback = 0,
-  p_cc1,
+  p_velocity,
   p_cc2,
   p_cc3,
   p_cc4,

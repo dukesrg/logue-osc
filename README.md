@@ -32,7 +32,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|Algorithm 0&hellip;31|-|
+|FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|Algorithm 1&hellip;32|-|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;39|Assignable controller 2 select 1&hellip;39|-|-|
 
 ### Oscillator notes
@@ -67,7 +67,7 @@ For user-customizable oscillators online constructor is available at https://duk
 |-|-|-|-|-|-|-|-|
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|
 |x1|Feedback|-|-|-|-|-|-|
-|x2|-|-|-|-|-|-|-|
+|x2|Velocity|-|-|-|-|-|-|
 |x3|-|-|-|-|-|-|-|
 |x4|-|-|-|-|-|-|-|
 |x5|-|-|-|-|-|-|-|

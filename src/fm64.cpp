@@ -108,6 +108,7 @@ static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
 static uint8_t s_egstage[DX7_OPERATOR_COUNT];
 static uint8_t s_transpose;
 static uint8_t s_feedback_src;
+static uint8_t s_kvs[DX7_OPERATOR_COUNT];
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
@@ -119,6 +120,7 @@ static param_t s_egval[DX7_OPERATOR_COUNT];
 static param_t s_opval[DX7_OPERATOR_COUNT];
 static param_t s_modval[DX7_OPERATOR_COUNT];
 static param_t s_feedback_opval[2];
+static uint8_t s_velocity[DX7_OPERATOR_COUNT];
 /*
 static param_t s_pegrate[EG_STAGE_COUNT];
 static param_t s_peglevel[EG_STAGE_COUNT];
@@ -181,6 +183,7 @@ void initvoice() {
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
       else
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
+      s_kvs[i] = voice->op[i].ts;
     }
     s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
     s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
@@ -237,6 +240,7 @@ void initvoice() {
 //todo: Waveform
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
+      s_kvs[i] = voice->op[i].kvs;
     }
     s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
@@ -301,7 +305,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 21]);
+      s_opval[i] = param_mul(osc_sin(modw0), param_add(eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 21], s_velocity[i]));
 #ifndef NO_FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
@@ -364,6 +368,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_opval[i] = ZERO;
     s_egstage[i] = 0;
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
+    s_velocity[i] = s_params[p_velocity] * s_kvs[i];
   }
 /*
   s_pegstage = 0;
@@ -388,6 +393,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       switch (index) {
         case p_feedback:
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
+          break;
+        case p_velocity:
+          param = (powf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f;
+//                       10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
           break;
         case p_op6_level:
         case p_op5_level:
