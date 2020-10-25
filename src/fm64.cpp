@@ -120,7 +120,7 @@ static param_t s_egval[DX7_OPERATOR_COUNT];
 static param_t s_opval[DX7_OPERATOR_COUNT];
 static param_t s_modval[DX7_OPERATOR_COUNT];
 static param_t s_feedback_opval[2];
-static uint8_t s_velocity[DX7_OPERATOR_COUNT];
+static param_t s_velocity[DX7_OPERATOR_COUNT];
 /*
 static param_t s_pegrate[EG_STAGE_COUNT];
 static param_t s_peglevel[EG_STAGE_COUNT];
@@ -156,6 +156,7 @@ void initvoice() {
 #endif
   }
 */
+
     for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
       s_fixedfreq[i] = voice->op[i].pm;
 //      s_waveform[i] = 0;
@@ -250,13 +251,18 @@ void initvoice() {
     s_params[p_op1_level] = ZERO;
     s_opval[4] = ZERO;
     s_opval[5] = ZERO;
+    s_kvs[4] = ZERO;
+    s_kvs[5] = ZERO;
   }
+
+  s_params[p_velocity] = f32_to_param((fastpowf(100.f, .3f) * 60.f - 239.f) * .0002450980392f);
 
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
       s_feedback_src = 0;
       for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
     }
+    s_velocity[i] = s_params[p_velocity] * s_kvs[i];
   }
 }
 
@@ -368,7 +374,6 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_opval[i] = ZERO;
     s_egstage[i] = 0;
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
-    s_velocity[i] = s_params[p_velocity] * s_kvs[i];
   }
 /*
   s_pegstage = 0;
@@ -395,8 +400,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           break;
         case p_velocity:
-          param = (powf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f;
+          param = f32_to_param((fastpowf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f);
 //                       10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
+          for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
+            s_velocity[i] = param * s_kvs[i];
           break;
         case p_op6_level:
         case p_op5_level:

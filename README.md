@@ -45,6 +45,7 @@ For user-customizable oscillators online constructor is available at https://duk
 * Using FX with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations. Currently using 1 FX looks safe.
 * DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels set to silent, but may be altered manually.
 * DX21/DX11 voices with algorithm 3 initialized with different operator order to match DX7 algorithm 8.
+* Since there is no way to pass velocity to the oscillator FM64 utilizes assignable controller #02 as a velocity. Velocity will reset on a voice change to the default value. The default value is equivalent to 100 from 0&hellip;127 range though internally 10-bit precision is used.
 * Anthologue patch select sets VCOs parameters according to selected patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for monologue program).
 * Any types and combinations of logue-series can be injected in Anthologue.
 * Maximum number of Anthologue programs depends on their types and combinations and can vary from 25 to 76.
