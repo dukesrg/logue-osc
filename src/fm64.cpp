@@ -255,7 +255,7 @@ void initvoice() {
     s_kvs[5] = ZERO;
   }
 
-  s_params[p_velocity] = f32_to_param((fastpowf(100.f, .3f) * 60.f - 239.f) * .0002450980392f);
+  s_params[p_velocity] = f32_to_param((powf(100.f, .3f) * 60.f - 239.f) * .0002450980392f);
 
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
@@ -400,7 +400,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           break;
         case p_velocity:
-          param = f32_to_param((fastpowf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f);
+          param = f32_to_param((powf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f);
 //                       10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
           for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
             s_velocity[i] = param * s_kvs[i];
