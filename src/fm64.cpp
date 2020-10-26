@@ -66,7 +66,7 @@
   #define ZERO 0
   #define FEEDBACK_RECIP 0x00ffffff // <1/128
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
-  #define DEFAULT_VELOCITY 0xFFFEE900 // ((100 ^ 0.3) * 60 - 239) / (255 * 16)
+  #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
   typedef float param_t;
@@ -86,7 +86,7 @@
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
-  #define DEFAULT_VELOCITY -0.00003325923f // ((100 ^ 0.3) * 60 - 239) / (255 * 16)
+  #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
@@ -258,8 +258,6 @@ void initvoice() {
     s_kvs[5] = ZERO;
   }
 
-//  s_params[p_velocity] = f32_to_param((powf(100.f, .3f) * 60.f - 239.f) * .0002450980392f);
-
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
       s_feedback_src = 0;
@@ -404,8 +402,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           break;
         case p_velocity:
-          param = f32_to_param((powf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f);
-//                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
+          param = f32_to_param((powf(value * .125f, .3f) * 60.f - 239.f) * .00049212598f);
+//                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
           for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
             s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], param * s_kvs[i]);
           break;
