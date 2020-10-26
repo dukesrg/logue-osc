@@ -66,6 +66,7 @@
   #define ZERO 0
   #define FEEDBACK_RECIP 0x00ffffff // <1/128
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
+  #define DEFAULT_VELOCITY 0xFFFEE900 // ((100 ^ 0.3) * 60 - 239) / (255 * 16)
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
 #else
   typedef float param_t;
@@ -85,7 +86,7 @@
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
-0.787401574
+  #define DEFAULT_VELOCITY -0.00003325923f // ((100 ^ 0.3) * 60 - 239) / (255 * 16)
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
@@ -257,7 +258,7 @@ void initvoice() {
     s_kvs[5] = ZERO;
   }
 
-  s_params[p_velocity] = f32_to_param((powf(100.f, .3f) * 60.f - 239.f) * .0002450980392f);
+//  s_params[p_velocity] = f32_to_param((powf(100.f, .3f) * 60.f - 239.f) * .0002450980392f);
 
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
@@ -273,6 +274,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
+  s_params[p_velocity] = DEFAULT_VELOCITY;
   for (int32_t i = 0; i < 1024; i++) {
     eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
 //    mod_lut[i] = f32_to_param(dx7_modindex(i) * LEVEL_SCALE_FACTOR);
@@ -403,7 +405,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           break;
         case p_velocity:
           param = f32_to_param((powf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f);
-//                       10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
+//                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
           for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
             s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], param * s_kvs[i]);
           break;
@@ -413,13 +415,19 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_op3_level:
         case p_op2_level:
         case p_op1_level:
-        default:
 #ifdef USE_Q31
           param = param_val_to_q31(value);
 #else
           param = param_val_to_f32(value);
 #endif
           s_oplevel[index - p_op6_level] = param_add(param, s_params[p_velocity] * s_kvs[index - p_op6_level]);
+          break;
+        default:
+#ifdef USE_Q31
+          param = param_val_to_q31(value);
+#else
+          param = param_val_to_f32(value);
+#endif
           break;
       }
       s_params[index] = param;
