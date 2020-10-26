@@ -311,7 +311,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-      s_opval[i] = param_mul(osc_sin(modw0), param_add(eg_lut[param_mul(s_egval[i], s_params[p_op6_level + i * 10]) >> 21], s_velocity[i]));
+      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], param_add(s_params[p_op6_level + i * 10], s_velocity[i])) >> 21]);
 #ifndef NO_FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
