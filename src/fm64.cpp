@@ -84,6 +84,8 @@
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
+  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
+0.787401574
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
 
@@ -112,7 +114,7 @@ static uint8_t s_kvs[DX7_OPERATOR_COUNT];
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
-static uint8_t s_assignable[2] = {p_op6_level, p_op5_level};
+static uint8_t s_assignable[2] = {p_velocity, p_feedback};
 static param_t s_params[p_num];
 static param_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -120,7 +122,7 @@ static param_t s_egval[DX7_OPERATOR_COUNT];
 static param_t s_opval[DX7_OPERATOR_COUNT];
 static param_t s_modval[DX7_OPERATOR_COUNT];
 static param_t s_feedback_opval[2];
-static param_t s_velocity[DX7_OPERATOR_COUNT];
+static param_t s_oplevel[DX7_OPERATOR_COUNT];
 /*
 static param_t s_pegrate[EG_STAGE_COUNT];
 static param_t s_peglevel[EG_STAGE_COUNT];
@@ -262,7 +264,7 @@ void initvoice() {
       s_feedback_src = 0;
       for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
     }
-    s_velocity[i] = s_params[p_velocity] * s_kvs[i];
+    s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i]);
   }
 }
 
@@ -311,7 +313,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
-      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], param_add(s_params[p_op6_level + i * 10], s_velocity[i])) >> 21]);
+      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
 #ifndef NO_FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
@@ -403,7 +405,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = f32_to_param((powf(value * .125f, .3f) * 60.f - 239.f) * .0002450980392f);
 //                       10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(255*16)
           for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
-            s_velocity[i] = param * s_kvs[i];
+            s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], param * s_kvs[i]);
           break;
         case p_op6_level:
         case p_op5_level:
@@ -417,6 +419,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #else
           param = param_val_to_f32(value);
 #endif
+          s_oplevel[index - p_op6_level] = param_add(param, s_params[p_velocity] * s_kvs[index - p_op6_level]);
           break;
       }
       s_params[index] = param;
