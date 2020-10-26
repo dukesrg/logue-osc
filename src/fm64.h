@@ -230,8 +230,8 @@ union {
 } dx_voices[BANK_COUNT][BANK_SIZE] = {};
 
 enum {
-  p_feedback = 0,
-  p_velocity,
+  p_velocity = 0,
+  p_feedback,
   p_cc2,
   p_cc3,
   p_cc4,

@@ -115,7 +115,7 @@ static uint8_t s_kvs[DX7_OPERATOR_COUNT];
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
-static uint8_t s_assignable[2] = {p_velocity, p_feedback};
+static uint8_t s_assignable[2];
 static param_t s_params[p_num];
 static param_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -402,7 +402,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           break;
         case p_velocity:
-          param = f32_to_param((powf(value * .125f, .3f) * 60.f - 239.f) * .00049212598f);
+          param = f32_to_param((powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
           for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
             s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], param * s_kvs[i]);
@@ -444,7 +444,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
-       s_assignable[index - k_user_osc_param_id3] = value;
+      s_assignable[index - k_user_osc_param_id3] = value;
       break;
     case k_user_osc_param_id5:
       if (s_algorithm_idx != value) {
