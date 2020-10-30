@@ -1,12 +1,12 @@
 # logue-osc
 Custom oscillators for Korg logue-sdk compatible synths
 
-You can get the lastest precompiled versions of the oscillators in [releases](../../releases/) section.
-For user-customizable oscillators online constructor is available at https://dukesrg.github.io/logue-osc/.
+You can get the latest pre-compiled versions of the oscillators in the [releases](../../releases/) section.
+For user-customizable oscillators, an online constructor is available at https://dukesrg.github.io/logue-osc/.
 
 ### Project structure
 
-* [lodue-sdk/](logue-sdk/) : My own logue-sdk fork with optimized makefiles and reduced project footprint.
+* [lodue-sdk/](logue-sdk/) : My own logue-sdk fork with optimized Makefiles, and reduced project footprint.
 * [inc/fixed_mathq.h](inc/fixed_mathq.h) : Additional fixed point math functions.
 * [inc/g711_decode.h](inc/g711_decode.h) : μ-law/A-law decoding functions.
 * [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
@@ -22,7 +22,7 @@ For user-customizable oscillators online constructor is available at https://duk
 
 ### Oscillator description
 * Supersaw - Saw with unison.
-* FastSaw - The same as Supersaw rewritten with Q31 fixed point. Less CPU resource consuming i.e. more unison/polyphony/FX avaiable without sound degradation.
+* FastSaw - The same as Supersaw, rewritten with Q31 fixed point. Less CPU resource consumption; i.e. more unison/polyphony/FX avaiable without sound degradation.
 * Morpheus - Example implementation of custom wavetable inspired by [WaveEdit](https://synthtech.com/waveedit).
 * FM64 - 6/4-operator FM oscillator with up to 4 Yamaha DX7/DX21/DX11-series voice banks suport. Current progress is in issue [FM64 features implementation](../../issues/2).
 * Anthologue - 6 VCO oscillator with Korg logue-series program suport. Current progress is in issue [Anthologue features implementation](../../issues/1).
@@ -36,26 +36,26 @@ For user-customizable oscillators online constructor is available at https://duk
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
-* Oscillators are developed and tested on NTS-1, wich can utilize about twice more CPU performance comparing with Prologue and Monologue XD. So the the latters may experience oscillator sound degradation with some of the FX enabled or even without the FX. Please don't hesitate to report such issues.
-* Supersaw polyphony is only for NTS-1 firmware 1.2.0 with legato switched off. Setting polyphony more than 1 in any other hardware configuration may result to unpredicted behaviour.
-* Supersaw polyphony is limited to use for chords or preemptive mode with last note priority due to NTS-1 firmware 1.2.0 non legato NOTE OFF implementation (i.e. only last released note event is passed to the runtime).
-* With Supersaw sound may be degraded when using high level of unison and/or high level of polyphony with another FX due to high CPU processing power requirement, so use parameters wisely for your current creative requiremet.
-* Morpheus LFO rate control is in non-linear scale with more precise control in lower frequencies.
-* FM64 is very rough and only limited number of features are supported, currently most voices sounds far different from the originals.
-* Using FX with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations. Currently using 1 FX looks safe.
-* DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels set to silent, but may be altered manually.
-* DX21/DX11 voices with algorithm 3 initialized with different operator order to match DX7 algorithm 8.
-* Anthologue patch select sets VCOs parameters according to selected patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for monologue program).
+* Oscillators are developed and tested on the NTS-1, which can utilize about twice the CPU performance compared to the Prologue and Monologue XD. The latter may experience oscillator sound degradation with some of the FX enabled, or even without the FX. Please don't hesitate to report any issues related to this.
+* Supersaw polyphony is only for NTS-1 firmware 1.2.0, with legato switched off. Setting polyphony to more than 1 in any other hardware configuration may result to unpredictable behaviour.
+* Supersaw polyphony is limited to use for chords or preemptive mode with last note priority, due to NTS-1 firmware 1.2.0 non legato NOTE OFF implementation (i.e. only last released note event is passed to the runtime).
+* With Supersaw, the sound may be degraded when using a high level of unison and/or a high level of polyphony with another FX, due to high CPU processing requirements. Use parameters wisely for your creative requirements.
+* Morpheus LFO rate control is in a non-linear scale, with more precise control in lower frequencies.
+* FM64 is very rough and only a limited number of features are supported. Currently most voices sound quite different to the originals.
+* Using FX with FM64 may produce sound degradation due to high CPU processing requirements for 6-op FM calculations. Currently using 1 FX looks safe.
+* DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels are set to silent, but may be altered manually.
+* DX21/DX11 voices with algorithm 3 are initialized with different operator order to match DX7 algorithm 8.
+* Anthologue patch select sets the VCO's parameters according to the selected patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for Monologue program).
 * Any types and combinations of logue-series can be injected in Anthologue.
-* Maximum number of Anthologue programs depends on their types and combinations and can vary from 25 to 76.
-* Due to logue-sdk parameter initialization specific, FM64 and Anthologue oscillators could alter program parameters on selection. Change the program after oscillator selection to make sure all parameters are loaded from the program to their default values.
-* With Anthologue only NTS-1 can utilize system BPM with play mode 3. All other -logue synths works the same way for both sequence modes: internal oscillator BPM initialized from the program and can be changed with assignable controllers only.
-* All 6 VCO of Anthologue are identical and sequentially chained with sync/ring mod/cross mod.
-* VCO 4-6 of Anthologue considered as a sub timbre, to utilize them either select a prologue program with sub timbre or force sub timbre and set with Sub On AC, Main/Sub Balance AC and Sub parameter.
-* Split sub timbre type is avalable for all models since it unilize 3 VCO at a time.
-* 6 VCO works stable only on NTS-1 with up to 2 FX.
-* Sub timbre is reset on program change. For prologue program - according to program settings. For other logues programs - Sub On: switched off, Main/Sub balance: center, VCO 4-6 are reset.
-* On -logues prologue program with timbre mode other than Split are loaded with sub timbre forcefully disabled on to avoid oscillator hang.
+* Maximum number of Anthologue programs depends on their types and combinations, and can vary from 25 to 76.
+* Due to logue-sdk parameter initialization implementation, FM64 and Anthologue oscillators may alter program parameters on selection. Change the program after oscillator selection to make sure all parameters are loaded from the program to their default values.
+* With Anthologue, only the NTS-1 can utilize system BPM with play mode 3. All other -logue synths work the same way for both sequence modes: internal oscillator BPM initialized from the program, and can only be changed with assignable controllers.
+* All 6 VCOs of Anthologue are identical, and sequentially chained with sync/ring mod/cross mod.
+* VCOs 4-6 of Anthologue are considered as a sub timbre. To utilize them, either select a Prologue program with sub timbre, or force sub timbre and set with Sub On AC, Main/Sub Balance AC and Sub parameter.
+* Split sub timbre type is available for all models since it utilizes 3 VCOs at a time.
+* 6 VCO is only stable on the NTS-1 with up to 2 FX.
+* Sub timbre is reset on program change. For Prologue program - according to program settings. For other -logues programs - Sub On: switched off, Main/Sub balance: center, VCO 4-6 are reset.
+* On -logues, Prologue program with timbre mode other than Split are loaded with sub timbre forcefully disabled, in order to avoid oscillator hang.
 
 |#|Morpheus LFO X&Y types|
 |-|-|
@@ -104,7 +104,7 @@ For user-customizable oscillators online constructor is available at https://duk
 
 ### manifest.json custom data extension
 
-Oscillators with customizable data may contain additional metadata about customization. This data is ignored by synthesithers and Librarian apps, but useful for external utilities to manage custom data. Here is an example:
+Oscillators with customizable data may contain additional metadata about customization. This data is ignored by synthesizers and Librarian apps, but is useful for external utilities to manage custom data. Here is an example:
 
 ```
 {
@@ -123,9 +123,9 @@ Oscillators with customizable data may contain additional metadata about customi
 
 * custom_data (array) : custom data descriptors
 
-Custom data descriptors are themselves arrays and should contain 3-5 values:
+Custom data descriptors are themselves arrays, and should contain 3-5 values:
 
-0. description (string) : custom data brief description, may contain format description.
+0. description (string) : brief custom data description, may contain format description.
 1. offset (int) : custom data offset in oscillator binary file.
 2. size (int) : custom data element size.
 3. count (int) : optional maximum number of custom data elements (if more than one).
