@@ -55,7 +55,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 * Split sub timbre type is available for all models since it utilizes 3 VCOs at a time.
 * 6 VCO is only stable on the NTS-1 with up to 2 FX.
 * Sub timbre is reset on program change. For Prologue program - according to program settings. For other -logues programs - Sub On: switched off, Main/Sub balance: center, VCO 4-6 are reset.
-* On -logues, Prologue program with timbre mode other than Split are loaded with sub timbre forcefully disabled, in order to avoid oscillator hang.
+* On -logues, Prologue programs with timbre mode other than Split are loaded with sub timbre forcefully disabled, in order to avoid oscillator hang.
 
 |#|Morpheus LFO X&Y types|
 |-|-|
