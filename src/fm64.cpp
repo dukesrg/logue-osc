@@ -87,7 +87,6 @@
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
-  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DACAY_RATE_FACTOR -.125f
 #endif
@@ -99,9 +98,7 @@
 #define DX7_DACAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
 #define RATE_SCALING_FACTOR .061421131f
 #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
-
-#define DX11_RATE_SCALING_FACTOR .0173f // ? DX7_max_rs(7) / DX11_max_rs(4) * DX7_RATE_SCALING_FACTOR * DX11_RATE_EXP_FACTOR
-
+#define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 
 #define DX11_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
@@ -132,7 +129,10 @@ static param_t s_opval[DX7_OPERATOR_COUNT];
 static param_t s_modval[DX7_OPERATOR_COUNT];
 static param_t s_feedback_opval[2];
 static param_t s_oplevel[DX7_OPERATOR_COUNT];
-//static float s_rscale[DX7_OPERATOR_COUNT];
+
+static float s_attack_rate_exp_factor;
+static float s_decay_rate_exp_factor[EG_STAGE_COUNT];
+
 /*
 static param_t s_pegrate[EG_STAGE_COUNT];
 static param_t s_peglevel[EG_STAGE_COUNT];
@@ -190,7 +190,6 @@ void initvoice() {
       else
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
       s_kvs[i] = voice->op[i].ts;
-//      s_rscale[i] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
     }
     s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
@@ -199,6 +198,9 @@ void initvoice() {
     s_params[p_op3_level] = scale_level(voice->op[3].tl) * LEVEL_SCALE_FACTOR;
     s_params[p_op2_level] = scale_level(voice->op[4].tl) * LEVEL_SCALE_FACTOR;
     s_params[p_op1_level] = scale_level(voice->op[5].tl) * LEVEL_SCALE_FACTOR;
+    s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
+    for (uint32_t j = 0; j < EG_STAGE_COUNT; j++)
+      s_decay_rate_exp_factor[j] = DX7_RATE_EXP_FACTOR;
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
@@ -221,19 +223,9 @@ void initvoice() {
       s_phase[i] = ZERO_PHASE;
 
 //todo: check dx11 rates
-      int32_t dl;
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-        if (j == (EG_STAGE_COUNT - 2) && s_egrate[i][j] == 0)
-          dl = 0;
-        else
-          dl = (j==0 ? DX11_MAX_LEVEL : j == 1 ? voice->op[i].d1l - DX11_MAX_LEVEL : - voice->op[i].d1l);
-        if (dl > 0)
-          s_egrate[i][j] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, DX11_RATE_EXP_FACTOR * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
-        else if (dl < 0)
-          s_egrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, (j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR) * (voice->op[i].r[j] + (voice->op[i].r[j] == 0 && j == (EG_STAGE_COUNT - 1) ? 0 : 1))));
-        else 
-          s_egrate[i][j] = ZERO;
-        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j==0 ? 1.f : j == 1 ? scale_level(voice->op[i].d1l * DX11_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
+        s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TZ81Z
+        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
       s_opval[i] = ZERO;
       s_modval[i] = ZERO;
@@ -249,7 +241,7 @@ void initvoice() {
 //if (s_waveform[i] & 0x01)
 //  s_oppitch[i] *= 2;
       s_kvs[i] = voice->op[i].kvs;
-//      s_rscale[i] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
+      s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
     }
     s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
@@ -261,8 +253,9 @@ void initvoice() {
     s_opval[5] = ZERO;
     s_kvs[4] = ZERO;
     s_kvs[5] = ZERO;
-//    s_rscale[4] = ZERO;
-//    s_rscale[5] = ZERO;
+    s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
+    for (uint32_t j = 0; j < EG_STAGE_COUNT; j++)
+      s_decay_rate_exp_factor[j] = j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR;
   }
 
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
@@ -385,14 +378,13 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_opval[i] = ZERO;
     s_egstage[i] = 0;
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
-//    rscale = s_rscale[i] * pitch;
     rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
     for (uint32_t j = EG_STAGE_COUNT; j--;) {
       dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : EG_STAGE_COUNT - 1];
       if (dl < 0)
-        s_egsrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * (s_egrate[i][j] + rscale)));
+        s_egsrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor[j] * (s_egrate[i][j] + rscale)));
       else if (dl > 0)
-        s_egsrate[i][j] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, DX7_RATE_EXP_FACTOR * (s_egrate[i][j] + rscale)));
+        s_egsrate[i][j] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][j] + rscale)));
       else 
         s_egsrate[i][j] = ZERO;
     }
