@@ -37,6 +37,7 @@
   #define param_to_f32(a) q31_to_f32(a)
   #define param_to_q31(a) (a)
   #define param_add(a,b) q31add(a,b)
+  #define param_sum(a,b,c) q31add(q31add(a,b),c)
   #define param_mul(a,b) q31mul(a,b)
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
@@ -69,6 +70,9 @@
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
+//#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
+  #define DX7_LEVEL_SCALE_FACTOR 0x02D82D83 // 1/45
+  #define DX11_LEVEL_SCALE_FACTOR 0x01E9131B // 1/(91-24) C1-G6
 #else
   typedef float param_t;
   typedef float phase_t;
@@ -77,6 +81,7 @@
   #define param_to_f32(a) (a)
   #define param_to_q31(a) f32_to_q31(a)
   #define param_add(a,b) ((a)+(b))
+  #define param_sum(a,b,c) ((a)+(b)+(c))
   #define param_mul(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
@@ -89,6 +94,9 @@
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DACAY_RATE_FACTOR -.125f
+//#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
+  #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
+  #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(91-24) C1-G6
 #endif
 
 #define DX7_RATE_EXP_FACTOR .16f
@@ -100,7 +108,7 @@
 #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
 #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 
-#define DX11_LEVEL_SCALE_FACTOR 6.6f //99/15
+#define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
@@ -114,24 +122,35 @@ static uint8_t s_opi;
 static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
 static uint8_t s_egstage[DX7_OPERATOR_COUNT];
 static uint8_t s_transpose;
-static uint8_t s_feedback_src;
 static uint8_t s_kvs[DX7_OPERATOR_COUNT];
+static uint8_t s_break_point[DX7_OPERATOR_COUNT];
+static param_t s_left_depth[DX7_OPERATOR_COUNT];
+static param_t s_right_depth[DX7_OPERATOR_COUNT];
+static uint8_t s_left_curve[DX7_OPERATOR_COUNT];
+static uint8_t s_right_curve[DX7_OPERATOR_COUNT];
+
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
 
 static uint8_t s_assignable[2];
 static param_t s_params[p_num];
-static param_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
+static uint8_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egsrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egval[DX7_OPERATOR_COUNT];
 static param_t s_opval[DX7_OPERATOR_COUNT];
-static param_t s_modval[DX7_OPERATOR_COUNT];
-static param_t s_feedback_opval[2];
 static param_t s_oplevel[DX7_OPERATOR_COUNT];
+static param_t s_level_scaling[DX7_OPERATOR_COUNT];
 
 static float s_attack_rate_exp_factor;
 static float s_decay_rate_exp_factor[EG_STAGE_COUNT];
+
+static param_t s_level_scale_factor;
+
+#ifndef NO_FEEDBACK
+static uint8_t s_feedback_src;
+static param_t s_feedback_opval[2];
+#endif
 
 /*
 static param_t s_pegrate[EG_STAGE_COUNT];
@@ -152,10 +171,9 @@ void initvoice() {
     s_algorithm_idx = voice->als;
     s_algorithm = dx7_algorithm[s_algorithm_idx];
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
-
+#ifndef NO_FEEDBACK
     s_params[p_feedback] = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
-    s_feedback_opval[0] = ZERO;
-    s_feedback_opval[1] = ZERO;
+#endif
 /*
 #ifdef USE_Q31
 //todo: PEG level precalc & Q31
@@ -181,7 +199,6 @@ void initvoice() {
         s_eglevel[i][j] = scale_level(voice->op[i].l[j]) * LEVEL_SCALE_FACTOR;
       }
       s_opval[i] = ZERO;
-      s_modval[i] = ZERO;
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
@@ -191,6 +208,22 @@ void initvoice() {
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
       s_kvs[i] = voice->op[i].ts;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
+      s_break_point[i] = voice->op[i].bp + 21;
+//fold negative/position curves into curve depth sign
+      if (voice->op[i].lc < 2) {
+        s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTOR;
+        s_left_curve[i] = voice->op[i].lc;
+      } else {
+        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTOR;
+        s_left_curve[i] = 3 - voice->op[i].lc;
+      }
+      if (voice->op[i].rc < 2) {
+        s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTOR;
+        s_right_curve[i] = voice->op[i].rc;
+      } else {
+        s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTOR;
+        s_right_curve[i] = 3 - voice->op[i].rc;
+      }
     }
     s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
     s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
@@ -201,15 +234,16 @@ void initvoice() {
     s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     for (uint32_t j = 0; j < EG_STAGE_COUNT; j++)
       s_decay_rate_exp_factor[j] = DX7_RATE_EXP_FACTOR;
+    s_level_scale_factor = DX7_LEVEL_SCALE_FACTOR;
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
     s_algorithm = dx7_algorithm[s_algorithm_idx];
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
-
+#ifndef NO_FEEDBACK
     s_params[p_feedback] = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
-
+#endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
       uint32_t i;
       if (s_algorithm_idx == 7)
@@ -224,11 +258,10 @@ void initvoice() {
 
 //todo: check dx11 rates
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-        s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TZ81Z
-        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
+        s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TX81Z
+        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
       s_opval[i] = ZERO;
-      s_modval[i] = ZERO;
       s_egstage[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
@@ -242,6 +275,11 @@ void initvoice() {
 //  s_oppitch[i] *= 2;
       s_kvs[i] = voice->op[i].kvs;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
+      s_break_point[i] = 24 + 21; // C1
+      s_left_depth[i] = 0;
+      s_right_depth[i] = -voice->op[i].ls;
+      s_left_curve[i] = 0;
+      s_right_curve[i] = 0;
     }
     s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
@@ -254,17 +292,25 @@ void initvoice() {
     s_kvs[4] = ZERO;
     s_kvs[5] = ZERO;
     s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
-    for (uint32_t j = 0; j < EG_STAGE_COUNT; j++)
+    for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
       s_decay_rate_exp_factor[j] = j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR;
+      s_egrate[4][j] = ZERO;
+      s_egrate[5][j] = ZERO;
+      s_eglevel[4][j] = ZERO;
+      s_eglevel[5][j] = ZERO;
+    }
+    s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
   }
-
+#ifndef NO_FEEDBACK
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
       s_feedback_src = 0;
       for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
     }
-    s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i]);
   }
+  s_feedback_opval[0] = ZERO;
+  s_feedback_opval[1] = ZERO;
+#endif
 }
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
@@ -370,7 +416,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rscale;
-  int32_t dl;
+  int32_t dl, dp, curve = 0;
+  param_t depth = ZERO;
   for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_opi)
       s_phase[i] = ZERO_PHASE;
@@ -388,6 +435,19 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       else 
         s_egsrate[i][j] = ZERO;
     }
+    dp = s_break_point[i] - (params->pitch >> 8);
+    if (dp < 0) {
+       curve = s_left_curve[i];
+       depth = s_left_depth[i];
+    } else if (dp > 0) {
+       curve = s_right_curve[i];
+       depth = s_right_depth[i];
+    }
+    if (dp == 0)
+      s_level_scaling[i] = ZERO;
+    else
+      s_level_scaling[i] = param_mul(depth, (curve ? f32_to_param(powf(M_E, (dp - 72) * .074074074f)) : s_level_scale_factor * dp));
+    s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
   }
 /*
   s_pegstage = 0;
@@ -410,14 +470,16 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_shiftshape:
       index = s_assignable[index - k_user_osc_param_shape];
       switch (index) {
+#ifndef NO_FEEDBACK
         case p_feedback:
           param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           break;
+#endif
         case p_velocity:
           param = f32_to_param((powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
           for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
-            s_oplevel[i] = param_add(s_params[p_op6_level + i * 10], param * s_kvs[i]);
+            s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], param * s_kvs[i], s_level_scaling[i]);
           break;
         case p_op6_level:
         case p_op5_level:
@@ -430,7 +492,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #else
           param = param_val_to_f32(value);
 #endif
-          s_oplevel[index - p_op6_level] = param_add(param, s_params[p_velocity] * s_kvs[index - p_op6_level]);
+          s_oplevel[index - p_op6_level] = param_sum(param, s_params[p_velocity] * s_kvs[index - p_op6_level], s_level_scaling[index - p_op6_level]);
           break;
         case p_op6_rate_scale:
         case p_op5_rate_scale:
@@ -468,12 +530,14 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       if (s_algorithm_idx != value) {
         s_algorithm_idx = value;
         s_algorithm = dx7_algorithm[s_algorithm_idx];
+#ifndef NO_FEEDBACK
         for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
           if (s_algorithm[i] & ALG_FBK_MASK) {
             s_feedback_src = 0;
             for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
           }
         }
+#endif
       }
       break;
     case k_user_osc_param_id6:
