@@ -344,12 +344,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
-#ifndef NO_FEEDBACK
+//#ifndef NO_FEEDBACK
       if (s_algorithm[i] & ALG_FBK_MASK) {
+#ifndef NO_FEEDBACK
         modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
         modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
-      } else
 #endif
+      } else
+//#endif
       if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
