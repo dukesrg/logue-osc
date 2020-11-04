@@ -201,7 +201,7 @@ void initvoice() {
         s_eglevel[i][j] = scale_level(voice->op[i].l[j]) * LEVEL_SCALE_FACTOR;
       }
       s_opval[i] = ZERO;
-      s_egstage[i] = 0;
+      s_egstage[i] = EG_STAGE_COUNT - 1;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
       if (s_fixedfreq[i])
@@ -264,7 +264,7 @@ void initvoice() {
         s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
       s_opval[i] = ZERO;
-      s_egstage[i] = 0;
+      s_egstage[i] = EG_STAGE_COUNT - 1;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
 //todo: Fine freq ratio
