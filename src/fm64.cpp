@@ -357,7 +357,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
         if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
         if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
-        if (s_algorithm[i] & ALG_MOD1_MASK) modw0 += s_opval[5];
       }
 
       s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
