@@ -13,7 +13,7 @@
 
 #include "fm64.h"
 
-#define NO_FEEDBACK //disable feedback, helps to reduce performance issues on -logues
+//#define NO_FEEDBACK //disable feedback, helps to reduce performance issues on -logues
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
