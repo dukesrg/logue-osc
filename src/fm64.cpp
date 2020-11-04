@@ -175,6 +175,8 @@ void initvoice() {
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 #ifndef NO_FEEDBACK
     s_params[p_feedback] = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
+    s_feedback_opval[0] = ZERO;
+    s_feedback_opval[1] = ZERO;
 #endif
 /*
 #ifdef USE_Q31
@@ -189,20 +191,17 @@ void initvoice() {
   }
 */
 
-    for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
+    for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
       s_fixedfreq[i] = voice->op[i].pm;
 //      s_waveform[i] = 0;
 
       s_phase[i] = ZERO_PHASE;
 
 //todo: check dx7 D1/D2/R rates
-      for (uint32_t j = EG_STAGE_COUNT; j--;) {
+      for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
         s_egrate[i][j] = voice->op[i].r[j];
         s_eglevel[i][j] = scale_level(voice->op[i].l[j]) * LEVEL_SCALE_FACTOR;
       }
-      s_opval[i] = ZERO;
-      s_egstage[i] = EG_STAGE_COUNT - 1;
-      s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
       if (s_fixedfreq[i])
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
@@ -263,9 +262,6 @@ void initvoice() {
         s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TX81Z
         s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
-      s_opval[i] = ZERO;
-      s_egstage[i] = EG_STAGE_COUNT - 1;
-      s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 
 //todo: Fine freq ratio
       if (s_fixedfreq[i])
@@ -289,8 +285,6 @@ void initvoice() {
     s_params[p_op3_level] = scale_level(voice->op[3].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op2_level] = ZERO;
     s_params[p_op1_level] = ZERO;
-    s_opval[4] = ZERO;
-    s_opval[5] = ZERO;
     s_kvs[4] = ZERO;
     s_kvs[5] = ZERO;
     s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
@@ -303,16 +297,17 @@ void initvoice() {
     }
     s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
   }
+  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+    s_opval[i] = ZERO;
+    s_egstage[i] = EG_STAGE_COUNT - 1;
+    s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 #ifndef NO_FEEDBACK
-  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
       s_feedback_src = 0;
       for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
     }
-  }
-  s_feedback_opval[0] = ZERO;
-  s_feedback_opval[1] = ZERO;
 #endif
+  }
 }
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
@@ -334,7 +329,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   phase_t opw0[DX7_OPERATOR_COUNT];
   pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
 
-  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
+  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
     if (s_fixedfreq[i])
       opw0[i] = pitch_to_phase(s_oppitch[i]);
     else
@@ -422,7 +417,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   float rscale;
   int32_t dl, dp, curve = 0;
   param_t depth = ZERO;
-  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
+  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
     if (s_opi)
       s_phase[i] = ZERO_PHASE;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
@@ -430,7 +425,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_egstage[i] = 0;
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
     rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
-    for (uint32_t j = EG_STAGE_COUNT; j--;) {
+    for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
       dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : EG_STAGE_COUNT - 1];
       if (dl < 0)
         s_egsrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor[j] * (s_egrate[i][j] + rscale)));
@@ -461,7 +456,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
+  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
   }
 }
@@ -482,7 +477,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_velocity:
           param = f32_to_param((powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
-          for (uint32_t i = DX7_OPERATOR_COUNT; i--;)
+          for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++)
             s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], param * s_kvs[i], s_level_scaling[i]);
           break;
         case p_op6_level:
@@ -535,7 +530,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         s_algorithm_idx = value;
         s_algorithm = dx7_algorithm[s_algorithm_idx];
 #ifndef NO_FEEDBACK
-        for (uint32_t i = DX7_OPERATOR_COUNT; i--;) {
+        for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
           if (s_algorithm[i] & ALG_FBK_MASK) {
             s_feedback_src = 0;
             for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);

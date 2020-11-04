@@ -42,7 +42,8 @@ For user-customizable oscillators online constructor is available at https://duk
 * With Supersaw sound may be degraded when using high level of unison and/or high level of polyphony with another FX due to high CPU processing power requirement, so use parameters wisely for your current creative requiremet.
 * Morpheus LFO rate control is in non-linear scale with more precise control in lower frequencies.
 * FM64 is very rough and only limited number of features are supported, currently most voices sounds far different from the originals.
-* Using FX with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations. Currently using 1 FX looks safe.
+* Using more than 2 FX on NTS-1 with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations.
+* Using LFO with pitch or shape as a target may produce sound degradation on NTS-1 or multi-engine voice hang on -logues.
 * DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels set to silent, but may be altered manually.
 * DX21/DX11 voices with algorithm 3 initialized with different operator order to match DX7 algorithm 8.
 * Since there is no way to pass velocity to the oscillator FM64 utilizes assignable controller #02 as a velocity. Velocity will reset on a voice change to the default value. The default value is equivalent to 100 from 0&hellip;127 range though internally 10-bit precision is used.
