@@ -110,7 +110,8 @@
 #define DX7_DACAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
 //#define RATE_SCALING_FACTOR .061421131f
 //#define RATE_SCALING_FACTOR .041666667f
-#define RATE_SCALING_FACTOR .065040650f// 1/24 * 64/41
+//#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
+#define RATE_SCALING_FACTOR .445291664f // reversed from measures for current curve function
 
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
@@ -132,6 +133,8 @@ static param_t s_left_depth[DX7_OPERATOR_COUNT];
 static param_t s_right_depth[DX7_OPERATOR_COUNT];
 static uint8_t s_left_curve[DX7_OPERATOR_COUNT];
 static uint8_t s_right_curve[DX7_OPERATOR_COUNT];
+static uint32_t s_sample_num;
+static uint32_t s_sample_count[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 
 //static uint8_t s_pegstage;
 //static uint8_t s_waveform[DX7_OPERATOR_COUNT];
@@ -377,7 +380,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 
 //todo: flatten the level/rate arrays and get rid of the excessive indexing
-      s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+/*      s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
       if (
         (s_egsrate[i][s_egstage[i]] > ZERO && s_egval[i] >= s_eglevel[i][s_egstage[i]])
         || (s_egsrate[i][s_egstage[i]] < ZERO && s_egval[i] <= s_eglevel[i][s_egstage[i]])
@@ -387,8 +390,30 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_egstage[i] < EG_STAGE_COUNT - 2)
           s_egstage[i]++;
       }
+*/
+/*
+//Release Rate fixed
+      if (!(
+        (s_egsrate[i][s_egstage[i]] > ZERO && s_egval[i] >= s_eglevel[i][s_egstage[i]])
+        || (s_egsrate[i][s_egstage[i]] < ZERO && s_egval[i] <= s_eglevel[i][s_egstage[i]])
+        || s_egsrate[i][s_egstage[i]] == ZERO
+      )) {
+        s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+      } else if (s_egstage[i] < EG_STAGE_COUNT - 2) {
+        s_egval[i] = s_eglevel[i][s_egstage[i]];
+        s_egstage[i]++;
+      }
+*/
+
+      if (s_sample_num < s_sample_count[i][s_egstage[i]]) {
+        s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+      } else if (s_egstage[i] < EG_STAGE_COUNT - 2) {
+        s_egval[i] = s_eglevel[i][s_egstage[i]];
+        s_egstage[i]++;
+      }
 
     }
+    s_sample_num++;
 /*
 //todo: PEG level
 #ifdef USE_Q31
@@ -420,6 +445,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   float rscale;
   int32_t dl, dp, curve = 0;
   param_t depth = ZERO;
+  s_sample_num = 0;
   for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
     if (s_opi)
       s_phase[i] = ZERO_PHASE;
@@ -436,6 +462,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
         s_egsrate[i][j] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][j] + rscale)));
       else 
         s_egsrate[i][j] = ZERO;
+      s_sample_count[i][j] = dl == 0 ? 0 : dl / s_egsrate[i][j];
     }
     dp = s_break_point[i] - (params->pitch >> 8);
     if (dp < 0) {
