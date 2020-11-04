@@ -108,7 +108,8 @@
 #define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
 #define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
 #define DX7_DACAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
-#define RATE_SCALING_FACTOR .061421131f
+//#define RATE_SCALING_FACTOR .061421131f
+#define RATE_SCALING_FACTOR .041666667f
 
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
@@ -427,7 +428,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
     rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
     for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-      dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : EG_STAGE_COUNT - 1];
+      dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)];
       if (dl < 0)
         s_egsrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor[j] * (s_egrate[i][j] + rscale)));
       else if (dl > 0)
