@@ -209,6 +209,7 @@ void initvoice() {
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
       s_kvs[i] = voice->op[i].ts;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
+      s_params[p_op6_level + i * 10] = scale_level(voice->op[i].tl) * LEVEL_SCALE_FACTOR;
       s_break_point[i] = voice->op[i].bp + 21;
 //fold negative/position curves into curve depth sign
       if (voice->op[i].lc < 2) {
@@ -226,12 +227,12 @@ void initvoice() {
         s_right_curve[i] = 3 - voice->op[i].rc;
       }
     }
-    s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
-    s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
-    s_params[p_op4_level] = scale_level(voice->op[2].tl) * LEVEL_SCALE_FACTOR;
-    s_params[p_op3_level] = scale_level(voice->op[3].tl) * LEVEL_SCALE_FACTOR;
-    s_params[p_op2_level] = scale_level(voice->op[4].tl) * LEVEL_SCALE_FACTOR;
-    s_params[p_op1_level] = scale_level(voice->op[5].tl) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op4_level] = scale_level(voice->op[2].tl) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op3_level] = scale_level(voice->op[3].tl) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op2_level] = scale_level(voice->op[4].tl) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op1_level] = scale_level(voice->op[5].tl) * LEVEL_SCALE_FACTOR;
     s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     for (uint32_t j = 0; j < EG_STAGE_COUNT; j++)
       s_decay_rate_exp_factor[j] = DX7_RATE_EXP_FACTOR;
@@ -273,16 +274,17 @@ void initvoice() {
 //  s_oppitch[i] *= 2;
       s_kvs[i] = voice->op[i].kvs;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
+      s_params[p_op6_level + i * 10] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
       s_break_point[i] = 24 + 21; // C1
       s_left_depth[i] = 0;
       s_right_depth[i] = -voice->op[i].ls;
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
     }
-    s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
-    s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
-    s_params[p_op4_level] = scale_level(voice->op[2].out) * LEVEL_SCALE_FACTOR;
-    s_params[p_op3_level] = scale_level(voice->op[3].out) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op4_level] = scale_level(voice->op[2].out) * LEVEL_SCALE_FACTOR;
+//    s_params[p_op3_level] = scale_level(voice->op[3].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op2_level] = ZERO;
     s_params[p_op1_level] = ZERO;
     s_kvs[4] = ZERO;
