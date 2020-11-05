@@ -219,17 +219,17 @@ void initvoice() {
       s_break_point[i] = voice->op[i].bp + 21;
 //fold negative/position curves into curve depth sign
       if (voice->op[i].lc < 2) {
-        s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTOR;
+        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTOR;
         s_left_curve[i] = voice->op[i].lc;
       } else {
-        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTOR;
+        s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTOR;
         s_left_curve[i] = 3 - voice->op[i].lc;
       }
       if (voice->op[i].rc < 2) {
-        s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTOR;
+        s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTOR;
         s_right_curve[i] = voice->op[i].rc;
       } else {
-        s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTOR;
+        s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTOR;
         s_right_curve[i] = 3 - voice->op[i].rc;
       }
     }
@@ -468,7 +468,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 //        s_sample_num += dl / s_egsrate[i][j];
 //      s_sample_count[i][j] = s_sample_num;
     }
-    dp = s_break_point[i] - (params->pitch >> 8);
+    dp = (params->pitch >> 8) - s_break_point[i];
     if (dp < 0) {
        curve = s_left_curve[i];
        depth = s_left_depth[i];
