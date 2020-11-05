@@ -69,7 +69,7 @@
   #define FEEDBACK_RECIP 0x00ffffff // <1/128
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-//  #define DX7_DACAY_RATE_FACTOR 0xFE666666 // -1/8
+//  #define DX7_DECAY_RATE_FACTOR 0xFE666666 // -1/8
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
   #define DX7_LEVEL_SCALE_FACTOR 0x02D82D83 // 1/45
   #define DX11_LEVEL_SCALE_FACTOR 0x01E9131B // 1/(91-24) C1-G6
@@ -95,7 +95,7 @@
   #define FEEDBACK_RECIP .0078125f // 1/128
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-//  #define DX7_DACAY_RATE_FACTOR -.125f
+//  #define DX7_DECAY_RATE_FACTOR -.125f
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
   #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
   #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(91-24) C1-G6
@@ -107,7 +107,7 @@
 #define DX11_RATE_EXP_FACTOR .505f
 #define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
 #define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
-#define DX7_DACAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
+#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
 //#define RATE_SCALING_FACTOR .061421131f
 //#define RATE_SCALING_FACTOR .041666667f
 //#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
@@ -150,7 +150,8 @@ static param_t s_oplevel[DX7_OPERATOR_COUNT];
 static param_t s_level_scaling[DX7_OPERATOR_COUNT];
 
 static float s_attack_rate_exp_factor;
-static float s_decay_rate_exp_factor[EG_STAGE_COUNT];
+static float s_decay_rate_exp_factor;
+static float s_release_rate_exp_factor;
 
 static param_t s_level_scale_factor;
 
@@ -239,8 +240,8 @@ void initvoice() {
 //    s_params[p_op2_level] = scale_level(voice->op[4].tl) * LEVEL_SCALE_FACTOR;
 //    s_params[p_op1_level] = scale_level(voice->op[5].tl) * LEVEL_SCALE_FACTOR;
     s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
-    for (uint32_t j = 0; j < EG_STAGE_COUNT; j++)
-      s_decay_rate_exp_factor[j] = DX7_RATE_EXP_FACTOR;
+    s_decay_rate_exp_factor = DX7_RATE_EXP_FACTOR;
+    s_release_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_level_scale_factor = DX7_LEVEL_SCALE_FACTOR;
   } else {
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
@@ -294,14 +295,15 @@ void initvoice() {
     s_params[p_op1_level] = ZERO;
     s_kvs[4] = ZERO;
     s_kvs[5] = ZERO;
-    s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
     for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-      s_decay_rate_exp_factor[j] = j == (EG_STAGE_COUNT - 1) ? DX11_RELEASE_RATE_EXP_FACTOR : DX11_RATE_EXP_FACTOR;
       s_egrate[4][j] = ZERO;
       s_egrate[5][j] = ZERO;
       s_eglevel[4][j] = ZERO;
       s_eglevel[5][j] = ZERO;
     }
+    s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
+    s_decay_rate_exp_factor = DX11_RATE_EXP_FACTOR;
+    s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
     s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
   }
   for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
@@ -457,7 +459,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
       dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)];
       if (dl < 0)
-        s_egsrate[i][j] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor[j] * (s_egrate[i][j] + rscale)));
+        s_egsrate[i][j] = f32_to_param(DX7_DECAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor * (s_egrate[i][j] + rscale)));
       else if (dl > 0)
         s_egsrate[i][j] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][j] + rscale)));
       else 
@@ -496,7 +498,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
     rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
     dl = s_eglevel[i][EG_STAGE_COUNT - 1] - s_egval[i];
     if (dl < 0)
-      s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(DX7_DACAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor[EG_STAGE_COUNT - 1] * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
+      s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(DX7_DECAY_RATE_FACTOR * powf(2.f, s_release_rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
     else if (dl > 0)
       s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
     else
