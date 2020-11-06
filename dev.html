@@ -1,0 +1,378 @@
+<html>
+<head>
+<style>
+  * {
+    background-color: #111;
+    color: #fff;
+    font-family: sans-serif;
+    outline: none;
+    box-shadow: none;
+  }
+  *:disabled {
+    color: #777;
+  }
+  table {
+    border-color: #111;
+    counter-reset: rowNumber;
+  }
+  table tr td:first-child::before {
+    counter-increment: rowNumber;
+    content: counter(rowNumber);
+  }
+  th {
+    font-size: small;
+  }
+  td, th {
+    text-align: left;
+  }
+  td:first-of-type {
+    color: #777;
+  }
+  td:nth-child(2):empty:before, td:nth-child(3):empty:before, td:nth-child(4):empty:before {
+    content: "---";
+  }
+  div:last-of-type {
+    text-align: center;
+    font-size: small;
+    color: #777;
+  }
+  td:last-child, td:nth-last-child(2) {
+    font-size: small;
+    color: #777;
+  }
+  td {
+    background-color: #000;
+  }
+  input {
+    border: 0;
+  }
+  input[type="text"] {
+    width: 100%;
+  }
+  input[type="button"] {
+    background: linear-gradient(to top, #222, #444);
+    border-radius: 2px;
+  }
+  input[type="button"]:disabled{
+    background: linear-gradient(to top, #111, #111);
+  }
+  input[type="button"]:active, label.button:active {
+    background: radial-gradient(circle, #CCC, #444);
+  }
+  input[type="file"] {
+    position: absolute;
+    top: -100px;
+    width: 0px;
+  }
+  input[type="radio"] {
+     display: none;
+  }
+  input[type="radio"]:checked + img {
+    background: radial-gradient(circle, #CCC, #444);
+  }
+  img {
+    background: linear-gradient(to top, #222, #444);
+    border-radius: 2px;
+    padding: 6px;
+  }
+  label.button {
+    background: linear-gradient(to top, #222, #444);
+    border-radius: 2px;
+    padding: 1px 6px;
+    font-size: small;
+  }
+</style>
+<script type="text/javascript" src="jszip.js"></script>
+<script type="text/javascript" src="FileSaver.js"></script>
+<script language="javascript">
+"use strict";
+var data;
+var count;
+var maxsize;
+
+function inject(osc) {
+  var platform = document.querySelector('input[name=platform]:checked').id + "unit";
+  var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
+  fetch("dev/" + osc.name + "-osc." + platform)
+  .then((response) => {
+    if (response.status === 200 || response.status === 0) {
+        return Promise.resolve(response.blob());
+    } else {
+        return Promise.reject(new Error(response.statusText));
+    }
+  })
+  .then(JSZip.loadAsync)
+  .then((zip) => {
+    var manifest;
+    var payload;
+    Promise.all([
+      zip.file(osc.name + "/payload.bin").async("Uint8Array").then((text) => {
+        payload = text;
+        var offs = 0x40;
+        for (var i = 0; i < data.length; i++) {
+          for (var j = 0; j < data[i].length; j++) {
+            payload[offs++] = data[i][j];
+          }
+        }
+      }),
+      zip.file(osc.name + "/manifest.json").async("string").then((text) => {
+        manifest = JSON.parse(text);
+        manifest.header.name = name.substring(0, 12);
+        var paramidx = manifest.header.custom_data[0][4];
+        if (typeof paramidx !== 'undefined')
+          manifest.header.params[paramidx][2] = data.length - 1;
+        manifest = JSON.stringify(manifest, null, "  ");
+      })
+    ]).then(values => { 
+      zip = new JSZip();
+      zip.file(osc.name + "/payload.bin", payload);
+      zip.file(osc.name + "/manifest.json", manifest);
+      zip.generateAsync({type:"blob"}).then((blob) => saveAs(blob, osc.name + "-" + name + "." + platform));
+    });
+  })
+}
+
+function getInfo(osc) {
+  var platform = document.querySelector('input[name=platform]:checked').id + "unit";
+  fetch("dev/" + osc + "-osc." + platform)
+  .then((response) => {
+    if (response.status === 200 || response.status === 0) {
+        return Promise.resolve(response.blob());
+    } else {
+        return Promise.reject(new Error(response.statusText));
+    }
+  })
+  .then(JSZip.loadAsync)
+  .then((zip) => {
+    zip.file(osc + "/manifest.json").async("string").then((data) => {
+      var manifest = JSON.parse(data);
+      ["version", "api"].map(e => document.querySelector("#" + osc + "-" + e).innerHTML = manifest.header[e]);
+      count[osc] = manifest.header.custom_data[0][3];
+      if (!count[osc])
+        count[osc] = 1;
+      maxsize[osc] = manifest.header.custom_data[0][2];
+      document.querySelector('#' + osc + '-size').innerHTML = maxsize[osc] + ' x ' + count[osc];
+      maxsize[osc] *= count[osc];
+      document.querySelector('#' + osc + '-description').innerHTML = manifest.header.custom_data[0][0];
+    })
+  })
+}
+
+function pcm16toulaw(val) {
+  var mask;
+  var seg;
+  var t = 0x7FFF;
+
+  if (val > t) {
+    val = 0x8000 - (val & 0x7FFF);
+    mask = 0x7F;
+  } else
+    mask = 0xFF;
+
+  val += 0x84;
+
+  for (seg = 8; seg > 0; seg--) {
+    if (val > t)
+      break;
+    t = t >> 1;
+  }
+
+  if (seg == 8)
+    return (0x7F ^ mask);
+  else {
+    val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
+    return (val ^ mask);
+  }
+}
+
+function handleFiles(f) {
+  var files = f.files;
+  var osc = f.name;
+  var status = document.querySelector('#' + osc + '-description');
+  var name = document.querySelector('input[type=text][name=' + osc + ']');
+  name.value = "";
+  data = new Array();
+  var datalength = 0;
+  status.innerHTML = "";
+  for (var i = 0; i < files.length; i++) {
+    var reader = new FileReader();
+    reader.onload = (event) => {
+      status.innerHTML += event.target.filename + ": ";
+      var array = new Uint8Array(event.target.result);
+      if (osc === "FM64") {
+        if (array.length > 4104) {
+           status.innerHTML += "skipped (size mismatch)";
+        } else {
+           if (data.length >= count[osc]) {
+            status.innerHTML += "skipped (maximum voice bank limit reached)";
+          } else {
+            if (array.length == 4096) {
+              status.innerHTML += "added (assuming raw voice bank)";
+              name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+              data.push(array);
+            } else {
+              switch(array.slice(0, 6).join("")) {
+                case "2406709160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406709320":
+                  status.innerHTML += "added 6-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data.push(array.slice(6, 4102));
+                  break;
+                case "2406704160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406704320":
+                  status.innerHTML += "added 4-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data.push(array.slice(6, 4102));
+                  break;
+                default:
+                  status.innerHTML += "skipped unsupported SysEx";
+              }
+            }
+          }
+        }
+      } else if (osc === "Morpheus") {
+        if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
+          if (data.length >= count[osc]) {
+            status.innerHTML += "skipped (maximum wave file limit reached)";
+          } else {
+            if (array.slice(22, 24).join("") === "10") {
+              switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
+                case "10160": //16-bit PCM
+                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                  if (size < 32768) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                     status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
+                     if (size > 32768) {
+                       status.innerHTML += ", truncated to 16384 samples";
+                     }
+                     var newarray = new Uint8Array(16384);
+                     for (i = 0; i < newarray.length; i++)
+                       newarray[i] = pcm16toulaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
+                     data.push(newarray);
+                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  }
+                  break;
+                case "7080": //u-Law
+                  var size = array[0x2E] + (array[0x2F] << 8) + (array[0x30] << 16) + (array[0x31] << 24);
+                  if (size < 16384) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                     status.innerHTML += "added &#xb5;-law compressed file";
+                     if (size > 16384) {
+                       status.innerHTML += ", truncated to 16384 samples";
+                     }
+                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                     data.push(array.slice(58, 16469))
+                  }
+                  break;
+                default:
+                  status.innerHTML += "skipped (format not supported)";
+              };
+            } else {
+              status.innerHTML += "skipped (channel count not supported)";
+            }
+          }
+        } else {
+          status.innerHTML += "skipped unsupported file format";
+        }
+      } else if (osc === "Anthologue") {
+        if (array.length != 448 && array.length != 336 && array.length != 1024) {
+           status.innerHTML += "skipped (size mismatch)";
+        } else {
+          if (String.fromCharCode.apply(String, array.slice(0, 4)) == "PROG") {
+            if (datalength + array.length > maxsize[osc]) {
+              status.innerHTML += "skipped (maximum program limit reached)";
+            } else {
+              var progname = document.createElement('progname');
+              progname.textContent = String.fromCharCode.apply(String, array.slice(4, 16)).replace(/\0/g,'');
+              progname = progname.innerHTML;
+              if (String.fromCharCode.apply(String, array.slice(96, 100)) == "SEQD") {
+                status.innerHTML += "added minilogue program " + progname;
+                name.value += progname;
+                data.push(array);
+                datalength += array.length;
+              } else if (String.fromCharCode.apply(String, array.slice(48, 52)) == "SEQD") {
+                status.innerHTML += "added monologue program " + progname;
+                name.value += progname;
+                data.push(array);
+                datalength += array.length;
+              } else if (String.fromCharCode.apply(String, array.slice(332, 336)) == "PRED") {
+                status.innerHTML += "added prologue program " + progname;
+                name.value += progname;
+                data.push(array);
+                datalength += array.length;
+              } else if (String.fromCharCode.apply(String, array.slice(156, 160)) == "PRED") {
+                status.innerHTML += "added minilogue xd program " + progname;
+                name.value += progname;
+                data.push(array);
+                datalength += array.length;
+              } else {
+                status.innerHTML += "skipped unsupported file format";
+              }
+            }
+          } else {
+            status.innerHTML += "skipped unsupported file format";
+          }
+        }
+      }
+      status.innerHTML += "<br/>";
+      if (data.length > 0) {
+        document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
+        name.disabled = false;
+      }
+    }
+    reader.filename = files[i].name;
+    reader.readAsArrayBuffer(files[i]);
+  }
+}
+
+function platformClick(platform) {
+  document.cookie = "platform=" + platform.id;
+  onLoad(); 
+}
+
+function onLoad() {
+  var platform = document.querySelector('#' + document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1])
+  if (platform)
+    platform.checked = true;
+  count = new Array();
+  maxsize = new Array();
+  ["FM64", "Morpheus", "Anthologue"].map(e => getInfo(e));
+}
+</script>
+</head>
+<body onload="onLoad();">
+<h3></h3>
+<label><input type="radio" id="prlg" name="platform" onchange="platformClick(this);"/><img src="prlg.png"/></label>
+<label><input type="radio" id="mnlgxd" name="platform" onchange="platformClick(this);"/><img src="mnlgxd.png"/></label>
+<label><input type="radio" id="ntkdig" name="platform" onchange="platformClick(this);"/><img src="ntkdig.png"/></label>
+<div style="width: 25%; height: 30px; line-height: 30px; font-size: small; color: #FFF; background-color: #222; text-align: center;">
+USER OSCILLATORS
+</div>
+<table rules="rows" cellpadding="6" border="2" width="100%">
+<tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
+<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
+<tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
+<tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+</table>
+<div>
+Refer to <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
+</div>
+</body>
+</html>
