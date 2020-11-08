@@ -13,8 +13,8 @@
 
 #include "fm64.h"
 
-#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues
-//#define EG_SAMPLED //precalculate EG stages length in samples
+//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues
+#define EG_SAMPLED //precalculate EG stages length in samples
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
@@ -305,6 +305,7 @@ void initvoice() {
     s_egval[i] = ZERO;
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0;
+    s_egsrate[i][s_egstage[EG_STAGE_COUNT - 1]] = ZERO;
 #endif
 #ifdef FEEDBACK
     if (s_algorithm[i] & ALG_FBK_MASK) {
