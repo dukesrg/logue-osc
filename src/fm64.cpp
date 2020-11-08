@@ -66,7 +66,7 @@
     #define ZERO_PHASE 0.f
   #endif
   #define ZERO 0
-  #define FEEDBACK_RECIP 0x00ffffff // <1/128
+  #define FEEDBACK_RECIP 0x007FFFFF // <1/256
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DECAY_RATE_FACTOR 0xFE666666 // -1/8
@@ -92,7 +92,7 @@
   #define pitch_mul(a,b) ((a)*(b))
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
-  #define FEEDBACK_RECIP .0078125f // 1/128
+  #define FEEDBACK_RECIP .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DECAY_RATE_FACTOR -.125f
@@ -102,6 +102,8 @@
   #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
   #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 #endif
+
+#define FEEDBACK_RECIPF .00390625f // 1/256
 
 #define DX7_RATE_EXP_FACTOR .16f
 #define DX11_RATE_EXP_FACTOR .505f
@@ -118,7 +120,6 @@
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 
-//static const dx7_voice_t *voice;
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
 static uint8_t s_algorithm_idx = -1;
@@ -170,7 +171,6 @@ static pitch_t s_oppitch[DX7_OPERATOR_COUNT];
 static phase_t s_phase[DX7_OPERATOR_COUNT];
 
 static param_t eg_lut[1024];
-//static param_t mod_lut[128];
 
 void initvoice() {
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
@@ -233,12 +233,6 @@ void initvoice() {
         s_right_curve[i] = 3 - voice->op[i].rc;
       }
     }
-//    s_params[p_op6_level] = scale_level(voice->op[0].tl) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op5_level] = scale_level(voice->op[1].tl) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op4_level] = scale_level(voice->op[2].tl) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op3_level] = scale_level(voice->op[3].tl) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op2_level] = scale_level(voice->op[4].tl) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op1_level] = scale_level(voice->op[5].tl) * LEVEL_SCALE_FACTOR;
     s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_decay_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX7_RATE_EXP_FACTOR;
@@ -260,7 +254,7 @@ void initvoice() {
         i = k;
 
       s_fixedfreq[i] = voice->opadd[i].fixrg;
-//      s_waveform[i] =  voice->opadd[i].osw;
+//      s_waveform[i] = voice->opadd[i].osw;
 
       s_phase[i] = ZERO_PHASE;
 
@@ -287,10 +281,6 @@ void initvoice() {
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
     }
-//    s_params[p_op6_level] = scale_level(voice->op[0].out) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op5_level] = scale_level(voice->op[1].out) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op4_level] = scale_level(voice->op[2].out) * LEVEL_SCALE_FACTOR;
-//    s_params[p_op3_level] = scale_level(voice->op[3].out) * LEVEL_SCALE_FACTOR;
     s_params[p_op2_level] = ZERO;
     s_params[p_op1_level] = ZERO;
     s_kvs[4] = ZERO;
@@ -327,7 +317,6 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   s_params[p_velocity] = DEFAULT_VELOCITY;
   for (int32_t i = 0; i < 1024; i++) {
     eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
-//    mod_lut[i] = f32_to_param(dx7_modindex(i) * LEVEL_SCALE_FACTOR);
   }
 }
 
@@ -350,14 +339,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
-//#ifndef NO_FEEDBACK
       if (s_algorithm[i] & ALG_FBK_MASK) {
 #ifndef NO_FEEDBACK
-        modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
-        modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
+//        modw0 += param_mul(s_feedback_opval[0], s_params[p_feedback]);
+//        modw0 += param_mul(s_feedback_opval[1], s_params[p_feedback]);
+        modw0 += s_feedback_opval[0] + s_feedback_opval[1];
 #endif
       } else
-//#endif
       if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
@@ -370,7 +358,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifndef NO_FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = s_opval[i];
+//        s_feedback_opval[0] = s_opval[i];
+        s_feedback_opval[0] = param_mul(s_opval[i], s_params[p_feedback]);
       }
 #endif
       if (s_algorithm[i] & ALG_OUT_MASK)
@@ -402,7 +391,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       )) {
         s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
       } else if (s_egstage[i] < EG_STAGE_COUNT - 2) {
-//        s_egval[i] = s_eglevel[i][s_egstage[i]];
+        s_egval[i] = s_eglevel[i][s_egstage[i]];
         s_egstage[i]++;
       }
 
@@ -517,7 +506,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       switch (index) {
 #ifndef NO_FEEDBACK
         case p_feedback:
-          param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
+//          param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
+          param = value == 0 ? ZERO : f32_to_param(powf(2.f, value * 0.00684261974f) * FEEDBACK_RECIPF);
           break;
 #endif
         case p_velocity:

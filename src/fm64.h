@@ -81,7 +81,7 @@ static const uint8_t dx11_algorithm_lut[8] = {
 static const uint8_t dx11_alg3_op_lut[8] = {
   2, 0, 1, 3
 };
-
+/*
 static const uint8_t modindex_lut[] = {
   127, 122, 118, 114, 110, 107, 104, 102, 100, 98, 96, 94, 92, 90, 88, 86, 85, 84, 82, 81
 };
@@ -97,7 +97,7 @@ static inline __attribute__((optimize("Ofast"), always_inline))
 float dx11_modindex(uint8_t x) {
   return 8.f * M_PI * powf(2.f, -.125f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x));
 }
-
+*/
 static const uint8_t level_lut[] = {
   0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46
 };
@@ -161,18 +161,18 @@ struct dx7_voice_t {
 };
 
 struct dx11_operator_t {
-    uint8_t r[EG_STAGE_COUNT]; //EG rates
-    uint8_t d1l; //EG decay 1 level
-    uint8_t ls; //Level scaling
-    uint8_t kvs:3; //Key velocity sensitivity
-    uint8_t ebs:3; //EG bias sensitivity
-    uint8_t ame:1; //Amplitude modulation enable
-    uint8_t :0;
-    uint8_t out; //output level
-    uint8_t f; //frequency
-    uint8_t det:3; //Detune
-    uint8_t rs:2; //Rate scaling
-    uint8_t :0;
+  uint8_t r[EG_STAGE_COUNT]; //EG rates
+  uint8_t d1l; //EG decay 1 level
+  uint8_t ls; //Level scaling
+  uint8_t kvs:3; //Key velocity sensitivity
+  uint8_t ebs:3; //EG bias sensitivity
+  uint8_t ame:1; //Amplitude modulation enable
+  uint8_t :0;
+  uint8_t out; //output level
+  uint8_t f; //frequency
+  uint8_t det:3; //Detune
+  uint8_t rs:2; //Rate scaling
+  uint8_t :0;
 };
 
 struct dx11_voice_t {
