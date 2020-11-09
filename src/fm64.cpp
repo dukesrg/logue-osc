@@ -13,8 +13,9 @@
 
 #include "fm64.h"
 
-//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues
+#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues
 #define EG_SAMPLED //precalculate EG stages length in samples
+#define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
@@ -173,7 +174,11 @@ static param_t s_pegval[DX7_OPERATOR_COUNT];
 static pitch_t s_oppitch[DX7_OPERATOR_COUNT];
 static phase_t s_phase[DX7_OPERATOR_COUNT];
 
+#ifdef EGLUT
+  #include "eglut.h"
+#else
 static param_t eg_lut[1024];
+#endif
 
 void initvoice() {
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
@@ -322,9 +327,11 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
   osc_api_initq();
 #endif
   s_params[p_velocity] = DEFAULT_VELOCITY;
+#ifndef EGLUT
   for (int32_t i = 0; i < 1024; i++) {
     eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
   }
+#endif
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -440,7 +447,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  float rscale;
+  float rscale, rate_factor, rate_exp_factor;
   int32_t dl, dp, curve = 0;
   param_t depth = ZERO;
 #ifdef EG_SAMPLED
@@ -460,12 +467,26 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #endif
     for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
       dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)];
+/*
       if (dl < 0)
         s_egsrate[i][j] = f32_to_param(DX7_DECAY_RATE_FACTOR * powf(2.f, s_decay_rate_exp_factor * (s_egrate[i][j] + rscale)));
       else if (dl > 0)
         s_egsrate[i][j] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][j] + rscale)));
       else 
         s_egsrate[i][j] = ZERO;
+*/
+      if (dl != 0) {
+        if (dl < 0) {
+          rate_factor = DX7_DECAY_RATE_FACTOR;
+          rate_exp_factor = s_decay_rate_exp_factor;
+        } else {
+          rate_factor = DX7_ATTACK_RATE_FACTOR;
+          rate_exp_factor = s_attack_rate_exp_factor;
+        }
+        s_egsrate[i][j] = f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
+      } else {
+        s_egsrate[i][j] = ZERO;
+      }
 #ifdef EG_SAMPLED
       if (dl != 0)
         samples += dl / s_egsrate[i][j];
@@ -494,18 +515,33 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  float rscale;
+//  float rscale
+  float rate_factor, rate_exp_factor;
   int32_t dl;
   for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
-    rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
+//    rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
     dl = s_eglevel[i][EG_STAGE_COUNT - 1] - s_egval[i];
+/*
     if (dl < 0)
       s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(DX7_DECAY_RATE_FACTOR * powf(2.f, s_release_rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
     else if (dl > 0)
       s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
     else
       s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
+*/
+    if (dl != 0) {
+      if (dl < 0) {
+        rate_factor = DX7_DECAY_RATE_FACTOR;
+        rate_exp_factor = s_release_rate_exp_factor;
+      } else {
+        rate_factor = DX7_ATTACK_RATE_FACTOR;
+        rate_exp_factor = s_attack_rate_exp_factor;
+      }
+      s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]))));
+    } else {
+      s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
+    }
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = s_sample_num;
     if (dl != 0)
