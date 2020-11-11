@@ -12,8 +12,8 @@
         "params" : [
             ["Voice", 0, 31, ""],
             ["Bank", 0, 3, ""],
-            ["AC 1", 0, 68, ""],
-            ["AC 2", 0, 68, ""],
+            ["Shape Assign", 0, 68, ""],
+            ["Alt Assign", 0, 68, ""],
             ["Algorithm", 0, 31, ""]
         ],
         "custom_data" : [

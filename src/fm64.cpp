@@ -11,6 +11,12 @@
 #include "userosc.h"
 #include "fixed_mathq.h"
 
+#define OP6 //6-operator support
+#define OP4 //4-operator support
+#ifdef OP6
+//  #define OPSIX //enable KORG Opsix extensions
+#endif
+
 #include "fm64.h"
 
 #define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
@@ -182,6 +188,7 @@ static param_t eg_lut[1024];
 
 void initvoice() {
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
+#ifdef OP6
     const dx7_voice_t *voice = &dx_voices[s_bank][s_voice].dx7;
     s_opi = voice->opi;
     s_algorithm_idx = voice->als;
@@ -245,7 +252,9 @@ void initvoice() {
     s_decay_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_level_scale_factor = DX7_LEVEL_SCALE_FACTOR;
+#endif
   } else {
+#ifdef OP4
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
     s_algorithm = dx7_algorithm[s_algorithm_idx];
@@ -303,15 +312,16 @@ void initvoice() {
     s_decay_rate_exp_factor = DX11_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
     s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
+#endif
   }
   for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
-    s_opval[i] = ZERO;
-    s_egstage[i] = EG_STAGE_COUNT - 1;
-    s_egval[i] = ZERO;
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0;
-    s_egsrate[i][s_egstage[EG_STAGE_COUNT - 1]] = ZERO;
+    s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
 #endif
+    s_egstage[i] = EG_STAGE_COUNT - 1;
+    s_egval[i] = ZERO;
+    s_opval[i] = ZERO;
 #ifdef FEEDBACK
     if (s_algorithm[i] & ALG_FBK_MASK) {
       s_feedback_src = 0;
@@ -407,6 +417,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       ) {
         s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+//#ifdef EG_SAMPLED
+//        if (s_egval[i] < ZERO)
+//          s_egval[i] = ZERO;
+//#endif
       } else {
         s_egval[i] = s_eglevel[i][s_egstage[i]];
         if (s_egstage[i] < EG_STAGE_COUNT - 2)

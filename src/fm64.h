@@ -39,7 +39,7 @@
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
 
-static const uint8_t dx7_algorithm[32][DX7_OPERATOR_COUNT] = {
+static const uint8_t dx7_algorithm[][DX7_OPERATOR_COUNT] = {
   {0x41, 0x01, 0x02, 0x84, 0x00, 0x90}, //1 = 1
   {0x00, 0x01, 0x02, 0x84, 0x50, 0x90}, //2
   {0x41, 0x01, 0x82, 0x00, 0x08, 0x90}, //3
@@ -72,8 +72,19 @@ static const uint8_t dx7_algorithm[32][DX7_OPERATOR_COUNT] = {
   {0x80, 0x42, 0x02, 0x84, 0x80, 0x80}, //30
   {0x41, 0x81, 0x80, 0x80, 0x80, 0x80}, //31 = 7
   {0xC1, 0x80, 0x80, 0x80, 0x80, 0x80}, //32 = 8
+#ifdef OPSIX
+  {0x41, 0x00, 0x00, 0x04, 0x0B, 0x90}, //33
+  {0x42, 0x01, 0x02, 0x04, 0x08, 0x90}, //34
+  {0x41, 0x00, 0x83, 0x00, 0x00, 0x98}, //35
+  {0x41, 0x00, 0x00, 0x00, 0x8F, 0x8F}, //36
+  {0x41, 0x01, 0x00, 0x04, 0x82, 0x88}, //37
+  {0x41, 0x80, 0x00, 0x00, 0x8C, 0x8C}, //38
+  {0x41, 0x00, 0x83, 0x83, 0x83, 0x83}, //39
+  {0x41, 0x01, 0x82, 0x82, 0x82, 0x82}, //40
+#endif
 };
 
+#ifdef OP4
 static const uint8_t dx11_algorithm_lut[8] = {
   0, 13, 7, 6, 4, 21, 30, 31
 };
@@ -81,6 +92,8 @@ static const uint8_t dx11_algorithm_lut[8] = {
 static const uint8_t dx11_alg3_op_lut[8] = {
   2, 0, 1, 3
 };
+#endif
+
 /*
 static const uint8_t modindex_lut[] = {
   127, 122, 118, 114, 110, 107, 104, 102, 100, 98, 96, 94, 92, 90, 88, 86, 85, 84, 82, 81
@@ -107,6 +120,7 @@ uint8_t scale_level(uint8_t x) {
     return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
 }
 
+#ifdef OP4
 static const float dx11_ratio_lut[64] = {
   .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
   2.f, 2.82f, 3.f, 3.14f, 3.46f, 4.f, 4.24f, 4.71f,
@@ -117,6 +131,7 @@ static const float dx11_ratio_lut[64] = {
   15.7f, 16.96f, 17.27f, 17.3f, 18.37f, 18.84f, 19.03f, 19.78f,
   20.41f, 20.76f, 21.20f, 21.98f, 22.49f, 23.55f, 24.22f, 25.95f
 };
+#endif
 
 struct dx7_operator_t {
   uint8_t r[EG_STAGE_COUNT]; //EG rates
