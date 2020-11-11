@@ -144,7 +144,7 @@ static uint8_t s_left_curve[DX7_OPERATOR_COUNT];
 static uint8_t s_right_curve[DX7_OPERATOR_COUNT];
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
-static uint32_t s_sample_count[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
+static uint32_t s_sample_count[DX7_OPERATOR_COUNT][EG_STAGE_COUNT + 1];
 #endif
 
 //static uint8_t s_pegstage;
@@ -153,8 +153,8 @@ static uint32_t s_sample_count[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
 static uint8_t s_assignable[2];
 static param_t s_params[p_num];
 static uint8_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_egsrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_egsrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT + 1];
+static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT + 1];
 static param_t s_egval[DX7_OPERATOR_COUNT];
 static param_t s_opval[DX7_OPERATOR_COUNT];
 static param_t s_oplevel[DX7_OPERATOR_COUNT];
@@ -315,11 +315,13 @@ void initvoice() {
 #endif
   }
   for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
-#ifdef EG_SAMPLED
-    s_sample_count[i][EG_STAGE_COUNT - 1] = 0;
-    s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
-#endif
-    s_egstage[i] = EG_STAGE_COUNT - 1;
+//#ifdef EG_SAMPLED
+//    s_sample_count[i][EG_STAGE_COUNT] = 0;
+//#endif
+//    s_egsrate[i][EG_STAGE_COUNT] = ZERO;
+//    s_eglevel[i][EG_STAGE_COUNT] = s_eglevel[i][EG_STAGE_COUNT - 1];
+    s_eglevel[i][EG_STAGE_COUNT] = ZERO;
+    s_egstage[i] = EG_STAGE_COUNT;
     s_egval[i] = ZERO;
     s_opval[i] = ZERO;
 #ifdef FEEDBACK
@@ -423,7 +425,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //#endif
       } else {
         s_egval[i] = s_eglevel[i][s_egstage[i]];
-        if (s_egstage[i] < EG_STAGE_COUNT - 2)
+        if (s_egstage[i] != EG_STAGE_COUNT - 2 && s_egstage[i] != EG_STAGE_COUNT)
           s_egstage[i]++;
       }
     }
@@ -466,12 +468,6 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_sample_num = 0;
 #endif
   for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
-//    if (s_opi)
-//      s_phase[i] = ZERO_PHASE;
-//todo: to reset or not to reset - that is the question (stick with the operator phase init)
-//    s_opval[i] = ZERO;
-//    s_egstage[i] = 0;
-//    s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
     rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
 #ifdef EG_SAMPLED
     samples = 0;
@@ -509,18 +505,17 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     else
       s_level_scaling[i] = param_mul(depth, (curve ? f32_to_param(powf(M_E, (dp - 72) * .074074074f)) : s_level_scale_factor * dp));
     s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
+    if (s_opi)
+      s_phase[i] = ZERO_PHASE;
+//todo: to reset or not to reset - that is the question (stick with the operator phase init)
+    s_opval[i] = ZERO;
+    s_egval[i] = s_eglevel[i][EG_STAGE_COUNT] = s_eglevel[i][EG_STAGE_COUNT - 1];
+    s_egstage[i] = 0;
   }
 /*
   s_pegstage = 0;
   s_egval = s_eglevel[EG_STAGE_COUNT - 1];
 */
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
-    if (s_opi)
-      s_phase[i] = ZERO_PHASE;
-    s_opval[i] = ZERO;
-    s_egstage[i] = 0;
-    s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
-  }
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
@@ -546,8 +541,6 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
     if (dl != 0)
       s_sample_count[i][EG_STAGE_COUNT - 1] += dl / s_egsrate[i][EG_STAGE_COUNT - 1];
 #endif
-  }
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
   }
 }
