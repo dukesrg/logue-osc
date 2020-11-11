@@ -32,7 +32,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|-|-|
+|FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|Algorithm 1&hellip;32|-|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
@@ -42,9 +42,11 @@ For user-customizable oscillators, an online constructor is available at https:/
 * With Supersaw, the sound may be degraded when using a high level of unison and/or a high level of polyphony with another FX, due to high CPU processing requirements. Use parameters wisely for your creative requirements.
 * Morpheus LFO rate control is in a non-linear scale, with more precise control in lower frequencies.
 * FM64 is very rough and only a limited number of features are supported. Currently most voices sound quite different to the originals.
-* Using FX with FM64 may produce sound degradation due to high CPU processing requirements for 6-op FM calculations. Currently using 1 FX looks safe.
+* Using more than 2 FX on NTS-1 with FM64 may produce sound degradation due to high CPU processing power requirement for 6-op FM calculations.
+* Using LFO with pitch or shape as a target may produce sound degradation on NTS-1 or multi-engine voice hang on -logues.
 * DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels are set to silent, but may be altered manually.
 * DX21/DX11 voices with algorithm 3 are initialized with different operator order to match DX7 algorithm 8.
+* Since there is no way to pass velocity to the oscillator FM64 utilizes assignable controller #01 as a velocity. Velocity will reset on a voice change to the default value. The default value is equivalent to 100 from 0&hellip;127 range though internally 10-bit precision is used.
 * Anthologue patch select sets the VCO's parameters according to the selected patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for Monologue program).
 * Any types and combinations of logue-series can be injected in Anthologue.
 * Maximum number of Anthologue programs depends on their types and combinations, and can vary from 25 to 76.
@@ -72,8 +74,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 |#|FM64<br>Assignable controllers 1&2|1x (Op.6)|2x (Op.5)|3x (Op.4)|4x (Op.3)|5x (Op.2)|6x (Op.1)|
 |-|-|-|-|-|-|-|-|
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|
-|x1|Feedback|-|-|-|-|-|-|
-|x2|-|-|-|-|-|-|-|
+|x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|
+|x2|Feedback|-|-|-|-|-|-|
 |x3|-|-|-|-|-|-|-|
 |x4|-|-|-|-|-|-|-|
 |x5|-|-|-|-|-|-|-|

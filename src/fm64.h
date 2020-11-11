@@ -39,7 +39,7 @@
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
 
-static const uint8_t dx7_algorithm[32][DX7_OPERATOR_COUNT] = {
+static const uint8_t dx7_algorithm[][DX7_OPERATOR_COUNT] = {
   {0x41, 0x01, 0x02, 0x84, 0x00, 0x90}, //1 = 1
   {0x00, 0x01, 0x02, 0x84, 0x50, 0x90}, //2
   {0x41, 0x01, 0x82, 0x00, 0x08, 0x90}, //3
@@ -58,7 +58,7 @@ static const uint8_t dx7_algorithm[32][DX7_OPERATOR_COUNT] = {
   {0x41, 0x01, 0x00, 0x04, 0x00, 0x9A}, //16
   {0x00, 0x01, 0x00, 0x04, 0x50, 0x9A}, //17
   {0x00, 0x01, 0x02, 0x48, 0x00, 0x9C}, //18
-  {0x41, 0x01, 0x81, 0x00, 0x08, 0x90}, //19
+  {0x41, 0x81, 0x81, 0x00, 0x08, 0x90}, //19
   {0x00, 0x00, 0x83, 0x48, 0x88, 0x88}, //20
   {0x00, 0x81, 0x81, 0x48, 0x88, 0x88}, //21
   {0x41, 0x81, 0x81, 0x81, 0x00, 0x90}, //22 = 6
@@ -67,13 +67,24 @@ static const uint8_t dx7_algorithm[32][DX7_OPERATOR_COUNT] = {
   {0x41, 0x81, 0x81, 0x80, 0x80, 0x80}, //25
   {0x41, 0x00, 0x83, 0x00, 0x88, 0x80}, //26
   {0x00, 0x00, 0x83, 0x48, 0x88, 0x80}, //27
-  {0x80, 0x42, 0x02, 0x88, 0x00, 0x90}, //28
+  {0x80, 0x42, 0x02, 0x84, 0x00, 0x90}, //28
   {0x41, 0x81, 0x00, 0x84, 0x80, 0x80}, //29
   {0x80, 0x42, 0x02, 0x84, 0x80, 0x80}, //30
-  {0x41, 0x01, 0x80, 0x80, 0x80, 0x80}, //31 = 7
+  {0x41, 0x81, 0x80, 0x80, 0x80, 0x80}, //31 = 7
   {0xC1, 0x80, 0x80, 0x80, 0x80, 0x80}, //32 = 8
+#ifdef OPSIX
+  {0x41, 0x00, 0x00, 0x04, 0x0B, 0x90}, //33
+  {0x42, 0x01, 0x02, 0x04, 0x08, 0x90}, //34
+  {0x41, 0x00, 0x83, 0x00, 0x00, 0x98}, //35
+  {0x41, 0x00, 0x00, 0x00, 0x8F, 0x8F}, //36
+  {0x41, 0x01, 0x00, 0x04, 0x82, 0x88}, //37
+  {0x41, 0x80, 0x00, 0x00, 0x8C, 0x8C}, //38
+  {0x41, 0x00, 0x83, 0x83, 0x83, 0x83}, //39
+  {0x41, 0x01, 0x82, 0x82, 0x82, 0x82}, //40
+#endif
 };
 
+#ifdef OP4
 static const uint8_t dx11_algorithm_lut[8] = {
   0, 13, 7, 6, 4, 21, 30, 31
 };
@@ -81,7 +92,9 @@ static const uint8_t dx11_algorithm_lut[8] = {
 static const uint8_t dx11_alg3_op_lut[8] = {
   2, 0, 1, 3
 };
+#endif
 
+/*
 static const uint8_t modindex_lut[] = {
   127, 122, 118, 114, 110, 107, 104, 102, 100, 98, 96, 94, 92, 90, 88, 86, 85, 84, 82, 81
 };
@@ -97,7 +110,7 @@ static inline __attribute__((optimize("Ofast"), always_inline))
 float dx11_modindex(uint8_t x) {
   return 8.f * M_PI * powf(2.f, -.125f * (x < sizeof(modindex_lut) ? modindex_lut[x] : 99 - x));
 }
-
+*/
 static const uint8_t level_lut[] = {
   0, 5, 9, 13, 17, 20, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 42, 43, 45, 46
 };
@@ -107,6 +120,7 @@ uint8_t scale_level(uint8_t x) {
     return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
 }
 
+#ifdef OP4
 static const float dx11_ratio_lut[64] = {
   .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
   2.f, 2.82f, 3.f, 3.14f, 3.46f, 4.f, 4.24f, 4.71f,
@@ -117,6 +131,7 @@ static const float dx11_ratio_lut[64] = {
   15.7f, 16.96f, 17.27f, 17.3f, 18.37f, 18.84f, 19.03f, 19.78f,
   20.41f, 20.76f, 21.20f, 21.98f, 22.49f, 23.55f, 24.22f, 25.95f
 };
+#endif
 
 struct dx7_operator_t {
   uint8_t r[EG_STAGE_COUNT]; //EG rates
@@ -161,18 +176,18 @@ struct dx7_voice_t {
 };
 
 struct dx11_operator_t {
-    uint8_t r[EG_STAGE_COUNT]; //EG rates
-    uint8_t d1l; //EG decay 1 level
-    uint8_t ls; //Level scaling
-    uint8_t kvs:3; //Key velocity sensitivity
-    uint8_t ebs:3; //EG bias sensitivity
-    uint8_t ame:1; //Amplitude modulation enable
-    uint8_t :0;
-    uint8_t out; //output level
-    uint8_t f; //frequency
-    uint8_t det:3; //Detune
-    uint8_t rs:2; //Rate scaling
-    uint8_t :0;
+  uint8_t r[EG_STAGE_COUNT]; //EG rates
+  uint8_t d1l; //EG decay 1 level
+  uint8_t ls; //Level scaling
+  uint8_t kvs:3; //Key velocity sensitivity
+  uint8_t ebs:3; //EG bias sensitivity
+  uint8_t ame:1; //Amplitude modulation enable
+  uint8_t :0;
+  uint8_t out; //output level
+  uint8_t f; //frequency
+  uint8_t det:3; //Detune
+  uint8_t rs:2; //Rate scaling
+  uint8_t :0;
 };
 
 struct dx11_voice_t {
@@ -230,8 +245,8 @@ union {
 } dx_voices[BANK_COUNT][BANK_SIZE] = {};
 
 enum {
-  p_feedback = 0,
-  p_cc1,
+  p_velocity = 0,
+  p_feedback,
   p_cc2,
   p_cc3,
   p_cc4,
@@ -240,7 +255,7 @@ enum {
   p_cc7,
   p_cc8,
   p_op6_level,
-  p_cc10,
+  p_op6_rate_scale,
   p_cc11,
   p_cc12,
   p_cc13,
@@ -250,7 +265,7 @@ enum {
   p_cc17,
   p_cc18,
   p_op5_level,
-  p_cc20,
+  p_op5_rate_scale,
   p_cc21,
   p_cc22,
   p_cc23,
@@ -260,7 +275,7 @@ enum {
   p_cc27,
   p_cc28,
   p_op4_level,
-  p_cc30,
+  p_op4_rate_scale,
   p_cc31,
   p_cc32,
   p_cc33,
@@ -270,7 +285,7 @@ enum {
   p_cc37,
   p_cc38,
   p_op3_level,
-  p_cc40,
+  p_op3_rate_scale,
   p_cc41,
   p_cc42,
   p_cc43,
@@ -280,7 +295,7 @@ enum {
   p_cc47,
   p_cc48,
   p_op2_level,
-  p_cc50,
+  p_op2_rate_scale,
   p_cc51,
   p_cc52,
   p_cc53,
@@ -290,7 +305,7 @@ enum {
   p_cc57,
   p_cc58,
   p_op1_level,
-  p_cc60,
+  p_op1_rate_scale,
   p_cc61,
   p_cc62,
   p_cc63,
