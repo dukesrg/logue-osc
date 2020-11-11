@@ -556,78 +556,97 @@ struct mnlgxd_prog_t {
 
 enum {
   p_slider_assign = 0,
+  p_keyboard_octave,
   p_pitch_bend,
+  p_program_level,
   p_bend_range_pos,
   p_bend_range_neg,
-  p_program_level,
-  p_keyboard_octave,
   p_bpm,
   p_cc7,
   p_cc8,
-  p_vco1_pitch,
+  p_vco1_wave,
   p_vco1_shape,
   p_vco1_octave,
-  p_vco1_wave,
+  p_vco1_pitch,
   p_vco1_level,
-  p_cc14,
-  p_cc15,
-  p_cc16,
+  p_vco1_sync_stub,
+  p_vco1_ring_stub,
+  p_vco1_cross_stub,
   p_cc17,
   p_cc18,
-  p_vco2_pitch,
+  p_vco2_wave,
   p_vco2_shape,
   p_vco2_octave,
-  p_vco2_wave,
+  p_vco2_pitch,
   p_vco2_level,
   p_vco2_sync,
   p_vco2_ring,
   p_vco2_cross,
   p_cc27,
   p_cc28,
-  p_vco3_pitch,
+  p_vco3_wave,
   p_vco3_shape,
   p_vco3_octave,
-  p_vco3_wave,
+  p_vco3_pitch,
   p_vco3_level,
   p_vco3_sync,
   p_vco3_ring,
   p_vco3_cross,
   p_cc37,
   p_cc38,
-/* timbre 2
-  p_vco4_pitch,
+  p_vco4_wave,
   p_vco4_shape,
   p_vco4_octave,
-  p_vco4_wave,
+  p_vco4_pitch,
   p_vco4_level,
-  p_cc44,
-  p_cc45,
-  p_cc46,
+  p_vco4_sync,
+  p_vco4_ring,
+  p_vco4_cross,
   p_cc47,
   p_cc48,
-  p_vco5_pitch,
+  p_vco5_wave,
   p_vco5_shape,
   p_vco5_octave,
-  p_vco5_wave,
+  p_vco5_pitch,
   p_vco5_level,
   p_vco5_sync,
   p_vco5_ring,
   p_vco5_cross,
   p_cc57,
   p_cc58,
-  p_vco6_pitch,
+  p_vco6_wave,
   p_vco6_shape,
   p_vco6_octave,
-  p_vco6_wave,
+  p_vco6_pitch,
   p_vco6_level,
   p_vco6_sync,
   p_vco6_ring,
   p_vco6_cross,
   p_cc67,
   p_cc68,
-*/
+  p_sub_on,
+  p_timbre_type,
+  p_main_sub_balance,
+  p_main_sub_position,
+  p_split_point,
+  p_cc74,
+  p_cc75,
+  p_cc76,
+  p_cc77,
+  p_cc78,
   p_pedal_assign,
   p_num
+};
+
+enum {
+  timbre_main = 0,
+  timbre_sub = p_vco4_wave - p_vco1_wave
+};
+
+enum {
+  timbre_layer = 0,
+  timbre_xfade,
+  timbre_split
 };
 
 enum {
@@ -875,7 +894,7 @@ const void *getProg(uint32_t index, uint8_t *prog_type) {
   return prog_ptr;
 }
 
-static inline __attribute__((optimize("Ofast"), always_inline))
+//static inline __attribute__((optimize("Ofast"), always_inline))
 int32_t getPitch(uint16_t pitch) {
 //todo: better pitch calculation implementation
   int32_t res;
