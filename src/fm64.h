@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #ifndef BANK_COUNT
-#define BANK_COUNT 4
+  #define BANK_COUNT 4
 #endif
 
 #define BANK_SIZE 32
@@ -36,6 +36,18 @@
 #define ALG_MOD4_MASK 0x04 //2
 #define ALG_MOD5_MASK 0x02 //3
 #define ALG_MOD6_MASK 0x01 //4
+
+#if !defined(OP6) && !defined(OP4)
+  #define OP6
+  #define OP4
+#endif
+
+#ifdef OP6
+  #define OPERATOR_COUNT DX7_OPERATOR_COUNT
+#else
+  #undef OPSIX
+  #define OPERATOR_COUNT DX11_OPERATOR_COUNT
+#endif
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
 
@@ -85,11 +97,11 @@ static const uint8_t dx7_algorithm[][DX7_OPERATOR_COUNT] = {
 };
 
 #ifdef OP4
-static const uint8_t dx11_algorithm_lut[8] = {
+static const uint8_t dx11_algorithm_lut[] = {
   0, 13, 7, 6, 4, 21, 30, 31
 };
 
-static const uint8_t dx11_alg3_op_lut[8] = {
+static const uint8_t dx11_alg3_op_lut[] = {
   2, 0, 1, 3
 };
 #endif
@@ -294,6 +306,7 @@ enum {
   p_cc46,
   p_cc47,
   p_cc48,
+#ifdef OP6
   p_op2_level,
   p_op2_rate_scale,
   p_cc51,
@@ -314,5 +327,6 @@ enum {
   p_cc66,
   p_cc67,
   p_cc68,
+#endif
   p_num
 };

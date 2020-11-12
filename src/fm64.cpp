@@ -12,10 +12,8 @@
 #include "fixed_mathq.h"
 
 #define OP6 //6-operator support
-#define OP4 //4-operator support
-#ifdef OP6
-//  #define OPSIX //enable KORG Opsix extensions
-#endif
+//#define OP4 //4-operator support
+//#define OPSIX //enable KORG Opsix extensions
 
 #include "fm64.h"
 
@@ -133,32 +131,32 @@ static uint32_t s_voice = -1;
 static uint8_t s_algorithm_idx = -1;
 static const uint8_t *s_algorithm;
 static uint8_t s_opi;
-static uint8_t s_fixedfreq[DX7_OPERATOR_COUNT];
-static uint8_t s_egstage[DX7_OPERATOR_COUNT];
+static uint8_t s_fixedfreq[OPERATOR_COUNT];
+static uint8_t s_egstage[OPERATOR_COUNT];
 static uint8_t s_transpose;
-static uint8_t s_kvs[DX7_OPERATOR_COUNT];
-static uint8_t s_break_point[DX7_OPERATOR_COUNT];
-static param_t s_left_depth[DX7_OPERATOR_COUNT];
-static param_t s_right_depth[DX7_OPERATOR_COUNT];
-static uint8_t s_left_curve[DX7_OPERATOR_COUNT];
-static uint8_t s_right_curve[DX7_OPERATOR_COUNT];
+static uint8_t s_kvs[OPERATOR_COUNT];
+static uint8_t s_break_point[OPERATOR_COUNT];
+static param_t s_left_depth[OPERATOR_COUNT];
+static param_t s_right_depth[OPERATOR_COUNT];
+static uint8_t s_left_curve[OPERATOR_COUNT];
+static uint8_t s_right_curve[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
-static uint32_t s_sample_count[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
+static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT];
 #endif
 
 //static uint8_t s_pegstage;
-//static uint8_t s_waveform[DX7_OPERATOR_COUNT];
+//static uint8_t s_waveform[OPERATOR_COUNT];
 
 static uint8_t s_assignable[2];
 static param_t s_params[p_num];
-static uint8_t s_egrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_egsrate[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_eglevel[DX7_OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_egval[DX7_OPERATOR_COUNT];
-static param_t s_opval[DX7_OPERATOR_COUNT];
-static param_t s_oplevel[DX7_OPERATOR_COUNT];
-static param_t s_level_scaling[DX7_OPERATOR_COUNT];
+static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_egval[OPERATOR_COUNT];
+static param_t s_opval[OPERATOR_COUNT];
+static param_t s_oplevel[OPERATOR_COUNT];
+static param_t s_level_scaling[OPERATOR_COUNT];
 
 static float s_attack_rate_exp_factor;
 static float s_decay_rate_exp_factor;
@@ -174,11 +172,11 @@ static param_t s_feedback_opval[2];
 /*
 static param_t s_pegrate[EG_STAGE_COUNT];
 static param_t s_peglevel[EG_STAGE_COUNT];
-static param_t s_pegval[DX7_OPERATOR_COUNT];
+static param_t s_pegval[OPERATOR_COUNT];
 */
 
-static pitch_t s_oppitch[DX7_OPERATOR_COUNT];
-static phase_t s_phase[DX7_OPERATOR_COUNT];
+static pitch_t s_oppitch[OPERATOR_COUNT];
+static phase_t s_phase[OPERATOR_COUNT];
 
 #ifdef EGLUT
   #include "eglut.h"
@@ -188,7 +186,7 @@ static param_t eg_lut[1024];
 
 void feedback_src() {
 #ifdef FEEDBACK
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_algorithm[i] & ALG_FBK_MASK) {
       s_feedback_src = 0;
       for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
@@ -223,7 +221,7 @@ void initvoice() {
   }
 */
 
-    for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+    for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_fixedfreq[i] = voice->op[i].pm;
 //      s_waveform[i] = 0;
 
@@ -309,6 +307,11 @@ void initvoice() {
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
     }
+    s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
+    s_decay_rate_exp_factor = DX11_RATE_EXP_FACTOR;
+    s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
+    s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
+#ifdef OP6
     s_params[p_op2_level] = ZERO;
     s_params[p_op1_level] = ZERO;
     s_kvs[4] = ZERO;
@@ -319,13 +322,10 @@ void initvoice() {
       s_eglevel[4][j] = ZERO;
       s_eglevel[5][j] = ZERO;
     }
-    s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
-    s_decay_rate_exp_factor = DX11_RATE_EXP_FACTOR;
-    s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
-    s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
+#endif
 #endif
   }
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     feedback_src();
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0;
@@ -354,10 +354,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 {
 //todo: PEG level
   param_t osc_out, modw0;
-  phase_t opw0[DX7_OPERATOR_COUNT];
+  phase_t opw0[OPERATOR_COUNT];
   pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
 
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_fixedfreq[i])
       opw0[i] = pitch_to_phase(s_oppitch[i]);
     else
@@ -367,7 +367,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
     osc_out = ZERO;
-    for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+    for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
       if (s_algorithm[i] & ALG_FBK_MASK) {
 #ifdef FEEDBACK
@@ -378,8 +378,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
         if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
         if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+#ifdef OP6
         if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
         if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+#endif
       }
 
       s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
@@ -452,7 +454,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef EG_SAMPLED
   uint32_t samples;
 #endif
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     rscale = ((params->pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
 #ifdef EG_SAMPLED
     samples = 0;
@@ -491,7 +493,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_level_scaling[i] = param_mul(depth, (curve ? f32_to_param(powf(M_E, (dp - 72) * .074074074f)) : s_level_scale_factor * dp));
     s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
   }
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_opi)
       s_phase[i] = ZERO_PHASE;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
@@ -512,7 +514,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor, rate_exp_factor;
   int32_t dl;
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     dl = s_eglevel[i][EG_STAGE_COUNT - 1] - s_egval[i];
     if (dl != 0) {
       if (dl < 0) {
@@ -532,7 +534,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
       s_sample_count[i][EG_STAGE_COUNT - 1] += dl / s_egsrate[i][EG_STAGE_COUNT - 1];
 #endif
   }
-  for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
   }
 }
@@ -554,15 +556,17 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_velocity:
           param = f32_to_param((powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
-          for (uint32_t i = 0; i < DX7_OPERATOR_COUNT; i++)
+          for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
             s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], param * s_kvs[i], s_level_scaling[i]);
           break;
         case p_op6_level:
         case p_op5_level:
         case p_op4_level:
         case p_op3_level:
+#ifdef OP6
         case p_op2_level:
         case p_op1_level:
+#endif
 #ifdef USE_Q31
           param = param_val_to_q31(value);
 #else
@@ -574,8 +578,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_op5_rate_scale:
         case p_op4_rate_scale:
         case p_op3_rate_scale:
+#ifdef OP6
         case p_op2_rate_scale:
         case p_op1_rate_scale:
+#endif
         default:
 #ifdef USE_Q31
           param = param_val_to_q31(value);
