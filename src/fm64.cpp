@@ -12,7 +12,7 @@
 #include "fixed_mathq.h"
 
 #define OP6 //6-operator support
-//#define OP4 //4-operator support
+#define OP4 //4-operator support
 //#define OPSIX //enable KORG Opsix extensions
 
 #include "fm64.h"
@@ -514,6 +514,9 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor, rate_exp_factor;
   int32_t dl;
+#ifdef EG_SAMPLED
+  uint32_t samples = s_sample_num;
+#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     dl = s_eglevel[i][EG_STAGE_COUNT - 1] - s_egval[i];
     if (dl != 0) {
@@ -529,7 +532,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
       s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
     }
 #ifdef EG_SAMPLED
-    s_sample_count[i][EG_STAGE_COUNT - 1] = s_sample_num;
+    s_sample_count[i][EG_STAGE_COUNT - 1] = samples;
     if (dl != 0)
       s_sample_count[i][EG_STAGE_COUNT - 1] += dl / s_egsrate[i][EG_STAGE_COUNT - 1];
 #endif
