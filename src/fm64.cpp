@@ -11,7 +11,7 @@
 #include "userosc.h"
 #include "fixed_mathq.h"
 
-#define OP6 //6-operator support
+//#define OP6 //6-operator support
 #define OP4 //4-operator support
 //#define OPSIX //enable KORG Opsix extensions
 
@@ -146,7 +146,6 @@ static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT];
 #endif
 
 //static uint8_t s_pegstage;
-//static uint8_t s_waveform[OPERATOR_COUNT];
 
 static uint8_t s_assignable[2];
 static param_t s_params[p_num];
@@ -182,6 +181,96 @@ static phase_t s_phase[OPERATOR_COUNT];
 #else
 static param_t eg_lut[1024];
 #endif
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t osc_sinq_tx81z(q31_t x, uint8_t waveform) {
+  x &= 0x7FFFFFFF;
+//  if (waveform & 0x02)
+//    x = x < 0x40000000 ? x : 0;
+//  if (waveform & 0x04)
+//    x = x < 0x40000000 ? x << 1 : 0;
+//  uint32_t x0p = x >> (31 - k_wt_sine_size_exp - 1);
+//  const uint32_t x0 = x0p & k_wt_sine_mask;
+//  const uint32_t x1 = (x0 + 1) & k_wt_sine_mask;
+//  const q31_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+//  const q31_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+//  return (x0p < k_wt_sine_size && (waveform & 0x03) == 0 )?y0:-y0;
+  uint32_t x0p;
+  uint32_t x0;
+  uint32_t x1;
+  q31_t fr;
+  q31_t y0 = 0;
+
+  switch(waveform) {
+  case 0:
+  x0p = x >> (31 - k_wt_sine_size_exp - 1);
+  x0 = x0p & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  y0 = (x0p < k_wt_sine_size)?y0:-y0;
+    break;
+  case 1:
+  x0p = x >> (31 - k_wt_sine_size_exp - 1);
+  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  y0 = (x0p < k_wt_sine_size)?y0:-y0;
+    break;
+  case 2:
+  if (x & 0x40000000) break;
+  x0p = x >> (31 - k_wt_sine_size_exp - 1);
+  x0 = x0p & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+    break;
+  case 3:
+  if (x & 0x40000000) break;
+  x0p = x >> (31 - k_wt_sine_size_exp - 1);
+  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+    break;
+  case 4:
+  if (x & 0x40000000) break;
+  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+  x0 = x0p & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
+  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  y0 = (x0p < k_wt_sine_size)?y0:-y0;
+    break;
+  case 5:
+  if (x & 0x40000000) break;
+  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  y0 = (x0p < k_wt_sine_size)?y0:-y0;
+    break;
+  case 6:
+  if (x & 0x40000000) break;
+  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+  x0 = x0p & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
+  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+    break;
+  case 7:
+  if (x & 0x40000000) break;
+  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+  x1 = (x0 + 1) & k_wt_sine_mask;
+  fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
+  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+    break;
+  }
+  return y0;
+}
 
 void feedback_src() {
 #ifdef FEEDBACK
@@ -222,7 +311,7 @@ void initvoice() {
 
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_fixedfreq[i] = voice->op[i].pm;
-//      s_waveform[i] = 0;
+      s_params[p_op6_waveform + i * 10] = 0;
 
       s_phase[i] = ZERO_PHASE;
 
@@ -278,7 +367,7 @@ void initvoice() {
         i = k;
 
       s_fixedfreq[i] = voice->opadd[i].fixrg;
-//      s_waveform[i] = voice->opadd[i].osw;
+      s_params[p_op6_waveform + i * 10] = voice->opadd[i].osw;
 
       s_phase[i] = ZERO_PHASE;
 
@@ -293,9 +382,6 @@ void initvoice() {
         s_oppitch[i] = f32_to_pitch(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg) * k_samplerate_recipf);
       else
         s_oppitch[i] = f32_to_pitch(dx11_ratio_lut[voice->op[i].f]);
-//todo: Waveform
-//if (s_waveform[i] & 0x01)
-//  s_oppitch[i] *= 2;
       s_kvs[i] = voice->op[i].kvs;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
       s_params[p_op6_level + i * 10] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
@@ -381,7 +467,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 
-      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+//      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+      s_opval[i] = param_mul(osc_sinq_tx81z(modw0, s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
 #ifdef FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
@@ -601,6 +688,16 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
           for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
             s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], param * s_kvs[i], s_level_scaling[i]);
+          break;
+        case p_op6_waveform:
+        case p_op5_waveform:
+        case p_op4_waveform:
+        case p_op3_waveform:
+#ifdef OP6
+        case p_op2_waveform:
+        case p_op1_waveform:
+#endif
+          param = value >> 7;
           break;
         case p_op6_level:
         case p_op5_level:
