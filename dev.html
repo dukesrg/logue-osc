@@ -199,7 +199,7 @@ function handleFiles(f) {
     reader.onload = (event) => {
       status.innerHTML += event.target.filename + ": ";
       var array = new Uint8Array(event.target.result);
-      if (osc === "FM64") {
+      if (osc === "FM64" || osc === "FM48") {
         if (array.length > 4104) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
@@ -340,7 +340,7 @@ function onLoad() {
     platform.checked = true;
   count = new Array();
   maxsize = new Array();
-  ["FM64", "Morpheus", "Anthologue"].map(e => getInfo(e));
+  ["FM64", "FM48", "Morpheus", "Anthologue"].map(e => getInfo(e));
 }
 </script>
 </head>
@@ -355,9 +355,9 @@ USER OSCILLATORS
 <table rules="rows" cellpadding="6" border="2" width="100%">
 <tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
 <tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
+<tr><td/><td>FM48</td><td id="FM48-version"/><td id="FM48-api"/><td><label class="button" alt="test"><input type="file" name="FM48" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM48" disabled="true"></td><td><input type="button" name="FM48" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM48-size"/><td id="FM48-description"/></tr>
 <tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
 <tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
