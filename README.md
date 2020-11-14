@@ -33,7 +33,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FM64/FM48|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|[Algorithm](https://cdn.korg.com/us/products/upload/5cc6b8eb8a815777c811bbb3fc293c34_pc.jpg) 1&hellip;40|-|
+|FM64/FM48|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69/49|Assignable controller 2 select 1&hellip;69/49|Shape LFO target select 1&hellip;2|[Algorithm](https://cdn.korg.com/us/products/upload/5cc6b8eb8a815777c811bbb3fc293c34_pc.jpg) 1&hellip;40|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
@@ -74,7 +74,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|#|FM64/FM48<br>Assignable controllers 1&2|1x (Op.6/4)|2x (Op.5/3)|3x (Op.4/2)|4x (Op.3/1)|5x (Op.2/-)|6x (Op.1/-)|
+|#|FM64/FM48<br>Assignable controllers 1&2, LFO target|1x (Op.6/4)|2x (Op.5/3)|3x (Op.4/2)|4x (Op.3/1)|5x (Op.2/-)|6x (Op.1/-)|
 |-|-|-|-|-|-|-|-|
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level / -|Op. level / -|
 |x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale / -|Op. rate scale / -|
@@ -86,6 +86,11 @@ For user-customizable oscillators, an online constructor is available at https:/
 |x7|-|-|-|-|-|-|-|
 |x8|-|-|-|-|-|-|-|
 |x9|-|-|-|-|-|-|-|
+
+|#|FM64/FM48 Shape LFO target|
+|-|-|
+|1|Amp|
+|2|Feedback level|
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|

@@ -38,6 +38,7 @@
 #include "fm64.h"
 
 #define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
+#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
 
 #define USE_Q31
@@ -172,7 +173,11 @@ static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT];
 
 //static uint8_t s_pegstage;
 
+#ifdef SHAPE_LFO
+static uint8_t s_assignable[3];
+#else
 static uint8_t s_assignable[2];
+#endif
 static param_t s_params[p_num];
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -464,13 +469,45 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
   pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
+#ifdef SHAPE_LFO
+//  param_t oplevel[OPERATOR_COUNT];
+  param_t feedback = s_params[p_feedback];
+#endif
 
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_fixedfreq[i])
       opw0[i] = pitch_to_phase(s_oppitch[i]);
     else
       opw0[i] = pitch_to_phase(pitch_mul(s_oppitch[i], basew0));
+#ifdef SHAPE_LFO
+//    oplevel[i] = s_oplevel[i];
+#endif
   }
+
+#ifdef SHAPE_LFO
+  switch (s_assignable[2]) {
+    case p_feedback:
+      feedback = param_add(feedback, params->shape_lfo);
+      break;
+/*
+    case p_velocity:
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        oplevel[i] = param_add(oplevel[i], params->shape_lfo >> 4);
+      break;
+
+    case p_op6_level:
+    case p_op5_level:
+    case p_op4_level:
+    case p_op3_level:
+#ifdef OP6
+    case p_op2_level:
+    case p_op1_level:
+#endif
+      oplevel[(s_assignable[2] - p_op6_level) / 10] = param_add(oplevel[(s_assignable[2] - p_op6_level) / 10], params->shape_lfo);
+      break;
+*/
+  }
+#endif
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
@@ -493,15 +530,27 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
 
 #ifdef WF2
+//#ifdef SHAPE_LFO
+//      s_opval[i] = param_mul(osc_dx11(modw0, s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
+//#else
       s_opval[i] = param_mul(osc_dx11(modw0, s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+//#endif
 #else
+//#ifdef SHAPE_LFO
+//      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
+//#else
       s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+//#endif
 #endif
 
 #ifdef FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
-        s_feedback_opval[0] = param_mul(s_opval[i], s_params[p_feedback]);
+#ifdef SHAPE_LFO
+        s_feedback_opval[0] = param_mul(s_opval[i], feedback);
+#else
+        s_feedback_opval[0] = param_mul(s_opval[i], s_feedback);
+#endif
       }
 #endif
       if (s_algorithm[i] & ALG_OUT_MASK)
@@ -555,6 +604,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         s_pegstage++;
     }
 */
+#ifdef SHAPE_LFO
+    if (s_assignable[2] == p_velocity)
+      *y = param_to_q31(param_add(osc_out, param_mul(osc_out, params->shape_lfo)));
+    else
+#endif
     *y = param_to_q31(osc_out);
   }
 }
@@ -743,7 +797,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #else
           param = param_val_to_f32(value);
 #endif
-          s_oplevel[index - p_op6_level] = param_sum(param, s_params[p_velocity] * s_kvs[index - p_op6_level], s_level_scaling[index - p_op6_level]);
+          s_oplevel[(index - p_op6_level) / 10] = param_sum(param, s_params[p_velocity] * s_kvs[(index - p_op6_level) / 10], s_level_scaling[(index - p_op6_level) / 10]);
           break;
         case p_op6_rate_scale:
         case p_op5_rate_scale:
@@ -777,17 +831,15 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
+    case k_user_osc_param_id5:
       s_assignable[index - k_user_osc_param_id3] = value;
       break;
-    case k_user_osc_param_id5:
+    case k_user_osc_param_id6:
       if (s_algorithm_idx != value) {
         s_algorithm_idx = value;
         s_algorithm = dx7_algorithm[s_algorithm_idx];
         feedback_src();
       }
-      break;
-    case k_user_osc_param_id6:
-
       break;
     default:
       break;
