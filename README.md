@@ -12,7 +12,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 * [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
 * [inc/wavebank.h](inc/wavebank.h) : Customizable [WaveEdit](https://synthtech.com/waveedit) compatible wavetable functions.
 * [Anthologue.sh](Anthologue.sh) : KORG logue-series program data injector for Anthologue oscillator. You can get sample programs at Korg downloads for [minilogue](https://www.korg.com/us/support/download/product/0/544/) and [monologue](https://www.korg.com/us/support/download/product/0/733/).
-* [FM64.sh](FM64.sh) : Yamaha DX7/DX21/DX11-series voice bank SysEx injector for FM64 oscillator. You can find banks at [Synth Zone](http://www.synthzone.com/yamaha.htm).
+* [FM64.sh](FM64.sh) : Yamaha DX7/DX21/DX11-series voice bank SysEx injector for FM64/FM48 oscillators. You can find banks at [Synth Zone](http://www.synthzone.com/yamaha.htm).
 * [Morpheus.sh](Morpheus.sh) : Wavetable oscillator wave data injector to use with any custom oscillator built with [inc/wavebank.h](inc/wavebank.h) file.
 * [PCM2ALaw.sh](PCM2ALaw.sh) : Dumbest ever audio transcoder for 16-bit PCM to A-law convertion.
 * [PCM2uLaw.sh](PCM2uLaw.sh) : Same as the above to μ-law convertion.
@@ -25,6 +25,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 * FastSaw - The same as Supersaw, rewritten with Q31 fixed point. Less CPU resource consumption; i.e. more unison/polyphony/FX avaiable without sound degradation.
 * Morpheus - Example implementation of custom wavetable inspired by [WaveEdit](https://synthtech.com/waveedit).
 * FM64 - 6/4-operator FM oscillator with up to 4 Yamaha DX7/DX21/DX11-series voice banks suport. Current progress is in issue [FM64 features implementation](../../issues/2).
+* FM48 - variation of the above with 8 waveforms and only 4-operator Yamaha DX21/DX11-series voice banks suport.
 * Anthologue - 6 VCO oscillator with Korg logue-series program suport. Current progress is in issue [Anthologue features implementation](../../issues/1).
 
 ### Oscillator Parameters
@@ -32,7 +33,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FM64|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|Algorithm 1&hellip;32|-|
+|FM64/FM48|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69|Assignable controller 2 select 1&hellip;69|[Algorithm](https://cdn.korg.com/us/products/upload/5cc6b8eb8a815777c811bbb3fc293c34_pc.jpg) 1&hellip;40|-|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
@@ -58,6 +59,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 * 6 VCO is only stable on the NTS-1 with up to 2 FX.
 * Sub timbre is reset on program change. For Prologue programs - according to program settings. For other -logues programs - Sub On: switched off, Main/Sub balance: center, VCO 4-6 are reset.
 * On -logues, Prologue programs with timbre mode other than Split are loaded with sub timbre forcefully disabled, in order to avoid oscillator hang.
+* FM64 does not suport waveform select due to performance limitations.
+* Both FM64 and FM48 support manual selection from 40 algoritms introduced in Korg opsix, though several algorithm won't produce any sound with FM48.
 
 |#|Morpheus LFO X&Y types|
 |-|-|
@@ -71,11 +74,11 @@ For user-customizable oscillators, an online constructor is available at https:/
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|#|FM64<br>Assignable controllers 1&2|1x (Op.6)|2x (Op.5)|3x (Op.4)|4x (Op.3)|5x (Op.2)|6x (Op.1)|
+|#|FM64/FM48<br>Assignable controllers 1&2|1x (Op.6/4)|2x (Op.5/3)|3x (Op.4/2)|4x (Op.3/1)|5x (Op.2/-)|6x (Op.1/-)|
 |-|-|-|-|-|-|-|-|
-|x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level|
-|x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|
-|x2|Feedback|-|-|-|-|-|-|
+|x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level / -|Op. level / -|
+|x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale / -|Op. rate scale / -|
+|x2|Feedback|- / Waveform|- / Waveform|- / Waveform|- / Waveform|-|-|
 |x3|-|-|-|-|-|-|-|
 |x4|-|-|-|-|-|-|-|
 |x5|-|-|-|-|-|-|-|
