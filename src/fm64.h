@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #ifndef BANK_COUNT
-#define BANK_COUNT 4
+  #define BANK_COUNT 4
 #endif
 
 #define BANK_SIZE 32
@@ -36,6 +36,18 @@
 #define ALG_MOD4_MASK 0x04 //2
 #define ALG_MOD5_MASK 0x02 //3
 #define ALG_MOD6_MASK 0x01 //4
+
+#if !defined(OP6) && !defined(OP4)
+  #define OP6
+  #define OP4
+#endif
+
+#ifdef OP6
+  #define OPERATOR_COUNT DX7_OPERATOR_COUNT
+#else
+  #undef OPSIX
+  #define OPERATOR_COUNT DX11_OPERATOR_COUNT
+#endif
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
 
@@ -85,11 +97,11 @@ static const uint8_t dx7_algorithm[][DX7_OPERATOR_COUNT] = {
 };
 
 #ifdef OP4
-static const uint8_t dx11_algorithm_lut[8] = {
+static const uint8_t dx11_algorithm_lut[] = {
   0, 13, 7, 6, 4, 21, 30, 31
 };
 
-static const uint8_t dx11_alg3_op_lut[8] = {
+static const uint8_t dx11_alg3_op_lut[] = {
   2, 0, 1, 3
 };
 #endif
@@ -256,7 +268,7 @@ enum {
   p_cc8,
   p_op6_level,
   p_op6_rate_scale,
-  p_cc11,
+  p_op6_waveform,
   p_cc12,
   p_cc13,
   p_cc14,
@@ -266,7 +278,7 @@ enum {
   p_cc18,
   p_op5_level,
   p_op5_rate_scale,
-  p_cc21,
+  p_op5_waveform,
   p_cc22,
   p_cc23,
   p_cc24,
@@ -276,7 +288,7 @@ enum {
   p_cc28,
   p_op4_level,
   p_op4_rate_scale,
-  p_cc31,
+  p_op4_waveform,
   p_cc32,
   p_cc33,
   p_cc34,
@@ -286,7 +298,7 @@ enum {
   p_cc38,
   p_op3_level,
   p_op3_rate_scale,
-  p_cc41,
+  p_op3_waveform,
   p_cc42,
   p_cc43,
   p_cc44,
@@ -294,9 +306,10 @@ enum {
   p_cc46,
   p_cc47,
   p_cc48,
+#ifdef OP6
   p_op2_level,
   p_op2_rate_scale,
-  p_cc51,
+  p_op2_waveform,
   p_cc52,
   p_cc53,
   p_cc54,
@@ -306,7 +319,7 @@ enum {
   p_cc58,
   p_op1_level,
   p_op1_rate_scale,
-  p_cc61,
+  p_op1_waveform,
   p_cc62,
   p_cc63,
   p_cc64,
@@ -314,5 +327,6 @@ enum {
   p_cc66,
   p_cc67,
   p_cc68,
+#endif
   p_num
 };

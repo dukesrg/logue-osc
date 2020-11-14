@@ -7,17 +7,17 @@
         "dev_id" : 1701541188,
         "prg_id" : 0,
         "version" : "1.0-6",
-        "name" : "FM64",
+        "name" : "FM48",
         "num_param" : 5,
         "params" : [
             ["Voice", 0, 31, ""],
             ["Bank", 0, 3, ""],
-            ["Shape Assign", 0, 68, ""],
-            ["Alt Assign", 0, 68, ""],
+            ["Shape Assign", 0, 48, ""],
+            ["Alt Assign", 0, 48, ""],
             ["Algorithm", 0, 39, ""]
         ],
         "custom_data" : [
-          ["Yamaha DX7/DX21/DX11-series voice banks", 64, 4096, 4, 1]
+          ["Yamaha DX21/DX11-series voice banks", 64, 4096, 4, 1]
         ]
     }
 }
