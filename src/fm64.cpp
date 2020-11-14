@@ -19,10 +19,10 @@
 
 #define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 #define EG_SAMPLED //precalculate EG stages length in samples
-#define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
+  #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 //todo: check and fix osc_apiq
   #define USE_Q31_PHASE //a bit less CPU consuming, but looks like have a slight phase drift over time
   #ifdef USE_Q31_PHASE 
@@ -32,6 +32,10 @@
 //  #define OSC_NOTE_Q
 //  #define USE_FASTSINQ //not suitable for FM
   #ifndef USE_FASTSINQ
+    #define USE_DX11_OSC //use custom waveform operator
+    #ifdef USE_DX11_OSC
+      #define OSC_SIN_Q_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+    #endif
     #define OSC_SIN_Q
   #endif
   #include "osc_apiq.h"
@@ -182,8 +186,9 @@ static phase_t s_phase[OPERATOR_COUNT];
 static param_t eg_lut[1024];
 #endif
 
+#ifdef USE_DX11_OSC
 static inline __attribute__((optimize("Ofast"), always_inline))
-q31_t osc_sinq_tx81z(q31_t x, uint8_t waveform) {
+q31_t osc_dx11(q31_t x, uint8_t waveform) {
   x &= 0x7FFFFFFF;
 //  if (waveform & 0x02)
 //    x = x < 0x40000000 ? x : 0;
@@ -202,75 +207,76 @@ q31_t osc_sinq_tx81z(q31_t x, uint8_t waveform) {
   q31_t y0 = 0;
 
   switch(waveform) {
-  case 0:
-  x0p = x >> (31 - k_wt_sine_size_exp - 1);
-  x0 = x0p & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-  y0 = (x0p < k_wt_sine_size)?y0:-y0;
-    break;
-  case 1:
-  x0p = x >> (31 - k_wt_sine_size_exp - 1);
-  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-  y0 = (x0p < k_wt_sine_size)?y0:-y0;
-    break;
-  case 2:
-  if (x & 0x40000000) break;
-  x0p = x >> (31 - k_wt_sine_size_exp - 1);
-  x0 = x0p & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-    break;
-  case 3:
-  if (x & 0x40000000) break;
-  x0p = x >> (31 - k_wt_sine_size_exp - 1);
-  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-    break;
-  case 4:
-  if (x & 0x40000000) break;
-  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
-  x0 = x0p & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
-  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-  y0 = (x0p < k_wt_sine_size)?y0:-y0;
-    break;
-  case 5:
-  if (x & 0x40000000) break;
-  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
-  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-  y0 = (x0p < k_wt_sine_size)?y0:-y0;
-    break;
-  case 6:
-  if (x & 0x40000000) break;
-  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
-  x0 = x0p & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
-  y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-    break;
-  case 7:
-  if (x & 0x40000000) break;
-  x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
-  x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-  x1 = (x0 + 1) & k_wt_sine_mask;
-  fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
-  y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-    break;
-  }
+    case 0:
+      x0p = x >> (31 - k_wt_sine_size_exp - 1);
+      x0 = x0p & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+      y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      y0 = (x0p < k_wt_sine_size)?y0:-y0;
+      break;
+    case 1:
+      x0p = x >> (31 - k_wt_sine_size_exp - 1);
+      x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+      y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      y0 = (x0p < k_wt_sine_size)?y0:-y0;
+      break;
+    case 2:
+      if (x & 0x40000000) break;
+      x0p = x >> (31 - k_wt_sine_size_exp - 1);
+      x0 = x0p & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+      y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      break;
+    case 3:
+      if (x & 0x40000000) break;
+      x0p = x >> (31 - k_wt_sine_size_exp - 1);
+      x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+      y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      break;
+    case 4:
+      if (x & 0x40000000) break;
+      x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+      x0 = x0p & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
+      y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      y0 = (x0p < k_wt_sine_size)?y0:-y0;
+      break;
+    case 5:
+      if (x & 0x40000000) break;
+      x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+      x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
+      y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      y0 = (x0p < k_wt_sine_size)?y0:-y0;
+      break;
+    case 6:
+      if (x & 0x40000000) break;
+      x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+      x0 = x0p & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
+      y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+       break;
+    case 7:
+      if (x & 0x40000000) break;
+      x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+      x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
+      x1 = (x0 + 1) & k_wt_sine_mask;
+      fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
+      y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+      break;
+    }
   return y0;
 }
+#endif
 
 void feedback_src() {
 #ifdef FEEDBACK
@@ -467,8 +473,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 
-//      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
-      s_opval[i] = param_mul(osc_sinq_tx81z(modw0, s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+#ifdef USE_DX11_OSC
+      s_opval[i] = param_mul(osc_dx11(modw0, s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+#else
+      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+#endif
+
 #ifdef FEEDBACK
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
