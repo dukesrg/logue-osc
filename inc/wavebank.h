@@ -145,12 +145,15 @@
   #error "Unsupported WAVE_COUNT_Y"
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
 static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK
-uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)] = WAVEBANK;
+DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT] = WAVEBANK;
 #else
 uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT);
 #endif
+#pragma GCC diagnostic pop
 
 static const DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
 
