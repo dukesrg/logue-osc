@@ -6,14 +6,15 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.0-6",
+        "version" : "1.1-10",
         "name" : "FM64",
-        "num_param" : 5,
+        "num_param" : 6,
         "params" : [
             ["Voice", 0, 31, ""],
             ["Bank", 0, 3, ""],
             ["Shape Assign", 0, 68, ""],
             ["Alt Assign", 0, 68, ""],
+            ["S.LFO Target", 0, 1, ""],
             ["Algorithm", 0, 39, ""]
         ],
         "custom_data" : [

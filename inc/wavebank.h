@@ -9,6 +9,7 @@
  *   - FORMAT_ULAW: u-law
  *   - FORMAT_PCM8: 8-bit linear PCM
  *   - FORMAT_PCM16: 16-bit linear PCM
+ *   - FORMAT_PCM32: 32-bit linear PCM
  *   - FORMAT_FLOAT32: Single precision floating point
  * - SAMPLE_COUNT: samples per waveform, must be power of 2
  * - WAVE_COUNT: total number of waveforms in wavetable, must be power of 2
@@ -28,7 +29,7 @@
 #include "fixed_mathq.h"
 #include "g711_decode.h"
 
-#if !defined(FORMAT_ALAW) && !defined(FORMAT_ULAW) && !defined(FORMAT_PCM8) && !defined(FORMAT_PCM16) && !defined(FORMAT_FLOAT32)
+#if !defined(FORMAT_ALAW) && !defined(FORMAT_ULAW) && !defined(FORMAT_PCM8) && !defined(FORMAT_PCM16) && !defined(FORMAT_PCM32) && !defined(FORMAT_FLOAT32)
   #pragma message "FORMAT not defined, enforcing u-Law"
   #define FORMAT_ULAW
 #endif
@@ -56,6 +57,12 @@
   #define DATA_TYPE q15_t
   #define to_f32(a) q15_to_f32(a)
   #define to_q31(a) q15_to_q31(a)
+#endif
+#ifdef FORMAT_PCM32
+  #define FORMAT_PREFIX "p32"
+  #define DATA_TYPE q31_t
+  #define to_f32(a) q31_to_f32(a)
+  #define to_q31(a) (a)
 #endif
 #ifdef FORMAT_FLOAT32
   #define FORMAT_PREFIX "f32"
@@ -138,8 +145,15 @@
   #error "Unsupported WAVE_COUNT_Y"
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
 static const __attribute__((used, section(".hooks")))
+#ifdef WAVEBANK
+DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT] = {WAVEBANK};
+#else
 uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT);
+#endif
+#pragma GCC diagnostic pop
 
 static const DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
 
@@ -220,7 +234,7 @@ static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx) {
   x &= 0x7FFFFFFF;
   uint32_t x0p = x >> (31 - SAMPLE_COUNT_EXP);
-  uint32_t x0 = x0p, x1 = x0p + 1;
+  uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT];
   return linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
@@ -250,7 +264,7 @@ static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, q31_t idx) {
   x &= 0x7FFFFFFF;
   uint32_t x0p = x >> (31 - SAMPLE_COUNT_EXP);
-  uint32_t x0 = x0p, x1 = x0p + 1;
+  uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[q31mul(idx, (WAVE_COUNT - 1)) * SAMPLE_COUNT];
   const q31_t y0 = linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
