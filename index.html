@@ -86,6 +86,8 @@
 <script type="text/javascript" src="FileSaver.js"></script>
 <script language="javascript">
 "use strict";
+var custom_count;
+var offset;
 var data;
 var count;
 var maxsize;
@@ -108,19 +110,25 @@ function inject(osc) {
     Promise.all([
       zip.file(osc.name + "/payload.bin").async("Uint8Array").then((text) => {
         payload = text;
-        var offs = 0x40;
-        for (var i = 0; i < data.length; i++) {
-          for (var j = 0; j < data[i].length; j++) {
-            payload[offs++] = data[i][j];
+        for (var k = 0; k < custom_count[osc.name]; k++) {
+          if (typeof data[k] !== 'undefined') {
+            var offs = offset[osc.name][k];
+            for (var i = 0; i < data[k].length; i++) {
+              for (var j = 0; j < data[k][i].length; j++) {
+                payload[offs++] = data[k][i][j];
+              }
+            }
           }
         }
       }),
       zip.file(osc.name + "/manifest.json").async("string").then((text) => {
         manifest = JSON.parse(text);
         manifest.header.name = name.substring(0, 12);
-        var paramidx = manifest.header.custom_data[0][4];
-        if (typeof paramidx !== 'undefined')
-          manifest.header.params[paramidx][2] = data.length - 1;
+        for (var i = 0; i < custom_count[osc.name]; i++) {
+          var paramidx = manifest.header.custom_data[i][4];
+          if (typeof paramidx !== 'undefined')
+            manifest.header.params[paramidx][2] = data[i].length - 1;
+        }
         manifest = JSON.stringify(manifest, null, "  ");
       })
     ]).then(values => { 
@@ -147,13 +155,22 @@ function getInfo(osc) {
     zip.file(osc + "/manifest.json").async("string").then((data) => {
       var manifest = JSON.parse(data);
       ["version", "api"].map(e => document.querySelector("#" + osc + "-" + e).innerHTML = manifest.header[e]);
-      count[osc] = manifest.header.custom_data[0][3];
-      if (!count[osc])
-        count[osc] = 1;
-      maxsize[osc] = manifest.header.custom_data[0][2];
-      document.querySelector('#' + osc + '-size').innerHTML = maxsize[osc] + ' x ' + count[osc];
-      maxsize[osc] *= count[osc];
-      document.querySelector('#' + osc + '-description').innerHTML = manifest.header.custom_data[0][0];
+      custom_count[osc] = manifest.header.custom_data.length;
+      offset[osc] = new Array();
+      count[osc] = new Array();
+      maxsize[osc] = new Array();
+      document.querySelector('#' + osc + '-size').innerHTML = "";
+      document.querySelector('#' + osc + '-description').innerHTML = "";
+      for (var i = 0; i < custom_count[osc]; i++) {
+        offset[osc][i] = manifest.header.custom_data[i][1];
+        count[osc][i] = manifest.header.custom_data[i][3];
+        if (!count[osc][i])
+          count[osc][i] = 1;
+        maxsize[osc][i] = manifest.header.custom_data[i][2];
+        document.querySelector('#' + osc + '-size').innerHTML += maxsize[osc][i] + ' x ' + count[osc][i] + "<br>";
+        maxsize[osc][i] *= count[osc][i];
+        document.querySelector('#' + osc + '-description').innerHTML += manifest.header.custom_data[i][0]+"<br>";
+      }
     })
   })
 }
@@ -192,6 +209,7 @@ function handleFiles(f) {
   var name = document.querySelector('input[type=text][name=' + osc + ']');
   name.value = "";
   data = new Array();
+  data[0] = new Array();
   var datalength = 0;
   status.innerHTML = "";
   for (var i = 0; i < files.length; i++) {
@@ -199,17 +217,47 @@ function handleFiles(f) {
     reader.onload = (event) => {
       status.innerHTML += event.target.filename + ": ";
       var array = new Uint8Array(event.target.result);
-      if (osc === "FM64") {
-        if (array.length > 4104) {
+      if (osc === "FM48") {
+        if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
-           if (data.length >= count[osc]) {
+           if (data[0].length >= count[osc][0]) {
             status.innerHTML += "skipped (maximum voice bank limit reached)";
           } else {
             if (array.length == 4096) {
               status.innerHTML += "added (assuming raw voice bank)";
               name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-              data.push(array);
+              data[0].push(array);
+            } else {
+              switch(array.slice(0, 6).join("")) {
+                case "2406709160":
+                case "2406709320":
+                  status.innerHTML += "skipped (6-operators voice bank not supported)";
+                  break;
+                case "2406704160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406704320":
+                  status.innerHTML += "added 4-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data[0].push(array.slice(6, 4102));
+                  break;
+                default:
+                  status.innerHTML += "skipped unsupported SysEx";
+              }
+            }
+          }
+        }
+      } else if (osc === "FM64") {
+        if (array.length > 4104 || array.length < 4096) {
+           status.innerHTML += "skipped (size mismatch)";
+        } else {
+           if (data[0].length >= count[osc][0]) {
+            status.innerHTML += "skipped (maximum voice bank limit reached)";
+          } else {
+            if (array.length == 4096) {
+              status.innerHTML += "added (assuming raw voice bank)";
+              name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+              data[0].push(array);
             } else {
               switch(array.slice(0, 6).join("")) {
                 case "2406709160":
@@ -217,14 +265,182 @@ function handleFiles(f) {
                 case "2406709320":
                   status.innerHTML += "added 6-operators voice bank";
                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                  data.push(array.slice(6, 4102));
+                  data[0].push(array.slice(6, 4102));
                   break;
                 case "2406704160":
                   status.innerHTML += "ignoring SysEx size mismatch, ";
                 case "2406704320":
                   status.innerHTML += "added 4-operators voice bank";
                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                  data.push(array.slice(6, 4102));
+                  data[0].push(array.slice(6, 4102));
+                  break;
+                default:
+                  status.innerHTML += "skipped unsupported SysEx";
+              }
+            }
+          }
+        }
+      } else if (osc === "FM66" || osc === "FM68") {
+        if (array.length > 4104 || array.length < 4096) {
+          if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
+            if (typeof data[1] !== 'undefined' && data[1].length >= count[osc][1]) {
+              status.innerHTML += "skipped (maximum wave file limit reached)";
+            } else {
+              if (array.slice(22, 24).join("") === "10") {
+                switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
+                  case "10160": //16-bit PCM
+                    var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                    if (size < 4096) {
+                      status.innerHTML += "skipped (sample count too small)";
+                    } else {
+                      data[1] = new Array();
+                      var newarray;
+                      if (osc === "FM66") {
+                        status.innerHTML += "added from 16-bit PCM";
+                        if (size > 4096) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(4096);
+                        for (i = 0; i < newarray.length / 2; i++) {
+                          newarray[i * 2] = array[44 + i * 2];
+                          newarray[i * 2 + 1] = array[44 + i * 2 + 1];
+                        }
+                      } else {
+                        status.innerHTML += "added transcoded from 16-bit PCM to 32-bit PCM";
+                        if (size > 4096) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(8192);
+                        for (i = 0; i < newarray.length / 4; i++) {
+                          newarray[i * 4] = 0;
+                          newarray[i * 4 + 1] = 0;
+                          newarray[i * 4 + 2] = array[44 + i * 2];
+                          newarray[i * 4 + 3] = array[44 + i * 2 + 1];
+                        }
+                      }
+                      data[1].push(newarray);
+                      name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                    }
+                    break;
+                  case "10240": //24-bit PCM
+                    var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                    if (size < 6144) {
+                      status.innerHTML += "skipped (sample count too small)";
+                    } else {
+                      data[1] = new Array();
+                      var newarray;
+                      if (osc === "FM66") {
+                        status.innerHTML += "added transcoded from 24-bit PCM to 16-bit PCM";
+                        if (size > 6144) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(4096);
+                        var v;
+                        for (i = 0; i < newarray.length / 2; i++) {
+                          v = (array[44 + i * 3] >> 7) + (array[44 + i * 3 + 1] << 1) + (array[44 + i * 3 + 2] << 9);
+                          if (v & 0x10000) {
+                            if (v != 0x10000)
+                              v--;
+                          } else {
+                            if (v != 0xFFFF)
+                              v++;
+                          }
+                          newarray[i * 2] = (v >> 1) & 0xFF;
+                          newarray[i * 2 + 1] = (v >> 9) & 0xFF;
+                        }
+                      } else {
+                        status.innerHTML += "added from 32-bit PCM";
+                        if (size > 6144) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(8192);
+                        for (i = 0; i < newarray.length / 4; i++) {
+                          newarray[i * 4] = 0;
+                          newarray[i * 4 + 1] = array[44 + i * 3];
+                          newarray[i * 4 + 2] = array[44 + i * 3 + 1];
+                          newarray[i * 4 + 3] = array[44 + i * 3 + 2];
+                        }
+                      }
+                      data[1].push(newarray);
+                      name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                    }
+                    break;
+                  case "10320": //32-bit PCM
+                    var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                    if (size < 8192) {
+                      status.innerHTML += "skipped (sample count too small)";
+                    } else {
+                      data[1] = new Array();
+                      var newarray;
+                      if (osc === "FM66") {
+                        status.innerHTML += "added transcoded from 32-bit PCM to 16-bit PCM";
+                        if (size > 8192) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(4096);
+                        var v;
+                        for (i = 0; i < newarray.length / 2; i++) {
+                          v = (array[44 + i * 4 + 1] >> 7) + (array[44 + i * 4 + 2] << 1) + (array[44 + i * 4 + 3] << 9);
+                          if (v & 0x10000) {
+                            if (v != 0x10000)
+                              v--;
+                          } else {
+                            if (v != 0xFFFF)
+                              v++;
+                          }
+                          newarray[i * 2] = (v >> 1) & 0xFF;
+                          newarray[i * 2 + 1] = (v >> 9) & 0xFF;
+                        }
+                      } else {
+                        status.innerHTML += "added from 32-bit PCM";
+                        if (size > 8192) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(8192);
+                        for (i = 0; i < newarray.length / 4; i++) {
+                          newarray[i * 4] = array[44 + i * 4];
+                          newarray[i * 4 + 1] = array[44 + i * 4 + 1];
+                          newarray[i * 4 + 2] = array[44 + i * 4 + 2];
+                          newarray[i * 4 + 3] = array[44 + i * 4 + 3];
+                        }
+                      }
+                      data[1].push(newarray);
+                      name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                    }
+                    break;
+                  default:
+                    status.innerHTML += "skipped (format not supported)";
+                };
+              } else {
+                status.innerHTML += "skipped (channel count not supported)";
+              }
+            }
+          } else {
+            status.innerHTML += "skipped (size mismatch)";
+          }
+        } else {
+          if (data[0].length >= count[osc][0]) {
+            status.innerHTML += "skipped (maximum voice bank limit reached)";
+          } else {
+            if (array.length == 4096) {
+              status.innerHTML += "added (assuming raw voice bank)";
+              name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+              data[0].push(array);
+            } else {
+              switch(array.slice(0, 6).join("")) {
+                case "2406709160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406709320":
+                  status.innerHTML += "added 6-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data[0].push(array.slice(6, 4102));
+                  break;
+                case "2406704160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406704320":
+                  status.innerHTML += "added 4-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data[0].push(array.slice(6, 4102));
                   break;
                 default:
                   status.innerHTML += "skipped unsupported SysEx";
@@ -234,7 +450,7 @@ function handleFiles(f) {
         }
       } else if (osc === "Morpheus") {
         if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
-          if (data.length >= count[osc]) {
+          if (data[0].length >= count[osc][0]) {
             status.innerHTML += "skipped (maximum wave file limit reached)";
           } else {
             if (array.slice(22, 24).join("") === "10") {
@@ -244,15 +460,15 @@ function handleFiles(f) {
                   if (size < 32768) {
                     status.innerHTML += "skipped (sample count too small)";
                   } else {
-                     status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
-                     if (size > 32768) {
-                       status.innerHTML += ", truncated to 16384 samples";
-                     }
-                     var newarray = new Uint8Array(16384);
-                     for (i = 0; i < newarray.length; i++)
-                       newarray[i] = pcm16toulaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
-                     data.push(newarray);
-                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                    status.innerHTML += "added transcoded from 16-bit PCM to &#xb5;-law";
+                    if (size > 32768) {
+                      status.innerHTML += ", truncated to 16384 samples";
+                    }
+                    var newarray = new Uint8Array(16384);
+                    for (i = 0; i < newarray.length; i++)
+                      newarray[i] = pcm16toulaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
+                    data[0].push(newarray);
+                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                   }
                   break;
                 case "7080": //u-Law
@@ -260,17 +476,17 @@ function handleFiles(f) {
                   if (size < 16384) {
                     status.innerHTML += "skipped (sample count too small)";
                   } else {
-                     status.innerHTML += "added &#xb5;-law compressed file";
-                     if (size > 16384) {
-                       status.innerHTML += ", truncated to 16384 samples";
-                     }
-                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                     data.push(array.slice(58, 16469))
+                    status.innerHTML += "added &#xb5;-law compressed file";
+                    if (size > 16384) {
+                      status.innerHTML += ", truncated to 16384 samples";
+                    }
+                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                    data[0].push(array.slice(58, 16469))
                   }
                   break;
                 default:
                   status.innerHTML += "skipped (format not supported)";
-              };
+              }
             } else {
               status.innerHTML += "skipped (channel count not supported)";
             }
@@ -283,7 +499,7 @@ function handleFiles(f) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
           if (String.fromCharCode.apply(String, array.slice(0, 4)) == "PROG") {
-            if (datalength + array.length > maxsize[osc]) {
+            if (datalength + array.length > maxsize[osc][0]) {
               status.innerHTML += "skipped (maximum program limit reached)";
             } else {
               var progname = document.createElement('progname');
@@ -292,22 +508,22 @@ function handleFiles(f) {
               if (String.fromCharCode.apply(String, array.slice(96, 100)) == "SEQD") {
                 status.innerHTML += "added minilogue program " + progname;
                 name.value += progname;
-                data.push(array);
+                data[0].push(array);
                 datalength += array.length;
               } else if (String.fromCharCode.apply(String, array.slice(48, 52)) == "SEQD") {
                 status.innerHTML += "added monologue program " + progname;
                 name.value += progname;
-                data.push(array);
+                data[0].push(array);
                 datalength += array.length;
               } else if (String.fromCharCode.apply(String, array.slice(332, 336)) == "PRED") {
                 status.innerHTML += "added prologue program " + progname;
                 name.value += progname;
-                data.push(array);
+                data[0].push(array);
                 datalength += array.length;
               } else if (String.fromCharCode.apply(String, array.slice(156, 160)) == "PRED") {
                 status.innerHTML += "added minilogue xd program " + progname;
                 name.value += progname;
-                data.push(array);
+                data[0].push(array);
                 datalength += array.length;
               } else {
                 status.innerHTML += "skipped unsupported file format";
@@ -319,7 +535,7 @@ function handleFiles(f) {
         }
       }
       status.innerHTML += "<br/>";
-      if (data.length > 0) {
+      if (data[0].length > 0) {
         document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
         name.disabled = false;
       }
@@ -338,9 +554,11 @@ function onLoad() {
   var platform = document.querySelector('#' + document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1])
   if (platform)
     platform.checked = true;
+  custom_count = new Array();
+  offset = new Array();
   count = new Array();
   maxsize = new Array();
-  ["FM64", "Morpheus", "Anthologue"].map(e => getInfo(e));
+  ["FM48", "FM64", "FM66", "FM68", "Morpheus", "Anthologue"].map(e => getInfo(e));
 }
 </script>
 </head>
@@ -354,12 +572,12 @@ USER OSCILLATORS
 </div>
 <table rules="rows" cellpadding="6" border="2" width="100%">
 <tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
+<tr><td/><td>FM48</td><td id="FM48-version"/><td id="FM48-api"/><td><label class="button" alt="test"><input type="file" name="FM48" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM48" disabled="true"></td><td><input type="button" name="FM48" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM48-size"/><td id="FM48-description"/></tr>
 <tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
+<tr><td/><td>FM66</td><td id="FM66-version"/><td id="FM66-api"/><td><label class="button" alt="test"><input type="file" name="FM66" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM66" disabled="true"></td><td><input type="button" name="FM66" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM66-size"/><td id="FM66-description"/></tr>
+<tr><td/><td>FM68</td><td id="FM68-version"/><td id="FM68-api"/><td><label class="button" alt="test"><input type="file" name="FM68" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM68" disabled="true"></td><td><input type="button" name="FM68" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM68-size"/><td id="FM68-description"/></tr>
 <tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
 <tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
