@@ -22,39 +22,34 @@
 
 #include "fm64.h"
 
-#ifdef WF32
-  #include "waveforms32.h"
-  #define WFBITS 3
-#else
-  #ifdef WF16
-    #include "waveforms16.h"
-    #define WFBITS 3
-  #else
-#ifdef WF8
-  #define WFBITS 3
-  #define WF4
-  #define WF2
-#else
-  #ifdef WF4
-    #define WFBITS 2
-    #define WF2
-  #else
-    #ifdef WF2
-      #define WFBITS 1
-    #else
-      #define WFBITS 0
-    #endif
-  #endif
-#endif
-  #endif
-#endif
-
 #define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
+  #ifdef WF32
+    #include "waveforms32.h"
+    #define WFBITS 3
+  #else
+    #ifdef WF16
+      #include "waveforms16.h"
+      #define WFBITS 3
+    #else
+      #if defined(WF2) || defined(WF4) || defined(WF8)
+        #include "waveforms.h"
+        #ifdef WF8
+          #define WFBITS 3
+        #else
+          #ifdef WF4
+            #define WFBITS 2
+          #else
+            #define WFBITS 1
+          #endif
+        #endif
+      #endif
+    #endif
+  #endif
   #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 //todo: check and fix osc_apiq
   #define USE_Q31_PHASE //a bit less CPU consuming, but looks like have a slight phase drift over time
@@ -64,15 +59,11 @@
   #endif
 //  #define OSC_NOTE_Q
 //  #define USE_FASTSINQ //not suitable for FM
-  #if !defined(WF16) && !defined(WF32)
-  #ifndef USE_FASTSINQ
-    #ifdef WF2 //use custom waveform operator
+  #if !defined(WF2) && !defined(WF4) && !defined(WF8) && !defined(WF16) && !defined(WF32)
+    #ifndef USE_FASTSINQ
       #define OSC_SIN_Q_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-    #else
-      #define OSC_SIN_Q_LUT
       #define OSC_SIN_Q
     #endif
-  #endif
   #endif
   #include "osc_apiq.h"
 #endif
@@ -226,92 +217,6 @@ static phase_t s_phase[OPERATOR_COUNT];
 static param_t eg_lut[1024];
 #endif
 
-#ifdef WF2
-static inline __attribute__((optimize("Ofast"), always_inline))
-q31_t osc_wavebank(q31_t x, uint32_t waveform) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p;
-  uint32_t x0;
-  uint32_t x1;
-  q31_t fr;
-  q31_t y0 = 0;
-#ifdef WF8
-  if (!(waveform & 0x04)) {
-#endif
-    x0p = x >> (31 - k_wt_sine_size_exp - 1);
-#ifdef WF4
-    if (!(waveform & 0x02)) {
-#endif
-#ifdef WF2
-      if (!(waveform & 0x01)) { //0
-#endif
-        x0 = x0p & k_wt_sine_mask;
-        x1 = (x0 + 1) & k_wt_sine_mask;
-        fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-        y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-#ifdef WF2
-      } else { //1
-        x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-        x1 = (x0 + 1) & k_wt_sine_mask;
-        fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-        y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-      }
-#endif
-      y0 = (x0p < k_wt_sine_size)?y0:-y0;
-#ifdef WF4
-    } else {
-      if (!(x & 0x40000000)) {
-        if (!(waveform & 0x01)) { //2
-          x0 = x0p & k_wt_sine_mask;
-          x1 = (x0 + 1) & k_wt_sine_mask;
-          fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-          y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-        } else { //3
-          x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-          x1 = (x0 + 1) & k_wt_sine_mask;
-          fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-          y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-        }
-      }
-    }
-#endif
-#ifdef WF8
-  } else {
-    if (!(x & 0x40000000)) {
-      x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
-      if (!(waveform & 0x02)) {
-        if (!(waveform & 0x01)) { //4
-          x0 = x0p & k_wt_sine_mask;
-          x1 = (x0 + 1) & k_wt_sine_mask;
-          fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
-          y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-        } else { //5
-          x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-          x1 = (x0 + 1) & k_wt_sine_mask;
-          fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-          y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-        }
-        y0 = (x0p < k_wt_sine_size)?y0:-y0;
-      } else {
-        if (!(waveform & 0x01)) { //6
-          x0 = x0p & k_wt_sine_mask;
-          x1 = (x0 + 1) & k_wt_sine_mask;
-          fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
-          y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-        } else { //7
-          x0 = (x0p + ((k_wt_sine_mask + 1) >> 1)) & k_wt_sine_mask;
-          x1 = (x0 + 1) & k_wt_sine_mask;
-          fr = (x << (k_wt_sine_size_exp + 1 + 1)) & 0x7FFFFFFF;
-          y0 = 0x7FFFFFFF - linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-        }
-      }
-    }
-  }
-#endif
-  return y0;
-}
-#endif
-
 void feedback_src() {
 #ifdef FEEDBACK
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -351,7 +256,7 @@ void initvoice() {
 
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_fixedfreq[i] = voice->op[i].pm;
-#if defined(WF2) || defined(WF16) || defined(WF32)
+#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
       s_params[p_op6_waveform + i * 10] = 0;
 #endif
 
@@ -409,7 +314,7 @@ void initvoice() {
         i = k;
 
       s_fixedfreq[i] = voice->opadd[i].fixrg;
-#if defined(WF2) || defined(WF16) || defined(WF32)
+#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
       s_params[p_op6_waveform + i * 10] = voice->opadd[i].osw;
 #endif
 
@@ -551,7 +456,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 
-#if defined(WF2) || defined(WF16) || defined(WF32)
+#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
@@ -794,7 +699,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
             s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], param * s_kvs[i], s_level_scaling[i]);
           break;
-#if defined(WF2) || defined(WF16) || defined(WF32)
+#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
         case p_op6_waveform:
         case p_op5_waveform:
         case p_op4_waveform:

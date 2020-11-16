@@ -149,7 +149,7 @@
 #pragma GCC diagnostic ignored "-Wnarrowing"
 static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK
-DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT] = WAVEBANK;
+DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT] = {WAVEBANK};
 #else
 uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT);
 #endif
