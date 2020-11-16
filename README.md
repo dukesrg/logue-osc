@@ -73,15 +73,16 @@ For user-customizable oscillators, an online constructor is available at https:/
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|FMxx features|FM48|FM64|FM66|FM68|
-|-|-|-|-|-|
-|Operators count|4|6|6|6|
-|Voice bank type|DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|
-|Voice bank count|4|4|3|2|
-|Waveform count|8|1|8|8|
-|Waveform bit depth|32|32|16|32|
-|Waveform customization|||+|+|
-|Shape LFO target supported|+|+||+|
+|FMxx features|FM48|FM64|FM66|FM67|FM68|
+|-|-|-|-|-|-|
+|Operators count|4|6|6|6|6|
+|Voice bank type|DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|
+|Voice bank count|4|4|3|2|2|
+|Waveform count|8|1|8|16|8|
+|Waveform bit depth|32|32|16|16|32|
+|Waveform customization|||+|+|+|
+|Shape LFO target supported|+|+|+|+|+|
+|Feedback supported|+|+|+|+|+|
 
 |#|FMxx<br>Assignable controllers 1&2, LFO target|1x (Op.6/4)|2x (Op.5/3)|3x (Op.4/2)|4x (Op.3/1)|5x (Op.2/-)|6x (Op.1/-)|
 |-|-|-|-|-|-|-|-|

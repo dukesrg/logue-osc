@@ -22,12 +22,16 @@
 
 #include "fm64.h"
 
-#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
+//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
+  #ifdef WF16x2
+    #include "waveforms16x2.h"
+    #define WFBITS 4
+  #else
   #ifdef WF32
     #include "waveforms32.h"
     #define WFBITS 3
@@ -50,6 +54,7 @@
       #endif
     #endif
   #endif
+  #endif
   #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 //todo: check and fix osc_apiq
   #define USE_Q31_PHASE //a bit less CPU consuming, but looks like have a slight phase drift over time
@@ -59,7 +64,7 @@
   #endif
 //  #define OSC_NOTE_Q
 //  #define USE_FASTSINQ //not suitable for FM
-  #if !defined(WF2) && !defined(WF4) && !defined(WF8) && !defined(WF16) && !defined(WF32)
+  #ifndef WFBITS
     #ifndef USE_FASTSINQ
       #define OSC_SIN_Q_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
       #define OSC_SIN_Q
@@ -256,7 +261,7 @@ void initvoice() {
 
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_fixedfreq[i] = voice->op[i].pm;
-#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
+#ifdef WFBITS
       s_params[p_op6_waveform + i * 10] = 0;
 #endif
 
@@ -314,7 +319,7 @@ void initvoice() {
         i = k;
 
       s_fixedfreq[i] = voice->opadd[i].fixrg;
-#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
+#ifdef WFBITS
       s_params[p_op6_waveform + i * 10] = voice->opadd[i].osw;
 #endif
 
@@ -456,7 +461,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 
-#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
+#ifdef WFBITS
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
@@ -699,7 +704,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
             s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], param * s_kvs[i], s_level_scaling[i]);
           break;
-#if defined(WF2) || defined(WF4) || defined(WF8) || defined(WF16) || defined(WF32)
+#ifdef WFBITS
         case p_op6_waveform:
         case p_op5_waveform:
         case p_op4_waveform:
