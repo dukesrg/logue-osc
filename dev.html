@@ -280,7 +280,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM66" || osc === "FM68") {
+      } else if (osc === "FM66" || osc === "FM67" || osc === "FM68") {
         if (array.length > 4104 || array.length < 4096) {
           if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
             if (typeof data[1] !== 'undefined' && data[1].length >= count[osc][1]) {
@@ -301,6 +301,16 @@ function handleFiles(f) {
                           status.innerHTML += ", truncated to 2048 samples";
                         }
                         newarray = new Uint8Array(4096);
+                        for (i = 0; i < newarray.length / 2; i++) {
+                          newarray[i * 2] = array[44 + i * 2];
+                          newarray[i * 2 + 1] = array[44 + i * 2 + 1];
+                        }
+                      } else if (osc === "FM67") {
+                        status.innerHTML += "added from 16-bit PCM";
+                        if (size > 8192) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(8192);
                         for (i = 0; i < newarray.length / 2; i++) {
                           newarray[i * 2] = array[44 + i * 2];
                           newarray[i * 2 + 1] = array[44 + i * 2 + 1];
@@ -348,6 +358,25 @@ function handleFiles(f) {
                           newarray[i * 2] = (v >> 1) & 0xFF;
                           newarray[i * 2 + 1] = (v >> 9) & 0xFF;
                         }
+                      } else if (osc === "FM67") {
+                        status.innerHTML += "added transcoded from 24-bit PCM to 16-bit PCM";
+                        if (size > 12288) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(8192);
+                        var v;
+                        for (i = 0; i < newarray.length / 2; i++) {
+                          v = (array[44 + i * 3] >> 7) + (array[44 + i * 3 + 1] << 1) + (array[44 + i * 3 + 2] << 9);
+                          if (v & 0x10000) {
+                            if (v != 0x10000)
+                              v--;
+                          } else {
+                            if (v != 0xFFFF)
+                              v++;
+                          }
+                          newarray[i * 2] = (v >> 1) & 0xFF;
+                          newarray[i * 2 + 1] = (v >> 9) & 0xFF;
+                        }
                       } else {
                         status.innerHTML += "added from 32-bit PCM";
                         if (size > 6144) {
@@ -378,6 +407,25 @@ function handleFiles(f) {
                           status.innerHTML += ", truncated to 2048 samples";
                         }
                         newarray = new Uint8Array(4096);
+                        var v;
+                        for (i = 0; i < newarray.length / 2; i++) {
+                          v = (array[44 + i * 4 + 1] >> 7) + (array[44 + i * 4 + 2] << 1) + (array[44 + i * 4 + 3] << 9);
+                          if (v & 0x10000) {
+                            if (v != 0x10000)
+                              v--;
+                          } else {
+                            if (v != 0xFFFF)
+                              v++;
+                          }
+                          newarray[i * 2] = (v >> 1) & 0xFF;
+                          newarray[i * 2 + 1] = (v >> 9) & 0xFF;
+                        }
+                      } else if (osc === "FM67") {
+                        status.innerHTML += "added transcoded from 32-bit PCM to 16-bit PCM";
+                        if (size > 16384) {
+                          status.innerHTML += ", truncated to 2048 samples";
+                        }
+                        newarray = new Uint8Array(8192);
                         var v;
                         for (i = 0; i < newarray.length / 2; i++) {
                           v = (array[44 + i * 4 + 1] >> 7) + (array[44 + i * 4 + 2] << 1) + (array[44 + i * 4 + 3] << 9);
@@ -558,7 +606,7 @@ function onLoad() {
   offset = new Array();
   count = new Array();
   maxsize = new Array();
-  ["FM48", "FM64", "FM66", "FM68", "Morpheus", "Anthologue"].map(e => getInfo(e));
+  ["FM48", "FM64", "FM66", "FM67", "FM68", "Morpheus", "Anthologue"].map(e => getInfo(e));
 }
 </script>
 </head>
@@ -575,10 +623,10 @@ USER OSCILLATORS
 <tr><td/><td>FM48</td><td id="FM48-version"/><td id="FM48-api"/><td><label class="button" alt="test"><input type="file" name="FM48" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM48" disabled="true"></td><td><input type="button" name="FM48" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM48-size"/><td id="FM48-description"/></tr>
 <tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
 <tr><td/><td>FM66</td><td id="FM66-version"/><td id="FM66-api"/><td><label class="button" alt="test"><input type="file" name="FM66" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM66" disabled="true"></td><td><input type="button" name="FM66" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM66-size"/><td id="FM66-description"/></tr>
+<tr><td/><td>FM67</td><td id="FM67-version"/><td id="FM67-api"/><td><label class="button" alt="test"><input type="file" name="FM67" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM67" disabled="true"></td><td><input type="button" name="FM67" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM67-size"/><td id="FM67-description"/></tr>
 <tr><td/><td>FM68</td><td id="FM68-version"/><td id="FM68-api"/><td><label class="button" alt="test"><input type="file" name="FM68" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM68" disabled="true"></td><td><input type="button" name="FM68" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM68-size"/><td id="FM68-description"/></tr>
 <tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
 <tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
