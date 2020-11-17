@@ -218,6 +218,8 @@ static param_t s_pegval[OPERATOR_COUNT];
 static pitch_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
 
+static uint8_t busy;
+
 #ifdef EGLUT
   #include "eglut.h"
 #else
@@ -399,6 +401,8 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
+  if (busy)
+    return;
 //todo: PEG level
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
@@ -586,6 +590,7 @@ uint32_t calc_rate(uint8_t i, uint8_t j, param_t prev_eglevel, float attack_rate
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
+  busy |= 1;
 //  float rscale, rate_factor;
 //  int32_t dl, dp, curve = 0;
   int32_t dp, curve = 0;
@@ -652,10 +657,12 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_pegstage = 0;
   s_egval = s_eglevel[EG_STAGE_COUNT - 1];
 */
+  busy &= ~1;
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
+  busy |= 2;
 //  float rscale, rate_factor, rate_exp_factor;
 //  int32_t dl;
 #ifdef EG_SAMPLED
@@ -692,6 +699,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
   }
+  busy &= ~2;
 }
 
 void OSC_PARAM(uint16_t index, uint16_t value)
