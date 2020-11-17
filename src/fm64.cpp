@@ -19,6 +19,8 @@
 //#define WF4 //4 first DX11 waveforms runtime generated from half-sine
 //#define WF2 //2 first DX11 waveforms runtime generated from half-sine
 //#define OPSIX //enable KORG Opsix extensions
+#define TWEAK_ALG //use reserved bits for extended algorithms count support
+#define TWEAK_WF //use reserved bits for extended waveforms count support
 
 #include "fm64.h"
 
@@ -262,7 +264,11 @@ void initvoice() {
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_fixedfreq[i] = voice->op[i].pm;
 #ifdef WFBITS
+#ifdef TWEAK_WF
+      s_params[p_op6_waveform + i * 10] = voice->op[i].osw & ((1 << WFBITS) - 1);
+#else
       s_params[p_op6_waveform + i * 10] = 0;
+#endif
 #endif
 
       s_phase[i] = ZERO_PHASE;
@@ -304,7 +310,11 @@ void initvoice() {
   } else {
 #ifdef OP4
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
+#ifdef TWEAK_ALG
+    s_algorithm_idx = dx11_algorithm_lut[voice->alg + (voice->alghi << 3)];
+#else
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
+#endif
     s_algorithm = dx7_algorithm[s_algorithm_idx];
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
@@ -320,7 +330,7 @@ void initvoice() {
 
       s_fixedfreq[i] = voice->opadd[i].fixrg;
 #ifdef WFBITS
-      s_params[p_op6_waveform + i * 10] = voice->opadd[i].osw;
+      s_params[p_op6_waveform + i * 10] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
 #endif
 
       s_phase[i] = ZERO_PHASE;

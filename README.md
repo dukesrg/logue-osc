@@ -84,6 +84,11 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Shape LFO target supported|+|+|+|+|+|
 |Feedback supported|+|+|+|+|+|
 
+|FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
+|-|-|-|
+|Algorithm 1&hellip;128|upper bits at standard offset 0x6E|4 upper bits at offset 0x2F|
+|Waveform 1&hellip;16|4 upper bits at offsets 0x0B, 0x1C, 0x2D, 0x3E, 0x4F, 0x60|1 higher bit at standard offsets 0x4A, 0x4C, 0x4E, 0x50|
+
 |#|FMxx<br>Assignable controllers 1&2, LFO target|1x (Op.6/4)|2x (Op.5/3)|3x (Op.4/2)|4x (Op.3/1)|5x (Op.2/-)|6x (Op.1/-)|
 |-|-|-|-|-|-|-|-|
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level|Op. level / -|Op. level / -|

@@ -12,6 +12,9 @@
 
 #include <stdint.h>
 
+//#define TWEAK_ALG //use reserved bits for extended algorithms count support
+//#define TWEAK_WF //use reserved bits for extended waveforms count support
+
 #ifndef BANK_COUNT
   #define BANK_COUNT 4
 #endif
@@ -153,7 +156,11 @@ struct dx7_operator_t {
   uint8_t rd; //Right depth
   uint8_t lc:2; //Left curve
   uint8_t rc:2; //Right curve
-  uint8_t :0;
+#ifdef TWEAK_WF
+    uint8_t osw:4; //Waveform
+#else
+    uint8_t :0;
+#endif
   uint8_t rs:3; //Rate scaling
   uint8_t pd:4; //Detune
   uint8_t :0;
@@ -171,7 +178,12 @@ struct dx7_voice_t {
   dx7_operator_t op[DX7_OPERATOR_COUNT];
   uint8_t pr[EG_STAGE_COUNT]; //PEG rates
   uint8_t pl[EG_STAGE_COUNT]; //PEG levels
+#ifdef TWEAK_ALG
   uint8_t als; //Algorithm selector
+#else
+  uint8_t als:5;
+  uint8_t :0;
+#endif
   uint8_t fbl:3; //Feedback level
   uint8_t opi:1; //OSC phase init
   uint8_t :0;
@@ -217,7 +229,12 @@ struct dx11_voice_t {
   uint8_t pms:3; //LFO pitch modulation sensitivity
   uint8_t :0;
   uint8_t trps; //Transpose
-  uint8_t pbr; //Pitch bend range
+  uint8_t pbr:4; //Pitch bend range
+#ifdef TWEAK_ALG
+  uint8_t alghi:4; //Algorithm selector extension
+#else
+  uint8_t :0;
+#endif
   uint8_t pm:1; //Portamento mode
   uint8_t po:1; //Portamento swith
   uint8_t su:1; //Sustain switch
@@ -241,8 +258,12 @@ struct dx11_voice_t {
     uint8_t egsft:2; //EG shift
     uint8_t :0;
     uint8_t fine:4; //Frequency range fine
+#ifdef TWEAK_WF
+    uint8_t osw:4; //Waveform
+#else
     uint8_t osw:3; //Waveform
     uint8_t :0;
+#endif
   } opadd[DX11_OPERATOR_COUNT];
   uint8_t rev; //Reverb rate
   uint8_t fcpitch; //Foot controller pitch
