@@ -181,6 +181,7 @@ static uint8_t s_right_curve[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT];
+static uint32_t s_sample_count_shadow[OPERATOR_COUNT][EG_STAGE_COUNT];
 #endif
 
 //static uint8_t s_pegstage;
@@ -193,6 +194,7 @@ static uint8_t s_assignable[2];
 static param_t s_params[p_num];
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT];
+static param_t s_egsrate_shadow[OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egval[OPERATOR_COUNT];
 static param_t s_opval[OPERATOR_COUNT];
@@ -218,7 +220,12 @@ static param_t s_pegval[OPERATOR_COUNT];
 static pitch_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
 
-static uint8_t busy;
+enum {
+  state_running = 0,
+  state_noteon,
+  state_noteoff,
+};
+static uint8_t s_state = 0;
 
 #ifdef EGLUT
   #include "eglut.h"
@@ -401,8 +408,33 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  if (busy)
-    return;
+  if (s_state & state_noteon) {
+    for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+      for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
+        s_egsrate[i][j] = s_egsrate_shadow[i][j];
+        s_sample_count[i][j] = s_sample_count_shadow[i][j];
+      }
+      s_egstage[i] = 0;
+      if (s_opi)
+        s_phase[i] = ZERO_PHASE;
+//todo: to reset or not to reset - that is the question (stick with the operator phase init)
+      s_opval[i] = ZERO;
+      s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
+      s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
+    }
+#ifdef EG_SAMPLED
+    s_sample_num = 0;
+#endif
+    s_state &= ~state_noteon;
+  } else if (s_state & state_noteoff) {
+    for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+      s_egsrate[i][EG_STAGE_COUNT - 1] = s_egsrate_shadow[i][EG_STAGE_COUNT - 1];
+      s_sample_count[i][EG_STAGE_COUNT - 1] = s_sample_count_shadow[i][EG_STAGE_COUNT - 1];
+      s_egstage[i] = EG_STAGE_COUNT - 1;
+    }
+    s_state &= ~state_noteoff;
+  }
+
 //todo: PEG level
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
@@ -576,21 +608,20 @@ uint32_t calc_rate(uint8_t i, uint8_t j, param_t prev_eglevel, float attack_rate
       rate_exp_factor = attack_rate_exp_factor;
     }
     rscale = ((pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
-    s_egsrate[i][j] = f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
+    s_egsrate_shadow[i][j] = f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
   } else {
-    s_egsrate[i][j] = ZERO;
+    s_egsrate_shadow[i][j] = ZERO;
   }
 #ifdef EG_SAMPLED
   if (dl != 0)
-    samples += dl / s_egsrate[i][j];
-  s_sample_count[i][j] = samples;
+    samples += dl / s_egsrate_shadow[i][j];
+  s_sample_count_shadow[i][j] = samples;
   return samples;
 #endif
 }
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  busy |= 1;
 //  float rscale, rate_factor;
 //  int32_t dl, dp, curve = 0;
   int32_t dp, curve = 0;
@@ -640,9 +671,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_level_scaling[i] = ZERO;
     else
       s_level_scaling[i] = param_mul(depth, (curve ? f32_to_param(powf(M_E, (dp - 72) * .074074074f)) : s_level_scale_factor * dp));
-    s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
+//    s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
   }
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+/*  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_opi)
       s_phase[i] = ZERO_PHASE;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
@@ -653,21 +684,24 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef EG_SAMPLED
   s_sample_num = 0;
 #endif
-/*
+*//*
   s_pegstage = 0;
   s_egval = s_eglevel[EG_STAGE_COUNT - 1];
 */
-  busy &= ~1;
+  s_state = state_noteon;
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  busy |= 2;
 //  float rscale, rate_factor, rate_exp_factor;
 //  int32_t dl;
+  param_t egval[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
   uint32_t samples = s_sample_num;
 #endif
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    egval[i] = s_egval[i];
+  }
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 /*
     dl = s_eglevel[i][EG_STAGE_COUNT - 1] - s_egval[i];
@@ -691,15 +725,15 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 #endif
 */
 #ifdef EG_SAMPLED
-    calc_rate(i, EG_STAGE_COUNT - 1, s_egval[i], s_attack_rate_exp_factor, s_release_rate_exp_factor, params->pitch, samples);
+    calc_rate(i, EG_STAGE_COUNT - 1, egval[i], s_attack_rate_exp_factor, s_release_rate_exp_factor, params->pitch, samples);
 #else
-    calc_rate(i, EG_STAGE_COUNT - 1, s_egval[i], s_attack_rate_exp_factor, s_release_rate_exp_factor, params->pitch);
+    calc_rate(i, EG_STAGE_COUNT - 1, egval[i], s_attack_rate_exp_factor, s_release_rate_exp_factor, params->pitch);
 #endif
   }
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    s_egstage[i] = EG_STAGE_COUNT - 1;
-  }
-  busy &= ~2;
+//  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+//    s_egstage[i] = EG_STAGE_COUNT - 1;
+//  }
+  s_state = state_noteoff;
 }
 
 void OSC_PARAM(uint16_t index, uint16_t value)
