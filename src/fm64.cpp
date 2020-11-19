@@ -142,7 +142,7 @@
 //  #define DX7_DECAY_RATE_FACTOR -.125f
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
   #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
-  #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(91-24) C1-G6
+  #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1-G6
   #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
   #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 #endif
@@ -358,7 +358,7 @@ void initvoice() {
       s_kvs[i] = voice->op[i].kvs;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
       s_params[p_op6_level + i * 10] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
-      s_break_point[i] = 24 + 21; // C1
+      s_break_point[i] = 36; // C1
       s_left_depth[i] = 0;
       s_right_depth[i] = -voice->op[i].ls;
       s_left_curve[i] = 0;
