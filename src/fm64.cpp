@@ -514,7 +514,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
+#ifdef WF16
+      s_opval[i] = param_mul(osc_wavebank16(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+#else
       s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
+#endif
 //#endif
 #else
 //#ifdef SHAPE_LFO

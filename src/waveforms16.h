@@ -272,3 +272,12 @@
 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000
 
 #include "wavebank.h"
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+q31_t osc_wavebank16(q31_t x, uint32_t idx) {
+  x &= 0x7FFFFFFF;
+  uint32_t x0p = x >> (31 - SAMPLE_COUNT_EXP);
+  uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
+  const q15_t *wt = &wavebank[idx * SAMPLE_COUNT];
+  return q31add(q15_to_q31(x0), ((x >> (31 - SAMPLE_COUNT_EXP - 16)) & 0xFFFF) * q15sub(wt[x1], wt[x0])); //mul q16, q15 => q31
+}
