@@ -237,7 +237,11 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
   uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT];
+#ifdef FORMAT_PCM16
+  return linintq(fr >> 15, wt[x0], wt[x1]);
+#else
   return linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
+#endif
 }
 
   /**
