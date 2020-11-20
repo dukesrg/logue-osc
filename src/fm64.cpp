@@ -115,8 +115,8 @@
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DECAY_RATE_FACTOR 0xFE666666 // -1/8
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
-  #define DX7_LEVEL_SCALE_FACTOR 0x02D82D83 // 1/45
-  #define DX11_LEVEL_SCALE_FACTOR 0x01E9131B // 1/(91-24) C1-G6
+//  #define DX7_LEVEL_SCALE_FACTOR 0x02D82D83 // 1/45
+//  #define DX11_LEVEL_SCALE_FACTOR 0x01E9131B // 1/(91-24) C1-G6
   #define DX7_RATE_SCALING_FACTOR 0x12492492 // 1/7
   #define DX11_RATE_SCALING_FACTOR 0x2AAAAAAB // 1/3
 #else
@@ -141,8 +141,8 @@
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 //  #define DX7_DECAY_RATE_FACTOR -.125f
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
-  #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
-  #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1-G6
+//  #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
+//  #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1-G6
   #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
   #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 #endif
@@ -159,6 +159,9 @@
 //#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
 #define RATE_SCALING_FACTOR .445291664f // reversed from measures for current curve function
 
+#define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
+#define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1-G6
+#define LEVEL_SCALE_FACTORF 0.0078740157f // 1/127
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
 
@@ -174,8 +177,8 @@ static uint8_t s_egstage[OPERATOR_COUNT];
 static uint8_t s_transpose;
 static uint8_t s_kvs[OPERATOR_COUNT];
 static uint8_t s_break_point[OPERATOR_COUNT];
-static param_t s_left_depth[OPERATOR_COUNT];
-static param_t s_right_depth[OPERATOR_COUNT];
+static float s_left_depth[OPERATOR_COUNT];
+static float s_right_depth[OPERATOR_COUNT];
 static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
@@ -298,17 +301,17 @@ void initvoice() {
       s_break_point[i] = voice->op[i].bp + 21;
 //fold negative/position curves into curve depth sign
       if (voice->op[i].lc < 2) {
-        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTOR;
+        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTORF;
         s_left_curve[i] = voice->op[i].lc;
       } else {
-        s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTOR;
+        s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTORF;
         s_left_curve[i] = 3 - voice->op[i].lc;
       }
       if (voice->op[i].rc < 2) {
-        s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTOR;
+        s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTORF;
         s_right_curve[i] = voice->op[i].rc;
       } else {
-        s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTOR;
+        s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTORF;
         s_right_curve[i] = 3 - voice->op[i].rc;
       }
     }
@@ -670,7 +673,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = ZERO;
     else
-      s_level_scaling[i] = param_mul(depth, (curve ? f32_to_param(powf(M_E, (dp - 72) * .074074074f)) : s_level_scale_factor * dp));
+//      s_level_scaling[i] = param_mul(depth, (curve ? f32_to_param(powf(M_E, (dp - 72) * .074074074f)) : s_level_scale_factor * dp));
+      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
 //    s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
   }
 /*  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
