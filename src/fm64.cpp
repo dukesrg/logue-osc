@@ -613,11 +613,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 }
 
-param_t calc_rate_release(uint8_t i, uint8_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
+param_t calc_rate(uint8_t i, uint8_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
   float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
 }
-
+/*
 #ifdef EG_SAMPLED
 uint32_t calc_rate(uint8_t i, uint8_t j, param_t prev_eglevel, float attack_rate_exp_factor, float release_rate_exp_factor, uint16_t pitch, uint32_t samples) {
 #else
@@ -648,10 +648,11 @@ uint32_t calc_rate(uint8_t i, uint8_t j, param_t prev_eglevel, float attack_rate
   return samples;
 #endif
 }
-
+*/
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
-  int32_t dp, curve = 0;
+  float rate_factor;
+  int32_t dl, dp, curve = 0;
   param_t depth = ZERO;
 #ifdef EG_SAMPLED
   uint32_t samples;
@@ -661,10 +662,27 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     samples = 0;
 #endif
     for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
+//#ifdef EG_SAMPLED
+//      samples = calc_rate(i, j, s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)], s_attack_rate_exp_factor, s_attack_rate_exp_factor, params->pitch, samples);
+//#else
+//      calc_rate(i, j, s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)], s_attack_rate_exp_factor, s_attack_rate_exp_factor, params->pitch);
+//#endif
+      dl = s_eglevel[i][j] - s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)];
+      if (dl != 0) {
+        if (dl < 0) {
+          rate_factor = DX7_DECAY_RATE_FACTOR;
+        } else {
+          rate_factor = DX7_ATTACK_RATE_FACTOR;
+        }
+        s_egsrate[i][j + (EG_STAGE_COUNT - 1)] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 #ifdef EG_SAMPLED
-      samples = calc_rate(i, j, s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)], s_attack_rate_exp_factor, s_attack_rate_exp_factor, params->pitch, samples);
-#else
-      calc_rate(i, j, s_eglevel[i][j ? (j - 1) : (EG_STAGE_COUNT - 1)], s_attack_rate_exp_factor, s_attack_rate_exp_factor, params->pitch);
+        samples += dl / s_egsrate[i][j + (EG_STAGE_COUNT - 1)];
+#endif
+      } else {
+        s_egsrate[i][j + (EG_STAGE_COUNT - 1)] = ZERO;
+      }
+#ifdef EG_SAMPLED
+      s_sample_count[i][j + (EG_STAGE_COUNT - 1)] = samples;
 #endif
     }
     dp = (params->pitch >> 8) - s_break_point[i];
@@ -701,8 +719,8 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 //    rscale = ((params->pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
 //    s_egsrate[i][EG_STAGE_COUNT - 1] = f32_to_param(DX7_DECAY_RATE_FACTOR * powf(2.f, s_release_rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
 //    s_egsrate[i][EG_STAGE_COUNT] = f32_to_param(DX7_ATTACK_RATE_FACTOR * powf(2.f, s_attack_rate_exp_factor * (s_egrate[i][EG_STAGE_COUNT - 1] + rscale)));
-    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate_release(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch);
-    s_egsrate[i][EG_STAGE_COUNT] = calc_rate_release(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, s_attack_rate_exp_factor, params->pitch);
+    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch);
+    s_egsrate[i][EG_STAGE_COUNT] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, s_attack_rate_exp_factor, params->pitch);
     s_egsrate_recip[i][0] = 1.f / s_egsrate[i][EG_STAGE_COUNT - 1];
     s_egsrate_recip[i][1] = 1.f / s_egsrate[i][EG_STAGE_COUNT];
 #ifdef EG_SAMPLED
