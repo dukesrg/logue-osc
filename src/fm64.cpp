@@ -113,10 +113,6 @@
   #define FEEDBACK_RECIP 0x007FFFFF // <1/256
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-//  #define DX7_DECAY_RATE_FACTOR 0xFE666666 // -1/8
-//#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
-//  #define DX7_LEVEL_SCALE_FACTOR 0x02D82D83 // 1/45
-//  #define DX11_LEVEL_SCALE_FACTOR 0x01E9131B // 1/(91-24) C1-G6
   #define DX7_RATE_SCALING_FACTOR 0x12492492 // 1/7
   #define DX11_RATE_SCALING_FACTOR 0x2AAAAAAB // 1/3
 #else
@@ -139,10 +135,6 @@
   #define FEEDBACK_RECIP .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-//  #define DX7_DECAY_RATE_FACTOR -.125f
-//#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
-//  #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
-//  #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1-G6
   #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
   #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 #endif
@@ -159,8 +151,9 @@
 //#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
 #define RATE_SCALING_FACTOR .445291664f // reversed from measures for current curve function
 
+//#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
 #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
-#define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1-G6
+#define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1...G6
 #define LEVEL_SCALE_FACTORF 0.0078740157f // 1/127
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
@@ -186,8 +179,6 @@ static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT];
 static uint32_t s_sample_count_shadow[OPERATOR_COUNT][EG_STAGE_COUNT];
 #endif
-
-//static uint8_t s_pegstage;
 
 #ifdef SHAPE_LFO
 static uint8_t s_assignable[3];
@@ -215,9 +206,10 @@ static param_t s_feedback_opval[2];
 #endif
 
 /*
+static uint8_t s_pegstage;
 static param_t s_pegrate[EG_STAGE_COUNT];
 static param_t s_peglevel[EG_STAGE_COUNT];
-static param_t s_pegval[OPERATOR_COUNT];
+static param_t s_pegval;
 */
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
@@ -298,7 +290,7 @@ void initvoice() {
       s_kvs[i] = voice->op[i].ts;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
       s_params[p_op6_level + i * 10] = scale_level(voice->op[i].tl) * LEVEL_SCALE_FACTOR;
-      s_break_point[i] = voice->op[i].bp + 21;
+      s_break_point[i] = voice->op[i].bp + NOTE_A_1;
 //fold negative/position curves into curve depth sign
       if (voice->op[i].lc < 2) {
         s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTORF;
@@ -361,7 +353,7 @@ void initvoice() {
       s_kvs[i] = voice->op[i].kvs;
       s_params[p_op6_rate_scale + i * 10] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
       s_params[p_op6_level + i * 10] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
-      s_break_point[i] = 36; // C1
+      s_break_point[i] = NOTE_C1;
       s_left_depth[i] = 0;
       s_right_depth[i] = -voice->op[i].ls;
       s_left_curve[i] = 0;
@@ -613,7 +605,7 @@ uint32_t calc_rate(uint8_t i, uint8_t j, param_t prev_eglevel, float attack_rate
       rate_factor = DX7_ATTACK_RATE_FACTOR;
       rate_exp_factor = attack_rate_exp_factor;
     }
-    rscale = ((pitch >> 8) - 21) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
+    rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * param_to_f32(s_params[p_op6_rate_scale + i * 10]);
     s_egsrate_shadow[i][j] = f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
 #ifdef EG_SAMPLED
     samples += dl / s_egsrate_shadow[i][j];
@@ -657,22 +649,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_level_scaling[i] = ZERO;
     else
       s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
-//      s_oplevel[i] = param_sum(s_params[p_op6_level + i * 10], s_params[p_velocity] * s_kvs[i], s_level_scaling[i]);
-//      if (s_oplevel[i] < ZERO)
-//        s_oplevel[i] = ZERO;
   }
-/*  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    if (s_opi)
-      s_phase[i] = ZERO_PHASE;
-//todo: to reset or not to reset - that is the question (stick with the operator phase init)
-    s_opval[i] = ZERO;
-    s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
-    s_egstage[i] = 0;
-  }
-#ifdef EG_SAMPLED
-  s_sample_num = 0;
-#endif
-*//*
+/*
   s_pegstage = 0;
   s_egval = s_eglevel[EG_STAGE_COUNT - 1];
 */
@@ -695,9 +673,6 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
     calc_rate(i, EG_STAGE_COUNT - 1, egval[i], s_attack_rate_exp_factor, s_release_rate_exp_factor, params->pitch);
 #endif
   }
-//  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-//    s_egstage[i] = EG_STAGE_COUNT - 1;
-//  }
 //  s_state |= state_noteoff;
   s_state = state_noteoff;
 }
@@ -712,7 +687,6 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       switch (index) {
 #ifdef FEEDBACK
         case p_feedback:
-//          param = (0x80 >> (8 - (value >>= 7))) * FEEDBACK_RECIP;
           param = value == 0 ? ZERO : f32_to_param(powf(2.f, value * 0.00684261974f) * FEEDBACK_RECIPF); // 0, 1/2...1/128 -> 1/4...1/256 (implied 1/2 ratio for LPF)
           break;
 #endif

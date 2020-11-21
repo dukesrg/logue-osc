@@ -27,7 +27,9 @@
 #define DX7_PEG_STAGE_COUNT 4
 #define DX11_PEG_STAGE_COUNT 3
 
-#define TRANSPOSE_CENTER 24
+#define NOTE_A_1 21
+#define NOTE_C1 36
+#define TRANSPOSE_CENTER 24 // C1 - C3
 #define PEG_CENTER 50
 #define PEG_SCALE 16
 
