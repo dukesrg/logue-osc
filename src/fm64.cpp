@@ -68,7 +68,13 @@
 //  #define USE_FASTSINQ //not suitable for FM
   #ifndef WFBITS
     #ifndef USE_FASTSINQ
-      #define OSC_SIN_Q_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+      #ifdef WFSIN32
+        #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+      #else
+        #ifdef WFSIN16
+          #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+        #endif
+      #endif
       #define OSC_SIN_Q
     #endif
   #endif
@@ -533,20 +539,19 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
-      if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-        if (s_algorithm[i] & !ALG_FBK_MASK) {
-          if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
-          if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
-          if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
-#ifdef OP6
-          if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
-          if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
-#endif
-        } else {
+      if (s_algorithm[i] & ALG_FBK_MASK) {
 #ifdef FEEDBACK
-          modw0 += s_feedback_opval[0] + s_feedback_opval[1];
+        modw0 += s_feedback_opval[0] + s_feedback_opval[1];
 #endif
-        }
+      } else
+      if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+#ifdef OP6
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+#endif
       }
 #ifdef WFBITS
 //#ifdef SHAPE_LFO
