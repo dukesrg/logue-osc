@@ -389,8 +389,8 @@ void initvoice() {
 #endif
 #endif
   }
+  feedback_src();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    feedback_src();
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
 //    s_sample_count[s_active_rate][i][EG_STAGE_COUNT - 2] = 0xFFFFFFFF;
