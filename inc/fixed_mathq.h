@@ -11,6 +11,7 @@
 #pragma once
 
 #include "fixed_math.h"
+#include "arm.h"
 
 #define q7_to_q31(q) ((q31_t)(q) << 24)
 #define q31_to_q7(q) ((q15_t)((q31_t)(q) >> 24))

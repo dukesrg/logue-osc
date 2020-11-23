@@ -10,6 +10,7 @@
 
 #include "userosc.h"
 #include "fixed_mathq.h"
+#include "arm.h"
 
 //#define OP6 //6-operator support
 //#define OP4 //4-operator support
@@ -239,14 +240,6 @@ static uint8_t s_state = 0;
 #else
 static param_t eg_lut[1024];
 #endif
-
-static inline __attribute__((always_inline, optimize("Ofast")))
-int32_t smmul(int32_t op1, int32_t op2)
-{
-  int32_t result;
-  __ASM volatile ("smmul %0, %1, %2" : "=r" (result) : "r" (op1), "r" (op2) );
-  return result;
-}
 
 void feedback_src() {
 #ifdef FEEDBACK
