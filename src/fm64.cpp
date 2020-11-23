@@ -89,6 +89,8 @@
   #define param_add(a,b) q31add(a,b)
   #define param_sum(a,b,c) q31add(q31add(a,b),c)
   #define param_mul(a,b) q31mul(a,b)
+  #define param_eglut(a,b) eg_lut[smmul(a,b)>>20]
+  #define param_feedback(a,b) smmul(a,b)
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
   #else
@@ -116,7 +118,8 @@
     #define ZERO_PHASE 0.f
   #endif
   #define ZERO 0
-  #define FEEDBACK_RECIP 0x007FFFFF // <1/256
+  #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+  #define FEEDBACK_RECIPF .0078125f // 1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
   #define DX7_RATE_SCALING_FACTOR 0x12492492 // 1/7
@@ -131,6 +134,8 @@
   #define param_add(a,b) ((a)+(b))
   #define param_sum(a,b,c) ((a)+(b)+(c))
   #define param_mul(a,b) ((a)*(b))
+  #define param_eglut(a,b) eg_lut[((int32_t)((a)*(b)))>>21]
+  #define param_feedback(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
   #define f32_to_pitch(a) (a)
@@ -139,13 +144,12 @@
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .00390625f // 1/256
+  #define FEEDBACK_RECIPF .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
   #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
   #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 #endif
-
-#define FEEDBACK_RECIPF .00390625f // 1/256
 
 #define DX7_RATE_EXP_FACTOR .16f
 #define DX11_RATE_EXP_FACTOR .505f
@@ -235,6 +239,14 @@ static uint8_t s_state = 0;
 #else
 static param_t eg_lut[1024];
 #endif
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+int32_t smmul(int32_t op1, int32_t op2)
+{
+  int32_t result;
+  __ASM volatile ("smmul %0, %1, %2" : "=r" (result) : "r" (op1), "r" (op2) );
+  return result;
+}
 
 void feedback_src() {
 #ifdef FEEDBACK
@@ -553,23 +565,21 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
 #endif
       }
-      q31_t level;
-      __ASM volatile ("SMMUL %0, %1, %2" : "=r" (level) : "r" (s_egval[i]), "r" (s_oplevel[i]));
-      level = eg_lut[level >> 20];
 #ifdef WFBITS
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
-      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), level);
-
+//      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[smmul(s_egval[i], s_oplevel[i]) >> 20]);
+      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), param_eglut(s_egval[i], s_oplevel[i]));
 //#endif
 #else
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
 //      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
-      s_opval[i] = param_mul(osc_sin(modw0), level);
+//      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[smmul(s_egval[i], s_oplevel[i]) >> 20]);
+      s_opval[i] = param_mul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i]));
 //#endif
 #endif
 
@@ -577,9 +587,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       if (i == s_feedback_src) {
         s_feedback_opval[1] = s_feedback_opval[0];
 #ifdef SHAPE_LFO
-        s_feedback_opval[0] = param_mul(s_opval[i], feedback);
+        s_feedback_opval[0] = param_feedback(s_opval[i], feedback);
 #else
-        s_feedback_opval[0] = param_mul(s_opval[i], s_params[p_feedback]);
+        s_feedback_opval[0] = param_feedback(s_opval[i], s_params[p_feedback]);
 #endif
       }
 #endif
