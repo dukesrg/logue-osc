@@ -549,9 +549,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       break;
 */
 //  }
+#ifdef FEEDBACK
   if (s_assignable[2])
     feedback = param_add(feedback, params->shape_lfo);
   else
+#endif
     lfo = q31_to_param(params->shape_lfo);
 #endif
 
@@ -596,11 +598,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ".byte 0x0D\n" \
 ".byte 0x08\n" \
 ".byte 0x03\n" \
-"lsls r1, %2, #31\n" \
+"lsls r1, %2, #27\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
 "addmi %0, %0, r1\n" \
-"lsls r1, %2, #30\n" \
+"lsls r1, %2, #28\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %5]\n" \
 "addmi %0, %0, r1\n" \
@@ -608,16 +610,16 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%3, %6]\n" \
 "addmi %0, %0, r1\n" \
-"lsls r1, %2, #28\n" \
+"lsls r1, %2, #30\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %7]\n" \
 "addmi %0, %0, r1\n" \
-"lsls r1, %2, #27\n" \
+"lsls r1, %2, #31\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %8]\n" \
 "addmi %0, %0, r1\n" \
 : "+r" (modw0) \
-: "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (0), "i" (4), "i" (8), "i" (12), "i" (16) \
+: "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
 : "r1" \
           );
 #else
@@ -627,7 +629,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ".byte 0x0C\n" \
 ".byte 0x07\n" \
 ".byte 0x02\n" \
-"lsls r1, %2, #31\n" \
+"lsls r1, %2, #29\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
 "addmi %0, %0, r1\n" \
@@ -635,12 +637,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%3, %5]\n" \
 "addmi %0, %0, r1\n" \
-"lsls r1, %2, #29\n" \
+"lsls r1, %2, #31\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %6]\n" \
 "addmi %0, %0, r1\n" \
 : "+r" (modw0) \
-: "r" (modw0), "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (0), "i" (4), "i" (8) \
+: "r" (modw0), "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (8), "i" (4), "i" (0) \
 : "r1" \
           );
 #endif
