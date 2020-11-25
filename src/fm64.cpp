@@ -25,6 +25,7 @@
 
 #include "fm64.h"
 
+#define MOD_ASM //ASM optimized modulation matrix calculation
 //#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
@@ -196,7 +197,9 @@ static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 #endif
 
 static param_t s_velocity;
+#ifdef FEEDBACK
 static param_t s_feedback;
+#endif
 static param_t s_op_level[OPERATOR_COUNT];
 static float s_op_rate_scale[OPERATOR_COUNT];
 #ifdef WFBITS
@@ -496,7 +499,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
 #ifdef SHAPE_LFO
 //  param_t oplevel[OPERATOR_COUNT];
+#ifdef FEEDBACK
   param_t feedback = s_feedback;
+#endif
   param_t lfo = 0;
 #endif
 
@@ -555,6 +560,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
+/*
       if (s_algorithm[i] & ALG_FBK_MASK) {
 #ifdef FEEDBACK
         modw0 += s_feedback_opval[0] + s_feedback_opval[1];
@@ -569,6 +575,83 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
 #endif
       }
+*/
+      if (!(s_algorithm[i] & ALG_FBK_MASK)) {
+        if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
+#ifndef MOD_ASM
+#ifdef OP6
+          if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+          if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
+#endif
+          if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+          if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
+          if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
+#else
+#ifdef OP6
+          __asm__ volatile ( \
+"tbb [pc, %1]\n" \
+".byte 0x1C\n" \
+".byte 0x17\n" \
+".byte 0x12\n" \
+".byte 0x0D\n" \
+".byte 0x08\n" \
+".byte 0x03\n" \
+"lsls r1, %2, #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %4]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %5]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %6]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #28\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %7]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #27\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %8]\n" \
+"addmi %0, %0, r1\n" \
+: "+r" (modw0) \
+: "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (0), "i" (4), "i" (8), "i" (12), "i" (16) \
+: "r1" \
+          );
+#else
+        __asm__ volatile ( \
+"tbb [pc, %1]\n" \
+".byte 0x11\n" \
+".byte 0x0C\n" \
+".byte 0x07\n" \
+".byte 0x02\n" \
+"lsls r1, %2, #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %4]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %5]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %6]\n" \
+"addmi %0, %0, r1\n" \
+: "+r" (modw0) \
+: "r" (modw0), "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (0), "i" (4), "i" (8) \
+: "r1" \
+          );
+#endif
+#endif
+        }
+#ifdef FEEDBACK
+      } else {
+          modw0 += s_feedback_opval[0] + s_feedback_opval[1];
+#endif
+      }
+
 #ifdef WFBITS
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);

@@ -49,3 +49,8 @@ int32_t smulwt(int32_t op1, int32_t op2)
   __asm__ volatile ("smulwt %0, %1, %2" : "=r" (result) : "r" (op1), "r" (op2) );
   return result;
 }
+
+#define tbb(a,b) __asm__ volatile ("tbb [%0, %1]" : : "r" (a), "r" (b))
+#define tbb_pc(a) __asm__ volatile ("tbb [pc, %0]" : : "r" (a))
+#define tbh(a,b) __asm__ volatile ("tbh [%0, %1, lsl #1]" : : "r" (a), "r" (b))
+#define tbh_pc(a) __asm__ volatile ("tbh [pc, %0, lsl #1]" : : "r" (a))
