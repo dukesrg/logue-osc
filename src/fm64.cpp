@@ -125,8 +125,6 @@
   #define FEEDBACK_RECIPF .0078125f // 1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-//  #define DX7_RATE_SCALING_FACTOR 0x12492492 // 1/7
-//  #define DX11_RATE_SCALING_FACTOR 0x2AAAAAAB // 1/3
 #else
   typedef float param_t;
   typedef float phase_t;
@@ -151,8 +149,6 @@
   #define FEEDBACK_RECIPF .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-//  #define DX7_RATE_SCALING_FACTOR .142857143f // 1/7
-//  #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 #endif
 
 #define DX7_RATE_EXP_FACTOR .16f
@@ -178,18 +174,18 @@
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
-static uint8_t s_algorithm_idx = -1;
+static uint32_t s_algorithm_idx = -1;
 static const uint8_t *s_algorithm;
-static uint8_t s_opi;
-static uint8_t s_pitchfreq[OPERATOR_COUNT];
-static uint8_t s_egstage[OPERATOR_COUNT];
-static uint8_t s_transpose;
-static uint8_t s_kvs[OPERATOR_COUNT];
-static uint8_t s_break_point[OPERATOR_COUNT];
 static float s_left_depth[OPERATOR_COUNT];
 static float s_right_depth[OPERATOR_COUNT];
+static uint8_t s_pitchfreq[OPERATOR_COUNT];
+static uint8_t s_egstage[OPERATOR_COUNT];
+static uint8_t s_kvs[OPERATOR_COUNT];
+static uint8_t s_break_point[OPERATOR_COUNT];
 static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
+static uint8_t s_opi;
+static uint8_t s_transpose;
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -206,9 +202,9 @@ static float s_op_rate_scale[OPERATOR_COUNT];
 static uint32_t s_op_waveform[OPERATOR_COUNT];
 #endif
 #ifdef SHAPE_LFO
-static uint8_t s_assignable[3];
+static uint32_t s_assignable[3];
 #else
-static uint8_t s_assignable[2];
+static uint32_t s_assignable[2];
 #endif
 
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -246,7 +242,7 @@ enum {
   state_noteon,
   state_noteoff,
 };
-static uint8_t s_state = 0;
+static uint32_t s_state = 0;
 //static uint8_t s_active_rate = 0;
 
 #ifdef EGLUT
@@ -257,12 +253,9 @@ static param_t eg_lut[1024];
 
 void feedback_src() {
 #ifdef FEEDBACK
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    if (s_algorithm[i] & ALG_FBK_MASK) {
-      s_feedback_src = 0;
-      for (uint32_t j = (s_algorithm[i] & (ALG_FBK_MASK - 1)) >> 1; j; j >>= 1, s_feedback_src++);
-    }
-  }
+  uint32_t i;
+  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
+  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
 #endif
 }
 
@@ -392,11 +385,11 @@ void initvoice() {
 #ifdef OP6
     s_op_level[4] = ZERO;
     s_op_level[5] = ZERO;
-    s_kvs[4] = ZERO;
-    s_kvs[5] = ZERO;
+    s_kvs[4] = 0;
+    s_kvs[5] = 0;
     for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-      s_egrate[4][j] = ZERO;
-      s_egrate[5][j] = ZERO;
+      s_egrate[4][j] = 0;
+      s_egrate[5][j] = 0;
       s_eglevel[4][j] = ZERO;
       s_eglevel[5][j] = ZERO;
     }
@@ -462,8 +455,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     uint32_t samples;
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-//      s_egsrate[i][EG_STAGE_COUNT - 1] = s_egsrate_shadow[i][EG_STAGE_COUNT - 1];
-//      s_sample_count[i][EG_STAGE_COUNT - 1] = s_sample_count_shadow[i][EG_STAGE_COUNT - 1];
       samples = s_sample_num;
       dl = s_eglevel[i][EG_STAGE_COUNT - 1] - s_egval[i];
       if (dl != 0) {
@@ -562,22 +553,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
-/*
-      if (s_algorithm[i] & ALG_FBK_MASK) {
-#ifdef FEEDBACK
-        modw0 += s_feedback_opval[0] + s_feedback_opval[1];
-#endif
-      } else
-      if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
-        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
-        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
-        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
-#ifdef OP6
-        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
-        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
-#endif
-      }
-*/
       if (s_algorithm[i] & ALG_MOD_MASK) {
 #ifndef MOD_ASM
 #ifdef OP6
@@ -591,12 +566,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef OP6
         __asm__ volatile ( \
 "tbb [pc, %1]\n" \
-".byte 0x1C\n" \
-".byte 0x17\n" \
-".byte 0x12\n" \
-".byte 0x0D\n" \
-".byte 0x08\n" \
-".byte 0x03\n" \
+".byte 0x1D\n" \
+".byte 0x18\n" \
+".byte 0x13\n" \
+".byte 0x0E\n" \
+".byte 0x09\n" \
+".byte 0x04\n" \
+".byte 0x00\n" \
+".byte 0x00\n" \
 "lsls r1, %2, #27\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
@@ -656,16 +633,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
-//      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
-//      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[smmul(s_egval[i], s_oplevel[i]) >> 20]);
       s_opval[i] = param_mul(osc_wavebank(modw0, s_op_waveform[i]), param_eglut(s_egval[i], s_oplevel[i]));
 //#endif
 #else
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
-//      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], s_oplevel[i]) >> 21]);
-//      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[smmul(s_egval[i], s_oplevel[i]) >> 20]);
       s_opval[i] = param_mul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i]));
 //#endif
 #endif
@@ -680,6 +653,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 #endif
+
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, s_opval[i]);
 
