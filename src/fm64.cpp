@@ -642,7 +642,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldrmi.w r1, [%3, %6]\n" \
 "addmi %0, %0, r1\n" \
 : "+r" (modw0) \
-: "r" (modw0), "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (8), "i" (4), "i" (0) \
+: "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (8), "i" (4), "i" (0) \
 : "r1" \
           );
 #endif
