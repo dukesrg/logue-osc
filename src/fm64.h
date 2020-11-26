@@ -50,7 +50,6 @@
 #ifdef OP6
   #define OPERATOR_COUNT DX7_OPERATOR_COUNT
 #else
-  #undef OPSIX
   #define OPERATOR_COUNT DX11_OPERATOR_COUNT
 #endif
 
