@@ -578,19 +578,18 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 */
-      if (!(s_algorithm[i] & ALG_FBK_MASK)) {
-        if (s_algorithm[i] & (ALG_FBK_MASK - 1)) {
+      if (s_algorithm[i] & ALG_MOD_MASK) {
 #ifndef MOD_ASM
 #ifdef OP6
-          if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
-          if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
+        if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
+        if (s_algorithm[i] & ALG_MOD3_MASK) modw0 += s_opval[3];
 #endif
-          if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
-          if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
-          if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
+        if (s_algorithm[i] & ALG_MOD4_MASK) modw0 += s_opval[2];
+        if (s_algorithm[i] & ALG_MOD5_MASK) modw0 += s_opval[1];
+        if (s_algorithm[i] & ALG_MOD6_MASK) modw0 += s_opval[0];
 #else
 #ifdef OP6
-          __asm__ volatile ( \
+        __asm__ volatile ( \
 "tbb [pc, %1]\n" \
 ".byte 0x1C\n" \
 ".byte 0x17\n" \
@@ -621,9 +620,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "+r" (modw0) \
 : "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
 : "r1" \
-          );
+        );
 #else
-        __asm__ volatile ( \
+      __asm__ volatile ( \
 "tbb [pc, %1]\n" \
 ".byte 0x11\n" \
 ".byte 0x0C\n" \
@@ -644,13 +643,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "+r" (modw0) \
 : "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (8), "i" (4), "i" (0) \
 : "r1" \
-          );
+        );
 #endif
 #endif
-        }
 #ifdef FEEDBACK
-      } else {
-          modw0 += s_feedback_opval[0] + s_feedback_opval[1];
+      } else if (s_algorithm[i] & ALG_FBK_MASK) {
+        modw0 += s_feedback_opval[0] + s_feedback_opval[1];
 #endif
       }
 
