@@ -174,7 +174,8 @@
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
-static uint32_t s_algorithm_idx = -1;
+static uint32_t s_algorithm_idx;
+static int32_t s_algorithm_offs;
 static const uint8_t *s_algorithm;
 static float s_left_depth[OPERATOR_COUNT];
 static float s_right_depth[OPERATOR_COUNT];
@@ -192,7 +193,7 @@ static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 //static uint32_t s_sample_count[2][OPERATOR_COUNT][EG_STAGE_COUNT - 1];
 #endif
 
-static param_t s_velocity;
+static param_t s_velocity = DEFAULT_VELOCITY;
 #ifdef FEEDBACK
 static param_t s_feedback;
 #endif
@@ -253,6 +254,7 @@ static param_t eg_lut[1024];
 
 void feedback_src() {
 #ifdef FEEDBACK
+  s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offs, ALGORITHM_COUNT - 1)];
   uint32_t i;
   for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
   s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
@@ -265,7 +267,6 @@ void initvoice() {
     const dx7_voice_t *voice = &dx_voices[s_bank][s_voice].dx7;
     s_opi = voice->opi;
     s_algorithm_idx = voice->als;
-    s_algorithm = dx7_algorithm[s_algorithm_idx];
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
@@ -339,7 +340,6 @@ void initvoice() {
 #else
     s_algorithm_idx = dx11_algorithm_lut[voice->alg];
 #endif
-    s_algorithm = dx7_algorithm[s_algorithm_idx];
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
 #ifdef FEEDBACK
@@ -416,7 +416,6 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
-  s_velocity = DEFAULT_VELOCITY;
 #ifndef EGLUT
   for (int32_t i = 0; i < 1024; i++) {
     eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
@@ -814,8 +813,10 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
   switch (index) {
-    case k_user_osc_param_shape:
     case k_user_osc_param_shiftshape:
+      if (s_assignable[0] == s_assignable[1])
+        break;
+    case k_user_osc_param_shape:
       index = s_assignable[index - k_user_osc_param_shape];
       switch (index) {
 #ifdef FEEDBACK
@@ -895,28 +896,30 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       }
       break;
     case k_user_osc_param_id1:
-      if (s_voice != value) {
+      if (s_voice != value) { //NTS-1 parameter change bounce workaround
         s_voice = value;
         initvoice();
       }
       break;
     case k_user_osc_param_id2:
-      if (s_bank != value) {
+      if (s_bank != value) { //NTS-1 parameter change bounce workaround
         s_bank = value;
         initvoice();
       }
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
+#ifdef SHAPE_LFO
     case k_user_osc_param_id5:
+#endif
       s_assignable[index - k_user_osc_param_id3] = value;
       break;
     case k_user_osc_param_id6:
-      if (s_algorithm_idx != value) {
-        s_algorithm_idx = value;
-        s_algorithm = dx7_algorithm[s_algorithm_idx];
-        feedback_src();
-      }
+      if (value == 0) //logues bipolar percent parameter initialization workaround
+        s_algorithm_offs = 0;
+      else
+        s_algorithm_offs = value - 100;
+      feedback_src();
       break;
     default:
       break;

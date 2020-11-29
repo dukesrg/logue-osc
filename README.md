@@ -32,7 +32,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FMxx|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69/49|Assignable controller 2 select 1&hellip;69/49|Shape LFO target select 1&hellip;2|[Algorithm](https://cdn.korg.com/us/products/upload/5cc6b8eb8a815777c811bbb3fc293c34_pc.jpg) 1&hellip;40|
+|FMxx|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69/49|Assignable controller 2 select 1&hellip;69/49|Shape LFO target select 1&hellip;2|[Algorithm](https://cdn.korg.com/us/products/upload/5cc6b8eb8a815777c811bbb3fc293c34_pc.jpg) offset -39&hellip;+39%|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
@@ -46,7 +46,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 * Using LFO with pitch or shape as a target may produce sound degradation on NTS-1 or multi-engine voice hang on -logues.
 * DX21/DX11 voices utilize only operators 6 to 3. Operators 1 and 2 levels are set to silent, but may be altered manually.
 * DX21/DX11 voices with algorithm 3 are initialized with different operator order to match DX7 algorithm 8.
-* Since there is no way to pass velocity to the oscillator FM64 utilizes assignable controller #01 as a velocity. Velocity will reset on a voice change to the default value. The default value is equivalent to 100 from 0&hellip;127 range though internally 10-bit precision is used.
+* Since there is no way to pass velocity to the oscillator, FMxx utilizes assignable controller for velocity control with 10-bit precision.
+* In case both Shape & Alt are bound to the same parameter, changing Alt value is ignored to avoid ambiguity for saving/restoring assignable parameter.
 * Anthologue patch select sets the VCO's parameters according to the selected patch. Further manual parameter edit may available for all supported features, which can exceed the original synth capabilities (e.x. Cross Mod can be activated for Monologue program).
 * Any types and combinations of logue-series can be injected in Anthologue.
 * Maximum number of Anthologue programs depends on their types and combinations, and can vary from 25 to 76.
@@ -60,6 +61,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 * On -logues, Prologue programs with timbre mode other than Split are loaded with sub timbre forcefully disabled, in order to avoid oscillator hang.
 * FM64 does not suport waveform select due to performance limitations.
 * Both FM64 and FM48 support manual selection from 40 algoritms introduced in Korg opsix, though several algorithm won't produce any sound with FM48.
+* FMxx algoritm parameter value is numerically the offset to the selected voice algorithm (with saturation). Just to enable both the ability to keep the default voice algorithm on oscillator init and to save/recall altered algorith with the program.
 
 |#|Morpheus LFO X&Y types|
 |-|-|

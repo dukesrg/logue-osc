@@ -53,6 +53,12 @@
   #define OPERATOR_COUNT DX11_OPERATOR_COUNT
 #endif
 
+#ifdef OPSIX
+  #define ALGORITHM_COUNT 32
+#else
+  #define ALGORITHM_COUNT 40
+#endif
+
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
 
 static const uint8_t dx7_algorithm[][DX7_OPERATOR_COUNT] = {
