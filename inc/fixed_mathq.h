@@ -11,6 +11,7 @@
 #pragma once
 
 #include "fixed_math.h"
+#include "arm.h"
 
 #define q7_to_q31(q) ((q31_t)(q) << 24)
 #define q31_to_q7(q) ((q15_t)((q31_t)(q) >> 24))
@@ -25,6 +26,11 @@
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t linintq(const q31_t fr, const q31_t x0, const q31_t x1) {
   return q31add(x0, q31mul(fr, q31sub(x1, x0)));
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t linintq(const q31_t fr, const q15_t x0, const q15_t x1) {
+  return q31add(q15_to_q31(x0), (fr >> 15) * q15sub(x1, x0));
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))

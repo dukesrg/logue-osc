@@ -7,18 +7,19 @@
         "dev_id" : 1701541188,
         "prg_id" : 0,
         "version" : "1.1-32",
-        "name" : "FM64",
+        "name" : "FM67",
         "num_param" : 6,
         "params" : [
             ["Voice", 0, 31, ""],
-            ["Bank", 0, 3, ""],
+            ["Bank", 0, 1, ""],
             ["Shape Assign", 0, 68, ""],
             ["Alt Assign", 0, 68, ""],
             ["-", 0, 0, ""],
             ["Algorithm", -39, 39, "%"]
         ],
         "custom_data" : [
-          ["Yamaha DX7/DX21/DX11-series voice banks", 64, 4096, 4, 1]
+          ["Yamaha DX7/DX21/DX11-series voice banks", 64, 4096, 2, 1],
+          ["Raw 16-bit PCM waveforms", 8256, 512, 16]
         ]
     }
 }
