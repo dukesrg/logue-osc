@@ -29,35 +29,29 @@
 //#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
+#define OSC_ATT4 //attenuate oscillator by 4 before adding to output
+//#define OSC_ATT6 //attenuate oscillator by 6 before adding to output
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
-  #ifdef WF16x2
+  #if defined(WF16x2)
     #include "waveforms16x2.h"
     #define WFBITS 4
-  #else
-  #ifdef WF32
+  #elif defined(WF32)
     #include "waveforms32.h"
     #define WFBITS 3
-  #else
-    #ifdef WF16
-      #include "waveforms16.h"
-      #define WFBITS 3
-    #else
-      #if defined(WF2) || defined(WF4) || defined(WF8)
-        #include "waveforms.h"
-        #ifdef WF8
-          #define WFBITS 3
-        #else
-          #ifdef WF4
-            #define WFBITS 2
-          #else
-            #define WFBITS 1
-          #endif
-        #endif
-      #endif
-    #endif
-  #endif
+  #elif defined(WF16)
+    #include "waveforms16.h"
+    #define WFBITS 3
+  #elif defined(WF8)
+    #include "waveforms.h"
+    #define WFBITS 3
+  #elif defined(WF4)
+    #include "waveforms.h"
+    #define WFBITS 2
+  #elif defined(WF2)
+    #include "waveforms.h"
+    #define WFBITS 1
   #endif
   #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 //todo: check and fix osc_apiq
@@ -68,17 +62,13 @@
   #endif
 //  #define OSC_NOTE_Q
 //  #define USE_FASTSINQ //not suitable for FM
-  #ifndef WFBITS
-    #ifndef USE_FASTSINQ
-      #ifdef WFSIN32
-        #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-      #else
-        #ifdef WFSIN16
-          #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-        #endif
-      #endif
-      #define OSC_SIN_Q
+  #if !defined(WFBITS) && !defined(USE_FASTSINQ)
+    #if defined(WFSIN32)
+     #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+    #elif defined(WFSIN16)
+        #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
     #endif
+    #define OSC_SIN_Q
   #endif
   #include "osc_apiq.h"
 #endif
@@ -94,6 +84,13 @@
   #define param_mul(a,b) q31mul(a,b)
   #define param_eglut(a,b) eg_lut[smmul(a,b)>>20]
   #define param_feedback(a,b) smmul(a,b)
+  #if defined(OSC_ATT4)
+    #define param_opout(a) ((a)>>2)
+  #elif defined(OSC_ATT6)
+    #define param_opout(a) smmul(a,0x2AAAAAAA) // 1/6
+  #else
+    #define param_opout(a) (a)
+  #endif
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
   #else
@@ -138,6 +135,13 @@
   #define param_mul(a,b) ((a)*(b))
   #define param_eglut(a,b) eg_lut[((int32_t)((a)*(b)))>>21]
   #define param_feedback(a,b) ((a)*(b))
+  #if defined(OSC_ATT4)
+    #define param_opout(a) ((a)*.25f)
+  #elif defined(OSC_ATT6)
+    #define param_opout(a) ((a)*.166666666f) // 1/6
+  #else
+    #define param_opout(a) (a)
+  #endif
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
   #define f32_to_pitch(a) (a)
@@ -654,7 +658,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 
       if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out = param_add(osc_out, s_opval[i]);
+        osc_out = param_add(osc_out, param_opout(s_opval[i]));
 
       s_phase[i] += opw0[i];
 #ifndef USE_Q31_PHASE
