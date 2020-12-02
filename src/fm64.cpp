@@ -25,7 +25,6 @@
 
 #include "fm64.h"
 
-#define MOD_ASM //ASM optimized modulation matrix calculation
 //#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
@@ -34,6 +33,7 @@
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
+  #define MOD_ASM //ASM optimized modulation matrix calculation
   #if defined(WF16x2)
     #include "waveforms16x2.h"
     #define WFBITS 4
