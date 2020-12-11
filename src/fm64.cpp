@@ -133,7 +133,7 @@
   #define param_add(a,b) ((a)+(b))
   #define param_sum(a,b,c) ((a)+(b)+(c))
   #define param_mul(a,b) ((a)*(b))
-  #define param_eglut(a,b) eg_lut[((int32_t)((a)*(b)))>>21]
+  #define param_eglut(a,b) eg_lut[(int32_t)((a)*(b)*1023.f)]
   #define param_feedback(a,b) ((a)*(b))
   #if defined(OSC_ATT4)
     #define param_opout(a) ((a)*.25f)
@@ -149,7 +149,7 @@
   #define pitch_mul(a,b) ((a)*(b))
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
-  #define FEEDBACK_RECIP .00390625f // 1/256
+  #define FEEDBACK_RECIP .0078125f // 1/128
   #define FEEDBACK_RECIPF .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
