@@ -30,6 +30,7 @@
 #define EG_SAMPLED //precalculate EG stages length in samples
 #define OSC_ATT4 //attenuate oscillator by 4 before adding to output
 //#define OSC_ATT6 //attenuate oscillator by 6 before adding to output
+//#define PEG //pitch EG enable
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
@@ -175,6 +176,7 @@
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
+#define PEG_SCALE 245.76f // 48/50 * 265
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
@@ -232,12 +234,13 @@ static uint8_t s_feedback_src;
 static param_t s_feedback_opval[2];
 #endif
 
-/*
+#ifdef PEG
+static int32_t s_pegrate[EG_STAGE_COUNT];
+static int32_t s_peglevel[EG_STAGE_COUNT];
+static uint32_t s_peg_sample_count[EG_STAGE_COUNT];
+static int32_t s_pegval;
 static uint8_t s_pegstage;
-static param_t s_pegrate[EG_STAGE_COUNT];
-static param_t s_peglevel[EG_STAGE_COUNT];
-static param_t s_pegval;
-*/
+#endif 
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
@@ -277,19 +280,12 @@ void initvoice() {
     s_feedback_opval[0] = ZERO;
     s_feedback_opval[1] = ZERO;
 #endif
-/*
-#ifdef USE_Q31
-//todo: PEG level precalc & Q31
-#else
-  float preveglevel = (float)(voice->pl[EG_STAGE_COUNT - 1] - PEG_CENTER) * PEG_SCALE;
-  for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-    s_pegrate[j] = k_samplerate_recipf * SCALE_RECIP * (s_peglevel[j] - prevlevel) / (RATE_FACTOR * (100 - voice->pr[j]));
-    prevlevel = voice->pl[j];
-    s_peglevel[j] = voice->pl[j];
+#ifdef PEG
+    for (uint32_t i = 0; i < EG_STAGE_COUNT; i++) {
+      s_pegrate[i] = k_samplerate_recipf * SCALE_RECIP * (s_peglevel[j] - prevlevel) / (RATE_FACTOR * (100 - voice->pr[i]));
+      s_peglevel[i] = (voice->pl[i] - PEG_CENTER) * PEG_SCALE;
+    }
 #endif
-  }
-*/
-
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_pitchfreq[i] = !voice->op[i].pm;
 #ifdef WFBITS
@@ -378,8 +374,8 @@ void initvoice() {
       s_op_rate_scale[i] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
       s_op_level[i] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
       s_break_point[i] = NOTE_C1;
-      s_left_depth[i] = 0;
-      s_right_depth[i] = -voice->op[i].ls;
+      s_left_depth[i] = 0.f;
+      s_right_depth[i] = - voice->op[i].ls * LEVEL_SCALE_FACTORF;
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
     }
@@ -451,6 +447,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef EG_SAMPLED
     s_sample_num = 0;
 #endif
+#ifdef PEG
+    s_pegval = s_peglevel[EG_STAGE_COUNT - 1];
+    s_pegstage = 0;
+#endif
     s_state &= ~state_noteon;
   } else {
     int32_t dl;
@@ -487,10 +487,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_state &= ~(state_noteoff | state_noteon);
   }
   }
-//todo: PEG level
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
-  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
+  int32_t pitch = params->pitch;
+#ifdef PEG
+  pitch += s_pegval;
+#endif
+  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((pitch >> 8) + s_transpose, pitch & 0xFF));
 #ifdef SHAPE_LFO
 //  param_t oplevel[OPERATOR_COUNT];
 #ifdef FEEDBACK
@@ -685,31 +688,20 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
+#ifdef PEG
+    if (
+      s_sample_num < s_peg_sample_count[s_pegstage]
+    ) {
+      s_pegval += s_pegsrate[s_pegstage];
+    } else {
+      s_pegval = s_peglevel[s_pegstage];
+      if (s_pegstage < EG_STAGE_COUNT - 1)
+        s_pegstage++;
+    }
+#endif
 #ifdef EG_SAMPLED
     s_sample_num++;
 #endif
-/*
-//todo: PEG level
-#ifdef USE_Q31
-    s_pegval = q31add(s_pegval, s_pegrate[s_pegstage]);
-    if (
-      (s_pegrate[s_pegstage] > 0 && s_pegval >= s_pegrate[s_pegstage])
-      || (s_pegrate[s_pegstage] < 0 && s_pegval <= s_pegrate[s_pegstage])
-      || s_pegrate[s_pegstage] == 0
-    ) {
-#else
-    s_pegval += s_pegrate[s_pegstage];
-    if (
-      (s_pegrate[s_pegstage] > 0.f && s_pegval >= s_pegrate[s_pegstage])
-      || (s_pegrate[s_pegstage] < 0.f && s_pegval <= s_pegrate[s_pegstage])
-      || s_pegrate[s_pegstage] == 0.f
-    ) {
-#endif
-       s_pegval = s_peglevel[s_pegstage];
-       if (s_pegstage < 3)
-        s_pegstage++;
-    }
-*/
 #ifdef SHAPE_LFO
     *y = param_to_q31(param_add(osc_out, param_mul(osc_out, lfo)));
 #else
@@ -727,7 +719,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor;
   int32_t dl, dp, curve = 0;
-  param_t depth = ZERO;
+  float depth = 0.f;
 //  uint8_t shadow_rate = s_active_rate ^ 1;
 #ifdef EG_SAMPLED
   uint32_t samples;
@@ -792,9 +784,6 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef EG_SAMPLED
     s_sample_num = 0;
 #endif
-*//*
-  s_pegstage = 0;
-  s_egval = s_eglevel[EG_STAGE_COUNT - 1];
 */
   s_state = state_noteon;
 }

@@ -31,7 +31,6 @@
 #define NOTE_C1 36
 #define TRANSPOSE_CENTER 24 // C1 - C3
 #define PEG_CENTER 50
-#define PEG_SCALE 16
 
 #define ALG_OUT_MASK 0x80
 #define ALG_FBK_MASK 0x40
