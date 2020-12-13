@@ -225,7 +225,7 @@ static param_t s_level_scaling[OPERATOR_COUNT];
 static float s_attack_rate_exp_factor;
 static float s_release_rate_exp_factor;
 
-static param_t s_level_scale_factor;
+static float s_level_scale_factor;
 
 #ifdef FEEDBACK
 static uint8_t s_feedback_src;
