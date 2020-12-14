@@ -9,7 +9,7 @@ all: $(BUILD)
 %-build: %
 	@for platform in $(PLATFORMS) ; do \
 	$(MAKE) -f osc.mk PLATFORMDIR=$(PLATFORMDIR)/$$platform PLATFORM=$$platform PROJECTDIR=$< ; \
-	$(MAKE) -f osc.mk PLATFORMDIR=$(PLATFORMDIR)/$$platform PROJECTDIR=$< clean ; \
+#	$(MAKE) -f osc.mk PLATFORMDIR=$(PLATFORMDIR)/$$platform PROJECTDIR=$< clean ; \
 	done
 
 clean: $(CLEAN)

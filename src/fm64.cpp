@@ -123,6 +123,14 @@
   #define FEEDBACK_RECIPF .0078125f // 1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+  static param_t comp[] = {
+    0xFFFFFFFF,
+    0x7FFFFFFF,
+    0x55555555,
+    0x3FFFFFFF,
+    0x33333333,
+    0x2AAAAAAA,
+  };
 #else
   typedef float param_t;
   typedef float phase_t;
@@ -154,13 +162,30 @@
   #define FEEDBACK_RECIPF .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+  static param_t comp[] = {
+    1.f,
+    .5f,
+    .333333333f,
+    .25f,
+    .2f,
+    .166666666f,
+  };
 #endif
+
+// Sampling frequency:
+//20.368032usec ~ 49096.545017211284821233588006932Hz
+//#define DX7_SAMPLING_FREQ 49096.545f
+//#define DX7_TO_LOGUE_FREQ = 1.0228446878585684337756997501444f // 49096.545/48000
+//0.0325870980969347836053763275142 // log2(DX7_TO_LOGUE_FREQ)
 
 #define DX7_RATE_EXP_FACTOR .16f
 #define DX11_RATE_EXP_FACTOR .505f
 #define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
-#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
-#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
+//#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
+//#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
+#define DX7_ATTACK_RATE_FACTOR 4.66187255859375e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) - 1/(2^(21 + DX7_TO_LOGUE_FREQ)
+#define DX7_DECAY_RATE_FACTOR -5.8273406982421875e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
+#define DX7_HOLD_RATE_FACTOR .488832768f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
 //#define RATE_SCALING_FACTOR .061421131f
 //#define RATE_SCALING_FACTOR .041666667f
 //#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
@@ -177,6 +202,8 @@
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 #define PEG_SCALE 245.76f // 48/50 * 265
+#define PEG_RATE_EXP_FACTOR .16f
+#define PEG_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
@@ -193,6 +220,7 @@ static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
 static uint8_t s_transpose;
+static uint8_t s_comp;
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -235,11 +263,12 @@ static param_t s_feedback_opval[2];
 #endif
 
 #ifdef PEG
-static int32_t s_pegrate[EG_STAGE_COUNT];
-static int32_t s_peglevel[EG_STAGE_COUNT];
-static uint32_t s_peg_sample_count[EG_STAGE_COUNT];
+static int32_t s_pegrate[PEG_STAGE_COUNT];
+static int32_t s_peglevel[PEG_STAGE_COUNT];
+static uint32_t s_peg_sample_count[PEG_STAGE_COUNT];
 static int32_t s_pegval;
 static uint8_t s_pegstage;
+static uint8_t s_peg_stage_start;
 #endif 
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
@@ -265,6 +294,12 @@ void feedback_src() {
   uint32_t i;
   for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
   s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
+  s_comp = 0;
+  for (i = 0; i < OPERATOR_COUNT; i++) {
+    if (s_algorithm[i] & ALG_OUT_MASK)
+      s_comp++;
+  }
+  s_comp--;
 #endif
 }
 
@@ -281,9 +316,10 @@ void initvoice() {
     s_feedback_opval[1] = ZERO;
 #endif
 #ifdef PEG
-    for (uint32_t i = 0; i < EG_STAGE_COUNT; i++) {
-      s_pegrate[i] = k_samplerate_recipf * SCALE_RECIP * (s_peglevel[j] - prevlevel) / (RATE_FACTOR * (100 - voice->pr[i]));
+    s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
+    for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = (voice->pl[i] - PEG_CENTER) * PEG_SCALE;
+      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]);
     }
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -344,6 +380,13 @@ void initvoice() {
     s_transpose = voice->trps - TRANSPOSE_CENTER;
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
+#endif
+#ifdef PEG
+    s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
+    for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
+      s_peglevel[i] = (voice->pl[i - s_peg_stage_start] - PEG_CENTER) * PEG_SCALE;
+      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]);
+    }
 #endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
       uint32_t i;
@@ -409,6 +452,13 @@ void initvoice() {
     s_egval[i] = ZERO;
     s_opval[i] = ZERO;
   }
+#ifdef PEG
+  uint32_t samples = 0;
+  for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
+    samples += (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]) / s_pegrate[i];
+    s_peg_sample_count[i] = samples;
+  }
+#endif
 }
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
@@ -448,8 +498,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_sample_num = 0;
 #endif
 #ifdef PEG
-    s_pegval = s_peglevel[EG_STAGE_COUNT - 1];
-    s_pegstage = 0;
+    s_pegval = s_peglevel[PEG_STAGE_COUNT - 1];
+    s_pegstage = s_peg_stage_start;
 #endif
     s_state &= ~state_noteon;
   } else {
@@ -484,6 +534,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_egstage[i] = EG_STAGE_COUNT - 1;
 //      s_egstage[i] = EG_STAGE_COUNT - 2;
     }
+#ifdef PEG
+    s_pegstage = PEG_STAGE_COUNT - 1;
+#endif
     s_state &= ~(state_noteoff | state_noteon);
   }
   }
@@ -692,10 +745,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     if (
       s_sample_num < s_peg_sample_count[s_pegstage]
     ) {
-      s_pegval += s_pegsrate[s_pegstage];
+      s_pegval += s_pegrate[s_pegstage];
     } else {
       s_pegval = s_peglevel[s_pegstage];
-      if (s_pegstage < EG_STAGE_COUNT - 1)
+      if (s_pegstage < PEG_STAGE_COUNT - 2)
         s_pegstage++;
     }
 #endif
