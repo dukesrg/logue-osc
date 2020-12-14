@@ -192,9 +192,9 @@
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
-#define PEG_SCALE 245.76f // 48/50 * 265
+#define PEG_SCALE 245.76f // 48/50 * 256
 #define PEG_RATE_EXP_FACTOR .16f
-#define PEG_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
+#define PEG_RATE_FACTOR 4.66187255859375e-7f
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
@@ -255,10 +255,11 @@ static param_t s_feedback_opval[2];
 #endif
 
 #ifdef PEG
-static int32_t s_pegrate[PEG_STAGE_COUNT];
+static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
 static int32_t s_peglevel[PEG_STAGE_COUNT];
 static uint32_t s_peg_sample_count[PEG_STAGE_COUNT];
 static int32_t s_pegval;
+static float s_pegrate_releaserecip;
 static uint8_t s_pegstage;
 static uint8_t s_peg_stage_start;
 #endif 
@@ -447,10 +448,16 @@ void initvoice() {
   }
 #ifdef PEG
   uint32_t samples = 0;
-  for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
+  for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT - 1; i++) {
     samples += (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]) / s_pegrate[i];
     s_peg_sample_count[i] = samples;
   }
+  s_pegrate[PEG_STAGE_COUNT] = s_pegrate[PEG_STAGE_COUNT - 1];
+  s_pegrate_releaserecip = 1.f / s_pegrate[PEG_STAGE_COUNT];
+  s_pegrate[PEG_STAGE_COUNT - 1] = 0;
+  s_peg_sample_count[PEG_STAGE_COUNT - 1] = 0xFFFFFFFF;
+  s_pegstage = PEG_STAGE_COUNT - 1;
+  s_pegval = 0;
 #endif
 }
 
@@ -528,6 +535,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //      s_egstage[i] = EG_STAGE_COUNT - 2;
     }
 #ifdef PEG
+    dl = s_peglevel[PEG_STAGE_COUNT - 1] - s_pegval;
+    if (dl < 0) {
+      s_pegrate[PEG_STAGE_COUNT - 1] = - s_pegrate[PEG_STAGE_COUNT];
+      s_peg_sample_count[PEG_STAGE_COUNT - 1] = s_sample_num - dl * s_pegrate_releaserecip;
+    } else {
+      s_pegrate[PEG_STAGE_COUNT - 1] = s_pegrate[PEG_STAGE_COUNT];
+      s_peg_sample_count[PEG_STAGE_COUNT - 1] = s_sample_num + dl * s_pegrate_releaserecip;
+    }
     s_pegstage = PEG_STAGE_COUNT - 1;
 #endif
     s_state &= ~(state_noteoff | state_noteon);
