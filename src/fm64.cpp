@@ -28,8 +28,6 @@
 //#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
-#define OSC_ATT4 //attenuate oscillator by 4 before adding to output
-//#define OSC_ATT6 //attenuate oscillator by 6 before adding to output
 //#define PEG //pitch EG enable
 
 #define USE_Q31
@@ -85,13 +83,6 @@
   #define param_mul(a,b) q31mul(a,b)
   #define param_eglut(a,b) eg_lut[smmul(a,b)>>20]
   #define param_feedback(a,b) smmul(a,b)
-  #if defined(OSC_ATT4)
-    #define param_opout(a) ((a)>>2)
-  #elif defined(OSC_ATT6)
-    #define param_opout(a) smmul(a,0x2AAAAAAA) // 1/6
-  #else
-    #define param_opout(a) (a)
-  #endif
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
   #else
@@ -123,14 +114,19 @@
   #define FEEDBACK_RECIPF .0078125f // 1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+/*
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
   static param_t comp[] = {
-    0xFFFFFFFF,
+    0xFFFFFFFF, // oops not gonna work
     0x7FFFFFFF,
     0x55555555,
     0x3FFFFFFF,
     0x33333333,
-    0x2AAAAAAA,
+    0x2AAAAAAA
   };
+#pragma GCC diagnostic pop
+*/
 #else
   typedef float param_t;
   typedef float phase_t;
@@ -144,13 +140,6 @@
   #define param_mul(a,b) ((a)*(b))
   #define param_eglut(a,b) eg_lut[(int32_t)((a)*(b)*1023.f)]
   #define param_feedback(a,b) ((a)*(b))
-  #if defined(OSC_ATT4)
-    #define param_opout(a) ((a)*.25f)
-  #elif defined(OSC_ATT6)
-    #define param_opout(a) ((a)*.166666666f) // 1/6
-  #else
-    #define param_opout(a) (a)
-  #endif
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
   #define f32_to_pitch(a) (a)
@@ -162,14 +151,16 @@
   #define FEEDBACK_RECIPF .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+/*
   static param_t comp[] = {
     1.f,
     .5f,
     .333333333f,
     .25f,
     .2f,
-    .166666666f,
+    .166666666f
   };
+*/
 #endif
 
 // Sampling frequency:
@@ -220,7 +211,6 @@ static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
 static uint8_t s_transpose;
-static uint8_t s_comp;
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -257,6 +247,8 @@ static float s_release_rate_exp_factor;
 
 static float s_level_scale_factor;
 
+static param_t s_comp;
+
 #ifdef FEEDBACK
 static uint8_t s_feedback_src;
 static param_t s_feedback_opval[2];
@@ -291,15 +283,16 @@ static param_t eg_lut[1024];
 void feedback_src() {
 #ifdef FEEDBACK
   s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offs, ALGORITHM_COUNT - 1)];
-  uint32_t i;
-  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
-  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
-  s_comp = 0;
-  for (i = 0; i < OPERATOR_COUNT; i++) {
+//  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
+//  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
+  int32_t comp = 0;
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    if (s_algorithm[i] & ALG_FBK_MASK)
+      s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
     if (s_algorithm[i] & ALG_OUT_MASK)
-      s_comp++;
+      comp++;
   }
-  s_comp--;
+  s_comp = f32_to_param(1.f / comp);
 #endif
 }
 
@@ -714,7 +707,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 
       if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out = param_add(osc_out, param_opout(s_opval[i]));
+        osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
 
       s_phase[i] += opw0[i];
 #ifndef USE_Q31_PHASE
