@@ -163,20 +163,26 @@
 */
 #endif
 
-// Sampling frequency:
-//20.368032usec ~ 49096.545017211284821233588006932Hz
-//#define DX7_SAMPLING_FREQ 49096.545f
-//#define DX7_TO_LOGUE_FREQ = 1.0228446878585684337756997501444f // 49096.545/48000
-//0.0325870980969347836053763275142 // log2(DX7_TO_LOGUE_FREQ)
+//#define DX7_SAMPLING_FREQ 49096.545017211284821233588006932f // 1/20.368032usec
+//#define DX7_TO_LOGUE_FREQ 0.977665536f // 48000/49096.545
+//-.0325870980969347836053763275142f // log2(DX7_TO_LOGUE_FREQ)
+#define EG_FREQ_CORRECT .0325870980969347836053763275142f // log2(1/DX7_TO_LOGUE_FREQ)
 
-#define DX7_RATE_EXP_FACTOR .16f
+#define DX7_RATE_EXP_FACTOR .16f // ? 16/99 = .16(16)
 #define DX11_RATE_EXP_FACTOR .505f
 #define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
 //#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
 //#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
-#define DX7_ATTACK_RATE_FACTOR 4.66187255859375e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) - 1/(2^(21 + DX7_TO_LOGUE_FREQ)
-#define DX7_DECAY_RATE_FACTOR -5.8273406982421875e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
-#define DX7_HOLD_RATE_FACTOR .488832768f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
+#define DX7_ATTACK_RATE_FACTOR 4.8773035424164220513138759143079e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) = 1/(2^(21 - EG_FREQ_CORRECT)
+//#define DX7_ATTACK_RATE_FACTOR 20.9674129f
+//#define DX7_ATTACK_RATE_FACTOR (21.f - EG_FREQ_CORRECT)
+// 2^24 samples @49k = 2^24 / 49k seconds = 2^24 * 48k / (48k * 49k) seconds = 2^24 * 48K / 49K samples @ 48K
+#define DX7_DECAY_RATE_FACTOR -6.0966294280205275641423448928849e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
+//#define DX7_DECAY_RATE_FACTOR 23.9674129f
+//#define DX7_DECAY_RATE_FACTOR (24.f - EG_FREQ_CORRECT)
+#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
+//#define DX7_HOLD_RATE_FACTOR 0.9674129f
+//#define DX7_HOLD_RATE_FACTOR (1.f - EG_FREQ_CORRECT)
 //#define RATE_SCALING_FACTOR .061421131f
 //#define RATE_SCALING_FACTOR .041666667f
 //#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
@@ -774,6 +780,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
   float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
+//  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
 }
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
@@ -827,7 +834,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = ZERO;
     else
-      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+//      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
   }
 /*
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
