@@ -30,6 +30,7 @@
 #define NOTE_A_1 21
 #define NOTE_C1 36
 #define TRANSPOSE_CENTER 24 // C1 - C3
+#define DETUNE_CENTER 7
 #define PEG_CENTER 50
 
 #define ALG_OUT_MASK 0x80
