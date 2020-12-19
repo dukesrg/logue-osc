@@ -218,7 +218,7 @@ static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
 static int8_t s_transpose;
 static int8_t s_detune[OPERATOR_COUNT];
-static int16_t s_detune_val[OPERATOR_COUNT];
+//static int16_t s_detune_val[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -327,7 +327,8 @@ void initvoice() {
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_pitchfreq[i] = !voice->op[i].pm;
-      s_detune[i] = voice->op[i].pd - DETUNE_CENTER;
+//      s_detune[i] = voice->op[i].pd - DETUNE_CENTER;
+      s_detune[i] = (voice->op[i].pd - DETUNE_CENTER) * 6;
 #ifdef WFBITS
 #ifdef TWEAK_WF
       s_op_waveform[i] = voice->op[i].osw & ((1 << WFBITS) - 1);
@@ -401,6 +402,7 @@ void initvoice() {
 
       s_pitchfreq[i] = !voice->opadd[i].fixrg;
 //      s_detune[i] = voice->op[i].det - DX11_DETUNE_CENTER;
+//      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 6;
       s_detune[i] = 0;
 #ifdef WFBITS
       s_op_waveform[i] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
@@ -578,7 +580,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_pitchfreq[i]) {
-      basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune_val[i]) >> 8) + s_transpose, (pitch + s_detune_val[i]) & 0xFF));
+//      basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune_val[i]) >> 8) + s_transpose, (pitch + s_detune_val[i]) & 0xFF));
+      basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune[i]) >> 8) + s_transpose, (pitch + s_detune[i]) & 0xFF));
       opw0[i] = pitch_to_phase(pitch_mul(s_oppitch[i], basew0));
     } else
       opw0[i] = pitch_to_phase(s_oppitch[i]);
@@ -721,6 +724,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
       s_opval[i] = param_mul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i]));
+//      q31_t e = smmul(s_egval[i],s_oplevel[i]) >> 20;
+//      s_opval[i] = param_mul(osc_sin(modw0), (eg_lut[1024 - 64 + (e & 0x3F)] >> (15 -  (e >> 6))));
 //#endif
 #endif
 
@@ -844,7 +849,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     else
 //      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
       s_level_scaling[i] = f32_to_param(depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
-    s_detune_val[i] = s_detune[i] * 6.f * powf(2.f, - params->pitch * 0.000108506944f); //2 * (48/4096) * 2^ (- note / 36) * detune
+//    s_detune_val[i] = s_detune[i] * 6.f * powf(2.f, - params->pitch * 0.000108506944f); //2 * (48/4096) * 2^ (- note / 36) * detune
   }
 /*
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
