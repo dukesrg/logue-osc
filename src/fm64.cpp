@@ -218,6 +218,8 @@ static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
 static int8_t s_transpose;
 static int8_t s_detune[OPERATOR_COUNT];
+//static int32_t s_transpose;
+//static int32_t s_detune[OPERATOR_COUNT];
 //static int16_t s_detune_val[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
@@ -273,6 +275,7 @@ static uint8_t s_peg_stage_start;
 #endif 
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
+//static int16_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
 
 enum {
@@ -312,6 +315,7 @@ void initvoice() {
     s_opi = voice->opi;
     s_algorithm_idx = voice->als;
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
+//    s_transpose = (voice->trnp - TRANSPOSE_CENTER) << 8;
 
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
@@ -327,8 +331,7 @@ void initvoice() {
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_pitchfreq[i] = !voice->op[i].pm;
-//      s_detune[i] = voice->op[i].pd - DETUNE_CENTER;
-      s_detune[i] = (voice->op[i].pd - DETUNE_CENTER) * 6;
+      s_detune[i] = (voice->op[i].pd - DX7_DETUNE_CENTER) * 6;
 #ifdef WFBITS
 #ifdef TWEAK_WF
       s_op_waveform[i] = voice->op[i].osw & ((1 << WFBITS) - 1);
@@ -347,8 +350,11 @@ void initvoice() {
 
       if (s_pitchfreq[i])
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
+//        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f))) * 256.f * 12.f;
       else
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
+//        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR))) * 256.f * 12.f;
+
       s_kvs[i] = voice->op[i].ts;
       s_op_rate_scale[i] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
       s_op_level[i] = scale_level(voice->op[i].tl) * LEVEL_SCALE_FACTOR;
@@ -383,6 +389,7 @@ void initvoice() {
 #endif
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
+//    s_transpose = (voice->trps - TRANSPOSE_CENTER) << 8;
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
 #endif
@@ -401,9 +408,7 @@ void initvoice() {
         i = k;
 
       s_pitchfreq[i] = !voice->opadd[i].fixrg;
-//      s_detune[i] = voice->op[i].det - DX11_DETUNE_CENTER;
-//      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 6;
-      s_detune[i] = 0;
+      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 6;
 #ifdef WFBITS
       s_op_waveform[i] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
 #endif
@@ -417,10 +422,16 @@ void initvoice() {
       }
 
 //todo: Fine freq ratio
+//https://github.com/mamedev/mame/blob/master/src/devices/sound/ym2151.cpp
+//dt2_tab = { 0/768, 384/768, 500/768, 608/768 }
+//pitch = 2 ^ (key/12 + LFO in + dt2_tab[op dt2]) * op ratio + keytracked op detune * op ratio
       if (s_pitchfreq[i])
         s_oppitch[i] = f32_to_pitch(dx11_ratio_lut[voice->op[i].f]);
+//        s_oppitch[i] = log2f(dx11_ratio_lut[voice->op[i].f]) * 256.f * 12.f;
       else
         s_oppitch[i] = f32_to_pitch(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg) * k_samplerate_recipf);
+//        s_oppitch[i] = log2f(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg)) * 256.f * 12.f;
+
       s_kvs[i] = voice->op[i].kvs;
       s_op_rate_scale[i] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
       s_op_level[i] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
@@ -482,7 +493,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #endif
 #ifndef EGLUT
   for (int32_t i = 0; i < 1024; i++) {
-    eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
+    eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256) = 2^((x-127)/8)
   }
 #endif
 }
@@ -565,6 +576,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
   int32_t pitch = params->pitch;
+//  int32_t pitch = params->pitch + s_transpose;
 #ifdef PEG
   pitch += s_pegval;
 #endif
@@ -580,11 +592,17 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_pitchfreq[i]) {
-//      basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune_val[i]) >> 8) + s_transpose, (pitch + s_detune_val[i]) & 0xFF));
       basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune[i]) >> 8) + s_transpose, (pitch + s_detune[i]) & 0xFF));
       opw0[i] = pitch_to_phase(pitch_mul(s_oppitch[i], basew0));
     } else
       opw0[i] = pitch_to_phase(s_oppitch[i]);
+/*
+    int32_t p = s_oppitch[i] + s_detune[i];
+    if (s_pitchfreq[i])
+        p += pitch;
+    p = usat(p, 16);
+    opw0[i] = f32_to_q31(osc_w0f_for_note(p >> 8, p & 0xFF));
+*/
 #ifdef SHAPE_LFO
 //    oplevel[i] = s_oplevel[i];
 #endif
@@ -966,6 +984,22 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_op6_rate_scale:
           index -= p_op6_rate_scale;
           s_op_rate_scale[index] = param_val_to_f32(value);
+          break;
+#ifdef OP6
+        case p_op1_detune:
+          index -= 9;
+        case p_op2_detune:
+          index -= 9;
+#endif
+        case p_op3_detune:
+          index -= 9;
+        case p_op4_detune:
+          index -= 9;
+        case p_op5_detune:
+          index -= 9;
+        case p_op6_detune:
+          index -= p_op6_detune;
+          s_detune[index] = 512 - value;
           break;
         default:
           break;
