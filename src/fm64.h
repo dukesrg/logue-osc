@@ -290,8 +290,8 @@ union {
 enum {
   p_velocity = 0,
   p_feedback,
-  p_cc2,
-  p_cc3,
+  p_detune_scale,
+  p_split_point,
   p_cc4,
   p_cc5,
   p_cc6,

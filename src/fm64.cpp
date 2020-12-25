@@ -29,6 +29,8 @@
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
 //#define PEG //pitch EG enable
+#define FINE_TUNE //16-bit precision for cents/detune
+//#define SPLIT_MODE //split mode enable
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
@@ -216,8 +218,11 @@ static uint8_t s_break_point[OPERATOR_COUNT];
 static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
+#ifdef FINE_TUNE
+static uint16_t s_detune_scale;
+#endif
+static int16_t s_detune[OPERATOR_COUNT];
 static int8_t s_transpose;
-static int8_t s_detune[OPERATOR_COUNT];
 //static int32_t s_transpose;
 //static int32_t s_detune[OPERATOR_COUNT];
 //static int16_t s_detune_val[OPERATOR_COUNT];
@@ -315,7 +320,6 @@ void initvoice() {
     s_opi = voice->opi;
     s_algorithm_idx = voice->als;
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
-//    s_transpose = (voice->trnp - TRANSPOSE_CENTER) << 8;
 
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
@@ -389,7 +393,6 @@ void initvoice() {
 #endif
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
-//    s_transpose = (voice->trps - TRANSPOSE_CENTER) << 8;
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
 #endif
@@ -483,6 +486,9 @@ void initvoice() {
   s_peg_sample_count[PEG_STAGE_COUNT - 1] = 0xFFFFFFFF;
   s_pegstage = PEG_STAGE_COUNT - 1;
   s_pegval = 0;
+#endif
+#ifdef FINE_TUNE
+  s_detune_scale = 512;
 #endif
 }
 
@@ -589,10 +595,15 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
   param_t lfo = 0;
 #endif
-
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_pitchfreq[i]) {
+#ifdef FINE_TUNE
+      int32_t p = (pitch << 8) + ((s_detune[i] * s_detune_scale) >> 3);
+      uint8_t note = (p >> 16) + s_transpose;
+      basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFF) * 1.5258789e-5f, osc_notehzf(note), osc_notehzf((note + 1))), k_note_max_hz) * k_samplerate_recipf);
+#else
       basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune[i]) >> 8) + s_transpose, (pitch + s_detune[i]) & 0xFF));
+#endif
       opw0[i] = pitch_to_phase(pitch_mul(s_oppitch[i], basew0));
     } else
       opw0[i] = pitch_to_phase(s_oppitch[i]);
@@ -928,6 +939,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
               s_oplevel[i] = ZERO;
           }
           break;
+#ifdef FINE_TUNE
+        case p_detune_scale:
+          s_detune_scale = value;
+        break;
+#endif
 #ifdef WFBITS
 #ifdef OP6
         case p_op1_waveform:
@@ -999,7 +1015,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           index -= 9;
         case p_op6_detune:
           index -= p_op6_detune;
-          s_detune[index] = 512 - value;
+          s_detune[index] = value - 512;
           break;
         default:
           break;
