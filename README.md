@@ -79,7 +79,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|
 |Algorithm count|40|40|40|40|40|
 |Operators count|4|6|6|6|6|
-|Voice bank type|DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|DX7 / DX21 / DX11|
+|Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7 / DX21 / DX11|
 |Voice bank count|4|4|3|2|2|
 |Waveform count|8|1|8|16|8|
 |Waveform bit depth|32|16|16|16|32|
@@ -97,7 +97,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level / -|Op. level / -|
 |x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale / -|Op. rate scale / -|
 |x2|Feedback|Waveform|Waveform|Waveform|Waveform|Waveform / -|Waveform / -|
-|x3|-|-|-|-|-|-|-|
+|x3|Detune Scale 0x&hellip;2x|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents/ -|Detune -50&hellip;+50 cents/ -|
 |x4|-|-|-|-|-|-|-|
 |x5|-|-|-|-|-|-|-|
 |x6|-|-|-|-|-|-|-|

@@ -25,39 +25,34 @@
 
 #include "fm64.h"
 
-#define MOD_ASM //ASM optimized modulation matrix calculation
 //#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
+//#define PEG //pitch EG enable
+#define FINE_TUNE //16-bit precision for cents/detune
+//#define SPLIT_MODE //split mode enable
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
-  #ifdef WF16x2
+  #define MOD_ASM //ASM optimized modulation matrix calculation
+  #if defined(WF16x2)
     #include "waveforms16x2.h"
     #define WFBITS 4
-  #else
-  #ifdef WF32
+  #elif defined(WF32)
     #include "waveforms32.h"
     #define WFBITS 3
-  #else
-    #ifdef WF16
-      #include "waveforms16.h"
-      #define WFBITS 3
-    #else
-      #if defined(WF2) || defined(WF4) || defined(WF8)
-        #include "waveforms.h"
-        #ifdef WF8
-          #define WFBITS 3
-        #else
-          #ifdef WF4
-            #define WFBITS 2
-          #else
-            #define WFBITS 1
-          #endif
-        #endif
-      #endif
-    #endif
-  #endif
+  #elif defined(WF16)
+    #include "waveforms16.h"
+    #define WFBITS 3
+  #elif defined(WF8)
+    #include "waveforms.h"
+    #define WFBITS 3
+  #elif defined(WF4)
+    #include "waveforms.h"
+    #define WFBITS 2
+  #elif defined(WF2)
+    #include "waveforms.h"
+    #define WFBITS 1
   #endif
   #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 //todo: check and fix osc_apiq
@@ -68,17 +63,13 @@
   #endif
 //  #define OSC_NOTE_Q
 //  #define USE_FASTSINQ //not suitable for FM
-  #ifndef WFBITS
-    #ifndef USE_FASTSINQ
-      #ifdef WFSIN32
-        #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-      #else
-        #ifdef WFSIN16
-          #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-        #endif
-      #endif
-      #define OSC_SIN_Q
+  #if !defined(WFBITS) && !defined(USE_FASTSINQ)
+    #if defined(WFSIN32)
+     #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+    #elif defined(WFSIN16)
+        #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
     #endif
+    #define OSC_SIN_Q
   #endif
   #include "osc_apiq.h"
 #endif
@@ -121,10 +112,23 @@
     #define ZERO_PHASE 0.f
   #endif
   #define ZERO 0
-  #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+  #define FEEDBACK_RECIP 0x01FFFFFF // <1/64 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define FEEDBACK_RECIPF .0078125f // 1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+/*
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
+  static param_t comp[] = {
+    0xFFFFFFFF, // oops not gonna work
+    0x7FFFFFFF,
+    0x55555555,
+    0x3FFFFFFF,
+    0x33333333,
+    0x2AAAAAAA
+  };
+#pragma GCC diagnostic pop
+*/
 #else
   typedef float param_t;
   typedef float phase_t;
@@ -136,7 +140,7 @@
   #define param_add(a,b) ((a)+(b))
   #define param_sum(a,b,c) ((a)+(b)+(c))
   #define param_mul(a,b) ((a)*(b))
-  #define param_eglut(a,b) eg_lut[((int32_t)((a)*(b)))>>21]
+  #define param_eglut(a,b) eg_lut[(int32_t)((a)*(b)*1023.f)]
   #define param_feedback(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
@@ -145,17 +149,42 @@
   #define pitch_mul(a,b) ((a)*(b))
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
-  #define FEEDBACK_RECIP .00390625f // 1/256
+  #define FEEDBACK_RECIP .0078125f // 1/128
   #define FEEDBACK_RECIPF .00390625f // 1/256
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+/*
+  static param_t comp[] = {
+    1.f,
+    .5f,
+    .333333333f,
+    .25f,
+    .2f,
+    .166666666f
+  };
+*/
 #endif
 
-#define DX7_RATE_EXP_FACTOR .16f
+//#define DX7_SAMPLING_FREQ 49096.545017211284821233588006932f // 1/20.368032usec
+//#define DX7_TO_LOGUE_FREQ 0.977665536f // 48000/49096.545
+//-.0325870980969347836053763275142f // log2(DX7_TO_LOGUE_FREQ)
+#define EG_FREQ_CORRECT .0325870980969347836053763275142f // log2(1/DX7_TO_LOGUE_FREQ)
+
+#define DX7_RATE_EXP_FACTOR .16f // ? 16/99 = .16(16)
 #define DX11_RATE_EXP_FACTOR .505f
 #define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
-#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
-#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
+//#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
+//#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
+#define DX7_ATTACK_RATE_FACTOR 4.8773035424164220513138759143079e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) = 1/(2^(21 - EG_FREQ_CORRECT)
+//#define DX7_ATTACK_RATE_FACTOR 20.9674129f
+//#define DX7_ATTACK_RATE_FACTOR (21.f - EG_FREQ_CORRECT)
+// 2^24 samples @49k = 2^24 / 49k seconds = 2^24 * 48k / (48k * 49k) seconds = 2^24 * 48K / 49K samples @ 48K
+#define DX7_DECAY_RATE_FACTOR -6.0966294280205275641423448928849e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
+//#define DX7_DECAY_RATE_FACTOR 23.9674129f
+//#define DX7_DECAY_RATE_FACTOR (24.f - EG_FREQ_CORRECT)
+#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
+//#define DX7_HOLD_RATE_FACTOR 0.9674129f
+//#define DX7_HOLD_RATE_FACTOR (1.f - EG_FREQ_CORRECT)
 //#define RATE_SCALING_FACTOR .061421131f
 //#define RATE_SCALING_FACTOR .041666667f
 //#define RATE_SCALING_FACTOR .065040650f // 1/24 * 64/41
@@ -171,6 +200,9 @@
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
+#define PEG_SCALE 245.76f // 48/50 * 256
+#define PEG_RATE_EXP_FACTOR .16f
+#define PEG_RATE_FACTOR 4.66187255859375e-7f
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
@@ -186,7 +218,14 @@ static uint8_t s_break_point[OPERATOR_COUNT];
 static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
-static uint8_t s_transpose;
+#ifdef FINE_TUNE
+static uint16_t s_detune_scale;
+#endif
+static int16_t s_detune[OPERATOR_COUNT];
+static int8_t s_transpose;
+//static int32_t s_transpose;
+//static int32_t s_detune[OPERATOR_COUNT];
+//static int16_t s_detune_val[OPERATOR_COUNT];
 #ifdef EG_SAMPLED
 static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -221,21 +260,27 @@ static param_t s_level_scaling[OPERATOR_COUNT];
 static float s_attack_rate_exp_factor;
 static float s_release_rate_exp_factor;
 
-static param_t s_level_scale_factor;
+static float s_level_scale_factor;
+
+static param_t s_comp;
 
 #ifdef FEEDBACK
 static uint8_t s_feedback_src;
 static param_t s_feedback_opval[2];
 #endif
 
-/*
+#ifdef PEG
+static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
+static int32_t s_peglevel[PEG_STAGE_COUNT];
+static uint32_t s_peg_sample_count[PEG_STAGE_COUNT];
+static int32_t s_pegval;
+static float s_pegrate_releaserecip;
 static uint8_t s_pegstage;
-static param_t s_pegrate[EG_STAGE_COUNT];
-static param_t s_peglevel[EG_STAGE_COUNT];
-static param_t s_pegval;
-*/
+static uint8_t s_peg_stage_start;
+#endif 
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
+//static int16_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
 
 enum {
@@ -255,9 +300,16 @@ static param_t eg_lut[1024];
 void feedback_src() {
 #ifdef FEEDBACK
   s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offs, ALGORITHM_COUNT - 1)];
-  uint32_t i;
-  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
-  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
+//  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
+//  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
+  int32_t comp = 0;
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    if (s_algorithm[i] & ALG_FBK_MASK)
+      s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
+    if (s_algorithm[i] & ALG_OUT_MASK)
+      comp++;
+  }
+  s_comp = f32_to_param(1.f / comp);
 #endif
 }
 
@@ -268,26 +320,22 @@ void initvoice() {
     s_opi = voice->opi;
     s_algorithm_idx = voice->als;
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
+
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
     s_feedback_opval[0] = ZERO;
     s_feedback_opval[1] = ZERO;
 #endif
-/*
-#ifdef USE_Q31
-//todo: PEG level precalc & Q31
-#else
-  float preveglevel = (float)(voice->pl[EG_STAGE_COUNT - 1] - PEG_CENTER) * PEG_SCALE;
-  for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-    s_pegrate[j] = k_samplerate_recipf * SCALE_RECIP * (s_peglevel[j] - prevlevel) / (RATE_FACTOR * (100 - voice->pr[j]));
-    prevlevel = voice->pl[j];
-    s_peglevel[j] = voice->pl[j];
+#ifdef PEG
+    s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
+    for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
+      s_peglevel[i] = (voice->pl[i] - PEG_CENTER) * PEG_SCALE;
+      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]);
+    }
 #endif
-  }
-*/
-
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_pitchfreq[i] = !voice->op[i].pm;
+      s_detune[i] = (voice->op[i].pd - DX7_DETUNE_CENTER) * 6;
 #ifdef WFBITS
 #ifdef TWEAK_WF
       s_op_waveform[i] = voice->op[i].osw & ((1 << WFBITS) - 1);
@@ -306,8 +354,11 @@ void initvoice() {
 
       if (s_pitchfreq[i])
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
+//        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f))) * 256.f * 12.f;
       else
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
+//        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR))) * 256.f * 12.f;
+
       s_kvs[i] = voice->op[i].ts;
       s_op_rate_scale[i] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
       s_op_level[i] = scale_level(voice->op[i].tl) * LEVEL_SCALE_FACTOR;
@@ -345,6 +396,13 @@ void initvoice() {
 #ifdef FEEDBACK
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
 #endif
+#ifdef PEG
+    s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
+    for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
+      s_peglevel[i] = (voice->pl[i - s_peg_stage_start] - PEG_CENTER) * PEG_SCALE;
+      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]);
+    }
+#endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
       uint32_t i;
       if (s_algorithm_idx == 7)
@@ -353,6 +411,7 @@ void initvoice() {
         i = k;
 
       s_pitchfreq[i] = !voice->opadd[i].fixrg;
+      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 6;
 #ifdef WFBITS
       s_op_waveform[i] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
 #endif
@@ -366,16 +425,22 @@ void initvoice() {
       }
 
 //todo: Fine freq ratio
+//https://github.com/mamedev/mame/blob/master/src/devices/sound/ym2151.cpp
+//dt2_tab = { 0/768, 384/768, 500/768, 608/768 }
+//pitch = 2 ^ (key/12 + LFO in + dt2_tab[op dt2]) * op ratio + keytracked op detune * op ratio
       if (s_pitchfreq[i])
         s_oppitch[i] = f32_to_pitch(dx11_ratio_lut[voice->op[i].f]);
+//        s_oppitch[i] = log2f(dx11_ratio_lut[voice->op[i].f]) * 256.f * 12.f;
       else
         s_oppitch[i] = f32_to_pitch(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg) * k_samplerate_recipf);
+//        s_oppitch[i] = log2f(((((voice->op[i].f & 0x3C) << 2) + voice->opadd[i].fine + (voice->op[i].f < 4 ? 8 : 0)) << voice->opadd[i].fixrg)) * 256.f * 12.f;
+
       s_kvs[i] = voice->op[i].kvs;
       s_op_rate_scale[i] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
       s_op_level[i] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
       s_break_point[i] = NOTE_C1;
-      s_left_depth[i] = 0;
-      s_right_depth[i] = -voice->op[i].ls;
+      s_left_depth[i] = 0.f;
+      s_right_depth[i] = - voice->op[i].ls * LEVEL_SCALE_FACTORF;
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
     }
@@ -409,6 +474,22 @@ void initvoice() {
     s_egval[i] = ZERO;
     s_opval[i] = ZERO;
   }
+#ifdef PEG
+  uint32_t samples = 0;
+  for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT - 1; i++) {
+    samples += (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]) / s_pegrate[i];
+    s_peg_sample_count[i] = samples;
+  }
+  s_pegrate[PEG_STAGE_COUNT] = s_pegrate[PEG_STAGE_COUNT - 1];
+  s_pegrate_releaserecip = 1.f / s_pegrate[PEG_STAGE_COUNT];
+  s_pegrate[PEG_STAGE_COUNT - 1] = 0;
+  s_peg_sample_count[PEG_STAGE_COUNT - 1] = 0xFFFFFFFF;
+  s_pegstage = PEG_STAGE_COUNT - 1;
+  s_pegval = 0;
+#endif
+#ifdef FINE_TUNE
+  s_detune_scale = 512;
+#endif
 }
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
@@ -418,7 +499,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #endif
 #ifndef EGLUT
   for (int32_t i = 0; i < 1024; i++) {
-    eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256)
+    eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256) = 2^((x-127)/8)
   }
 #endif
 }
@@ -446,6 +527,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
 #ifdef EG_SAMPLED
     s_sample_num = 0;
+#endif
+#ifdef PEG
+    s_pegval = s_peglevel[PEG_STAGE_COUNT - 1];
+    s_pegstage = s_peg_stage_start;
 #endif
     s_state &= ~state_noteon;
   } else {
@@ -480,13 +565,29 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_egstage[i] = EG_STAGE_COUNT - 1;
 //      s_egstage[i] = EG_STAGE_COUNT - 2;
     }
+#ifdef PEG
+    dl = s_peglevel[PEG_STAGE_COUNT - 1] - s_pegval;
+    if (dl < 0) {
+      s_pegrate[PEG_STAGE_COUNT - 1] = - s_pegrate[PEG_STAGE_COUNT];
+      s_peg_sample_count[PEG_STAGE_COUNT - 1] = s_sample_num - dl * s_pegrate_releaserecip;
+    } else {
+      s_pegrate[PEG_STAGE_COUNT - 1] = s_pegrate[PEG_STAGE_COUNT];
+      s_peg_sample_count[PEG_STAGE_COUNT - 1] = s_sample_num + dl * s_pegrate_releaserecip;
+    }
+    s_pegstage = PEG_STAGE_COUNT - 1;
+#endif
     s_state &= ~(state_noteoff | state_noteon);
   }
   }
-//todo: PEG level
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
-  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((params->pitch >> 8) + s_transpose, params->pitch & 0xFF));
+  uint32_t pitch = params->pitch;
+//  int32_t pitch = params->pitch + s_transpose;
+#ifdef PEG
+  pitch += s_pegval;
+#endif
+//  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((pitch >> 8) + s_transpose, pitch & 0xFF));
+  pitch_t basew0;
 #ifdef SHAPE_LFO
 //  param_t oplevel[OPERATOR_COUNT];
 #ifdef FEEDBACK
@@ -494,12 +595,25 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
   param_t lfo = 0;
 #endif
-
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    if (s_pitchfreq[i])
+    if (s_pitchfreq[i]) {
+#ifdef FINE_TUNE
+      uint32_t p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 5);
+      uint8_t note = (p >> 24) + s_transpose;
+      basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
+#else
+      basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune[i]) >> 8) + s_transpose, (pitch + s_detune[i]) & 0xFF));
+#endif
       opw0[i] = pitch_to_phase(pitch_mul(s_oppitch[i], basew0));
-    else
+    } else
       opw0[i] = pitch_to_phase(s_oppitch[i]);
+/*
+    int32_t p = s_oppitch[i] + s_detune[i];
+    if (s_pitchfreq[i])
+        p += pitch;
+    p = usat(p, 16);
+    opw0[i] = f32_to_q31(osc_w0f_for_note(p >> 8, p & 0xFF));
+*/
 #ifdef SHAPE_LFO
 //    oplevel[i] = s_oplevel[i];
 #endif
@@ -639,6 +753,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
       s_opval[i] = param_mul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i]));
+//      q31_t e = smmul(s_egval[i],s_oplevel[i]) >> 20;
+//      s_opval[i] = param_mul(osc_sin(modw0), (eg_lut[1024 - 64 + (e & 0x3F)] >> (15 -  (e >> 6))));
 //#endif
 #endif
 
@@ -654,7 +770,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 
       if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out = param_add(osc_out, s_opval[i]);
+        osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
 
       s_phase[i] += opw0[i];
 #ifndef USE_Q31_PHASE
@@ -681,31 +797,20 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
+#ifdef PEG
+    if (
+      s_sample_num < s_peg_sample_count[s_pegstage]
+    ) {
+      s_pegval += s_pegrate[s_pegstage];
+    } else {
+      s_pegval = s_peglevel[s_pegstage];
+      if (s_pegstage < PEG_STAGE_COUNT - 2)
+        s_pegstage++;
+    }
+#endif
 #ifdef EG_SAMPLED
     s_sample_num++;
 #endif
-/*
-//todo: PEG level
-#ifdef USE_Q31
-    s_pegval = q31add(s_pegval, s_pegrate[s_pegstage]);
-    if (
-      (s_pegrate[s_pegstage] > 0 && s_pegval >= s_pegrate[s_pegstage])
-      || (s_pegrate[s_pegstage] < 0 && s_pegval <= s_pegrate[s_pegstage])
-      || s_pegrate[s_pegstage] == 0
-    ) {
-#else
-    s_pegval += s_pegrate[s_pegstage];
-    if (
-      (s_pegrate[s_pegstage] > 0.f && s_pegval >= s_pegrate[s_pegstage])
-      || (s_pegrate[s_pegstage] < 0.f && s_pegval <= s_pegrate[s_pegstage])
-      || s_pegrate[s_pegstage] == 0.f
-    ) {
-#endif
-       s_pegval = s_peglevel[s_pegstage];
-       if (s_pegstage < 3)
-        s_pegstage++;
-    }
-*/
 #ifdef SHAPE_LFO
     *y = param_to_q31(param_add(osc_out, param_mul(osc_out, lfo)));
 #else
@@ -717,13 +822,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
   float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
+//  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
 }
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor;
   int32_t dl, dp, curve = 0;
-  param_t depth = ZERO;
+  float depth = 0.f;
 //  uint8_t shadow_rate = s_active_rate ^ 1;
 #ifdef EG_SAMPLED
   uint32_t samples;
@@ -770,7 +876,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = ZERO;
     else
-      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+//      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+//    s_detune_val[i] = s_detune[i] * 6.f * powf(2.f, - params->pitch * 0.000108506944f); //2 * (48/4096) * 2^ (- note / 36) * detune
   }
 /*
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -788,9 +896,6 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef EG_SAMPLED
     s_sample_num = 0;
 #endif
-*//*
-  s_pegstage = 0;
-  s_egval = s_eglevel[EG_STAGE_COUNT - 1];
 */
   s_state = state_noteon;
 }
@@ -834,6 +939,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
               s_oplevel[i] = ZERO;
           }
           break;
+#ifdef FINE_TUNE
+        case p_detune_scale:
+          s_detune_scale = value;
+        break;
+#endif
 #ifdef WFBITS
 #ifdef OP6
         case p_op1_waveform:
@@ -890,6 +1000,22 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         case p_op6_rate_scale:
           index -= p_op6_rate_scale;
           s_op_rate_scale[index] = param_val_to_f32(value);
+          break;
+#ifdef OP6
+        case p_op1_detune:
+          index -= 9;
+        case p_op2_detune:
+          index -= 9;
+#endif
+        case p_op3_detune:
+          index -= 9;
+        case p_op4_detune:
+          index -= 9;
+        case p_op5_detune:
+          index -= 9;
+        case p_op6_detune:
+          index -= p_op6_detune;
+          s_detune[index] = value - 512;
           break;
         default:
           break;

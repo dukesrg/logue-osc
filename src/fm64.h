@@ -30,8 +30,9 @@
 #define NOTE_A_1 21
 #define NOTE_C1 36
 #define TRANSPOSE_CENTER 24 // C1 - C3
+#define DX7_DETUNE_CENTER 7
+#define DX11_DETUNE_CENTER 3
 #define PEG_CENTER 50
-#define PEG_SCALE 16
 
 #define ALG_OUT_MASK 0x80
 #define ALG_FBK_MASK 0x40
@@ -49,8 +50,10 @@
 
 #ifdef OP6
   #define OPERATOR_COUNT DX7_OPERATOR_COUNT
+  #define PEG_STAGE_COUNT DX7_PEG_STAGE_COUNT
 #else
   #define OPERATOR_COUNT DX11_OPERATOR_COUNT
+  #define PEG_STAGE_COUNT DX11_PEG_STAGE_COUNT
 #endif
 
 #ifdef OPSIX
@@ -287,8 +290,8 @@ union {
 enum {
   p_velocity = 0,
   p_feedback,
-  p_cc2,
-  p_cc3,
+  p_detune_scale,
+  p_split_point,
   p_cc4,
   p_cc5,
   p_cc6,
@@ -297,7 +300,7 @@ enum {
   p_op6_level,
   p_op6_rate_scale,
   p_op6_waveform,
-  p_cc12,
+  p_op6_detune,
   p_cc13,
   p_cc14,
   p_cc15,
@@ -307,7 +310,7 @@ enum {
   p_op5_level,
   p_op5_rate_scale,
   p_op5_waveform,
-  p_cc22,
+  p_op5_detune,
   p_cc23,
   p_cc24,
   p_cc25,
@@ -317,7 +320,7 @@ enum {
   p_op4_level,
   p_op4_rate_scale,
   p_op4_waveform,
-  p_cc32,
+  p_op4_detune,
   p_cc33,
   p_cc34,
   p_cc35,
@@ -327,7 +330,7 @@ enum {
   p_op3_level,
   p_op3_rate_scale,
   p_op3_waveform,
-  p_cc42,
+  p_op3_detune,
   p_cc43,
   p_cc44,
   p_cc45,
@@ -338,7 +341,7 @@ enum {
   p_op2_level,
   p_op2_rate_scale,
   p_op2_waveform,
-  p_cc52,
+  p_op2_detune,
   p_cc53,
   p_cc54,
   p_cc55,
@@ -348,7 +351,7 @@ enum {
   p_op1_level,
   p_op1_rate_scale,
   p_op1_waveform,
-  p_cc62,
+  p_op1_detune,
   p_cc63,
   p_cc64,
   p_cc65,
