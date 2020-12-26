@@ -581,7 +581,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
-  int32_t pitch = params->pitch;
+  uint32_t pitch = params->pitch;
 //  int32_t pitch = params->pitch + s_transpose;
 #ifdef PEG
   pitch += s_pegval;
@@ -598,9 +598,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_pitchfreq[i]) {
 #ifdef FINE_TUNE
-      int32_t p = (pitch << 8) + ((s_detune[i] * s_detune_scale) >> 3);
-      uint8_t note = (p >> 16) + s_transpose;
-      basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFF) * 1.5258789e-5f, osc_notehzf(note), osc_notehzf((note + 1))), k_note_max_hz) * k_samplerate_recipf);
+      uint32_t p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 5);
+      uint8_t note = (p >> 24) + s_transpose;
+      basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
 #else
       basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune[i]) >> 8) + s_transpose, (pitch + s_detune[i]) & 0xFF));
 #endif
