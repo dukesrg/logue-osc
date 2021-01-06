@@ -85,7 +85,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Waveform bit depth|32|16|16|16|32|
 |Waveform customization|||+|+|+|
 |Feedback supported|+|+|+|+||
-|Shape LFO target supported|+||||+|
+|Shape LFO target supported|+|+|+|+|+|
 
 |FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
 |-|-|-|
