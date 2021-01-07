@@ -666,6 +666,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = ZERO;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = phase_to_param(s_phase[i]);
+      s_phase[i] += opw0[i];
+#ifndef USE_Q31_PHASE
+      s_phase[i] -= (uint32_t)(s_phase[i]);
+#endif
       if (s_algorithm[i] & ALG_MOD_MASK) {
 #ifndef MOD_ASM
 #ifdef OP6
@@ -771,11 +775,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
-
-      s_phase[i] += opw0[i];
-#ifndef USE_Q31_PHASE
-      s_phase[i] -= (uint32_t)(s_phase[i]);
-#endif
 
       if (
 #ifdef EG_SAMPLED
