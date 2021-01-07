@@ -761,18 +761,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //      s_opval[i] = param_mul(osc_sin(modw0), (eg_lut[1024 - 64 + (e & 0x3F)] >> (15 -  (e >> 6))));
 //#endif
 #endif
-
-#ifdef FEEDBACK
-      if (i == s_feedback_src) {
-        s_feedback_opval[1] = s_feedback_opval[0];
-#ifdef SHAPE_LFO
-        s_feedback_opval[0] = param_feedback(s_opval[i], feedback);
-#else
-        s_feedback_opval[0] = param_feedback(s_opval[i], s_feedback);
-#endif
-      }
-#endif
-
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
 
@@ -796,6 +784,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
+#ifdef FEEDBACK
+    s_feedback_opval[1] = s_feedback_opval[0];
+#ifdef SHAPE_LFO
+    s_feedback_opval[0] = param_feedback(s_opval[s_feedback_src], feedback);
+#else
+    s_feedback_opval[0] = param_feedback(s_opval[s_feedback_src], s_feedback);
+#endif
+#endif
 #ifdef PEG
     if (
       s_sample_num < s_peg_sample_count[s_pegstage]
