@@ -297,20 +297,20 @@ static uint32_t s_state = 0;
 static param_t eg_lut[1024];
 #endif
 
-void feedback_src() {
-#ifdef FEEDBACK
+void initalg() {
   s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offs, ALGORITHM_COUNT - 1)];
 //  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
 //  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
   int32_t comp = 0;
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifdef FEEDBACK
     if (s_algorithm[i] & ALG_FBK_MASK)
       s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
+#endif
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
   }
   s_comp = f32_to_param(1.f / comp);
-#endif
 }
 
 void initvoice() {
@@ -461,7 +461,7 @@ void initvoice() {
 #endif
 #endif
   }
-  feedback_src();
+  initalg();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
@@ -683,14 +683,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef OP6
         __asm__ volatile ( \
 "tbb [pc, %1]\n" \
-".byte 0x1D\n" \
-".byte 0x18\n" \
-".byte 0x13\n" \
-".byte 0x0E\n" \
-".byte 0x09\n" \
-".byte 0x04\n" \
-".byte 0x00\n" \
-".byte 0x00\n" \
+".byte 0x1C\n" \
+".byte 0x17\n" \
+".byte 0x12\n" \
+".byte 0x0D\n" \
+".byte 0x08\n" \
+".byte 0x03\n" \
 "lsls r1, %2, #27\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
@@ -712,7 +710,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldrmi.w r1, [%3, %8]\n" \
 "addmi %0, %0, r1\n" \
 : "+r" (modw0) \
-: "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
 : "r1" \
         );
 #else
@@ -735,7 +733,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldrmi.w r1, [%3, %6]\n" \
 "addmi %0, %0, r1\n" \
 : "+r" (modw0) \
-: "r" (i), "r" (s_algorithm[i]), "r" (s_opval), "i" (8), "i" (4), "i" (0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (8), "i" (4), "i" (0) \
 : "r1" \
         );
 #endif
@@ -1040,7 +1038,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         s_algorithm_offs = 0;
       else
         s_algorithm_offs = value - 100;
-      feedback_src();
+      initalg();
       break;
     default:
       break;
