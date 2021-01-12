@@ -98,8 +98,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 |x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale / -|Op. rate scale / -|
 |x2|Feedback|Waveform|Waveform|Waveform|Waveform|Waveform / -|Waveform / -|
 |x3|Detune Scale 0x&hellip;2x|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents/ -|Detune -50&hellip;+50 cents/ -|
-|x4|-|-|-|-|-|-|-|
-|x5|-|-|-|-|-|-|-|
+|x4|Rate Shift -50&hellip;+50|-|-|-|-|-|-|
+|x5|Rate Scale 0x&hellip;2x|-|-|-|-|-|-|
 |x6|-|-|-|-|-|-|-|
 |x7|-|-|-|-|-|-|-|
 |x8|-|-|-|-|-|-|-|

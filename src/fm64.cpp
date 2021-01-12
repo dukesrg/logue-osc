@@ -283,6 +283,9 @@ static pitch_t s_oppitch[OPERATOR_COUNT];
 //static int16_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
 
+static float s_egrate_shift;
+static float s_egrate_scale;
+
 enum {
   state_running = 0,
   state_noteon,
@@ -814,7 +817,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
   float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
-  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale)));
+  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_shift)));
 //  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
 }
 
@@ -937,6 +940,12 @@ void OSC_PARAM(uint16_t index, uint16_t value)
           s_detune_scale = value;
         break;
 #endif
+        case p_rate_shift:
+          s_egrate_shift = (value * .097751711f) + 50.f; // 100/1023
+        break;
+        case p_rate_scale:
+          s_egrate_scale = value * .0019550342f; // 2/1023
+        break;
 #ifdef WFBITS
 #ifdef OP6
         case p_op1_waveform:
