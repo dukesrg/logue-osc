@@ -941,7 +941,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         break;
 #endif
         case p_rate_shift:
-          s_egrate_shift = (value * .097751711f) + 50.f; // 100/1023
+          s_egrate_shift = (value * .097751711f) - 50.f; // 100/1023
         break;
         case p_rate_scale:
           s_egrate_scale = value * .0019550342f; // 2/1023
