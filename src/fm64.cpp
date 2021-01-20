@@ -124,8 +124,8 @@
     #define ZERO_PHASE 0.f
   #endif
   #define ZERO 0
-  #define FEEDBACK_RECIP 0x01FFFFFF // <1/64 - pre-multiplied by 2 for simplified Q31 multiply by always positive
-  #define FEEDBACK_RECIPF .0078125f // 1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+  #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+  #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 /*
@@ -161,8 +161,8 @@
   #define pitch_mul(a,b) ((a)*(b))
   #define ZERO 0.f
   #define ZERO_PHASE 0.f
-  #define FEEDBACK_RECIP .0078125f // 1/128
-  #define FEEDBACK_RECIPF .00390625f // 1/256
+  #define FEEDBACK_RECIP .00390625f // 1/256
+  #define FEEDBACK_RECIPF .001953125f // 1/512
   #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 /*
