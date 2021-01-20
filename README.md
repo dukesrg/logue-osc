@@ -164,7 +164,7 @@ Custom data descriptors are themselves arrays, and should contain 3-5 values:
 1. offset (int) : custom data offset in oscillator binary file.
 2. size (int) : custom data element size.
 3. count (int) : optional maximum number of custom data elements (if more than one).
-4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected), for the "custom_param" case this is an offset for the customizable parameter numbers.
+4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected), for the "custom_params" case this is an offset for the customizable parameter numbers.
 
 * custom_params (array) : contains ordered list of all supported parameter descriptors
 
