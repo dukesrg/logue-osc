@@ -25,6 +25,18 @@
 
 #include "fm64.h"
 
+#ifdef CUSTOM_PARAMS
+  #include "custom_param.h"
+  CUSTOM_PARAM_INIT(
+    k_user_osc_param_id1,
+    k_user_osc_param_id2,
+    k_user_osc_custom_param_id1,
+    k_user_osc_custom_param_id2,
+    k_user_osc_custom_param_id3,
+    k_user_osc_custom_param_id4
+  );
+#endif
+
 //#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
 //#define SHAPE_LFO //map Shape LFO to parameters
 #define EG_SAMPLED //precalculate EG stages length in samples
@@ -913,6 +925,9 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
+#ifdef CUSTOM_PARAMS
+  index = CUSTOM_PARAM_GET(index);
+#endif
   switch (index) {
     case k_user_osc_param_shiftshape:
       if (s_assignable[0] == s_assignable[1])

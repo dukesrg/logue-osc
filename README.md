@@ -7,6 +7,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 ### Project structure
 
 * [lodue-sdk/](logue-sdk/) : My own logue-sdk fork with optimized Makefiles, and reduced project footprint.
+* [inc/arm.h](inc/arm.h) : Additional ARM opcodes.
+* [inc/custom_param.h](inc/custom_param.h) : Customizable parameters feature.
 * [inc/fixed_mathq.h](inc/fixed_mathq.h) : Additional fixed point math functions.
 * [inc/g711_decode.h](inc/g711_decode.h) : μ-law/A-law decoding functions.
 * [inc/osc_apiq.h](inc/osc_apiq.h) : Q31 fixed point oscillator API functions.
@@ -143,7 +145,12 @@ Oscillators with customizable data may contain additional metadata about customi
             ["Wave", 0, 63, ""]
           ],
         "custom_data" : [
-            ["Wave file", 64, 256, 64, 0]
+            ["Wave file", 64, 256, 64, 0],
+            ["custom_params", 16448, 2, 8, 256]
+        ],
+        "custom_params" : [
+            ["Wave", 0, 63, ""],
+            ["LFO", 0, 99, ""]
         ]
     }
 }
@@ -153,11 +160,13 @@ Oscillators with customizable data may contain additional metadata about customi
 
 Custom data descriptors are themselves arrays, and should contain 3-5 values:
 
-0. description (string) : brief custom data description, may contain format description.
+0. description (string) : brief custom data description, may contain format description ("custom_params" value is a special case with the customizable parameter numbers lookup table).
 1. offset (int) : custom data offset in oscillator binary file.
 2. size (int) : custom data element size.
 3. count (int) : optional maximum number of custom data elements (if more than one).
-4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected).
+4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected), for the "custom_param" case this is an offset for the customizable parameter numbers.
+
+* custom_params (array) : contains ordered list of all supported parameter descriptors
 
 ### Credits
 * [Sebo1971](https://github.com/Sebo1971) for comprehensive oscillators testing with prologue and in general
