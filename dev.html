@@ -88,38 +88,34 @@
     padding: 1px 6px;
     font-size: small;
   }
-
   .popup {
     position: absolute;
     z-index: 1;
     border-style: solid;
     border-color: #fff;
     border-width: 1px;
+    background-color: #333;
+    color: #777;
+    font-size: small;
   }
-
   .popup table {
     border-collapse: collapse;
   }
-
   .popup td {
     background-color: #333;
     border:none;
     padding: 4px;
   }
-
   .popup td:first-child {
     font-weight: bolder;
     padding-left: 8px;
   }
-
   .popup td:last-child {
     padding-right: 8px;
   }
-
   .popup tr:hover td {
     background-color: #666;
   }
-
 </style>
 <script type="text/javascript" src="jszip.js"></script>
 <script type="text/javascript" src="FileSaver.js"></script>
@@ -196,7 +192,7 @@ function inject(osc) {
   })
 }
 
-function getInfo(osc) {
+function getInfo(osc, rowindex) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   fetch("dev/" + osc + "-osc." + platform)
   .then((response) => {
@@ -210,14 +206,57 @@ function getInfo(osc) {
   .then((zip) => {
     zip.file(osc + "/manifest.json").async("string").then((data) => {
       var manifest = JSON.parse(data);
-      ["version", "api"].map(e => document.querySelector("#" + osc + "-" + e).innerHTML = manifest.header[e]);
       custom_count[osc] = manifest.header.custom_data.length;
       custom_params[osc] = new Array();
       offset[osc] = new Array();
       count[osc] = new Array();
       maxsize[osc] = new Array();
-      document.querySelector('#' + osc + '-size').innerHTML = "";
-      document.querySelector('#' + osc + '-description').innerHTML = "";
+      var table = document.querySelector('.list');
+      var row = document.createElement('tr');
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td')).innerHTML = osc;
+      ["version", "api"].map(e => row.appendChild(document.createElement('td')).innerHTML = manifest.header[e]);
+      if (typeof manifest.header.custom_params !== 'undefined') {
+        for (var i = 0; i < manifest.header.custom_params.length; i++) {
+          custom_params[osc].push(manifest.header.custom_params[i][0]);
+        }
+      }
+      manifest.header.params.map((e, i) => {
+        var col = row.appendChild(document.createElement('td'));
+        col.id = osc + '-param' + (i + 1);
+        col.innerHTML = e[0];
+        col.addEventListener("click", function() { setParam(this); }, false);
+        if (custom_params[osc].indexOf(e[0]) < 0) {
+          col.className = 'disabled';
+        }
+      });
+      for (var i = 6; i > manifest.header.params.length; i--) {
+        row.appendChild(document.createElement('td'));
+      }
+      var col = row.appendChild(document.createElement('td')).appendChild(document.createElement('label'));
+      col.className = 'button';
+      col.innerHTML = 'Upload';
+      col = col.appendChild(document.createElement('input'));
+      col.type = 'file';
+      col.name = osc;
+      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : osc == 'FM64' ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
+      col.multiple = osc != 'Morpheus';
+      col.addEventListener('change', function() { handleFiles(this); }, true);
+      col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
+      col.type = 'text';
+      col.name = osc;
+      col.disabled = true;
+      col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
+      col.type = 'button';
+      col.name = osc;
+      col.disabled = true;
+      col.value = 'Download';
+      col.addEventListener('click', function() { inject(this); }, false);
+      row.appendChild(document.createElement('td')).id = osc + '-size';
+      row.appendChild(document.createElement('td')).id = osc + '-description';
+
+      table.childNodes[1].replaceChild(row, table.childNodes[1].childNodes[rowindex + 1]);
+
       for (var i = 0; i < custom_count[osc]; i++) {
         if (manifest.header.custom_data[i][0] === "custom_params") {
           custom_params_data_offset[osc] = manifest.header.custom_data[i][1];
@@ -229,22 +268,9 @@ function getInfo(osc) {
           if (!count[osc][i])
             count[osc][i] = 1;
           maxsize[osc][i] = manifest.header.custom_data[i][2];
-          document.querySelector('#' + osc + '-size').innerHTML += maxsize[osc][i] + ' x ' + count[osc][i] + "<br>";
           maxsize[osc][i] *= count[osc][i];
+          document.querySelector('#' + osc + '-size').innerHTML += maxsize[osc][i] + ' x ' + count[osc][i] + "<br>";
           document.querySelector('#' + osc + '-description').innerHTML += manifest.header.custom_data[i][0]+"<br>";
-        }
-      }
-      if (typeof manifest.header.custom_params !== 'undefined') {
-        for (var i = 0; i < manifest.header.custom_params.length; i++) {
-          custom_params[osc].push(manifest.header.custom_params[i][0]);
-        }
-      }
-      for (var i = 0; i < manifest.header.params.length; i++) {
-        document.querySelector('#' + osc + '-param' + (i + 1)).innerHTML = manifest.header.params[i][0];
-        if (custom_params[osc].indexOf(manifest.header.params[i][0]) >= 0) {
-          document.querySelector('#' + osc + '-param' + (i + 1)).classList.remove('disabled');
-        } else {
-          document.querySelector('#' + osc + '-param' + (i + 1)).classList.add('disabled');
         }
       }
     })
@@ -281,7 +307,12 @@ function pcm16toulaw(val) {
 function handleFiles(f) {
   var files = f.files;
   var osc = f.name;
-  var status = document.querySelector('#' + osc + '-description');
+  var rect = document.querySelector('#' + osc + '-size').getBoundingClientRect();
+  var status = document.createElement('div');
+  status.className = 'popup';
+  status.style.left = rect.left;
+  status.style.top = rect.top;
+  document.body.appendChild(status);
   var name = document.querySelector('input[type=text][name=' + osc + ']');
   name.value = "";
   data = new Array();
@@ -685,7 +716,7 @@ function onLoad() {
   offset = new Array();
   count = new Array();
   maxsize = new Array();
-  ["FM48", "FM64", "FM66", "FM67", "FM68", "Morpheus", "Anthologue"].map(e => getInfo(e));
+  ["FM48", "FM64", "FM66", "FM67", "FM68", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
 }
 
 function setParam(param) {
@@ -723,7 +754,7 @@ function setParam(param) {
 }
 
 window.onclick = function(event) {
-  if (!event.target.matches('.dropbtn')) {
+  if (!event.target.matches('[id*=param]')) {
     var dropdowns = document.getElementsByClassName("popup");
     for (var i = 0; i < dropdowns.length; i++) {
       document.body.removeChild(dropdowns[i]);
@@ -743,13 +774,9 @@ USER OSCILLATORS
 </div>
 <table class="list" rules="rows" cellpadding="6" border="2" width="100%">
 <tr><th width="40px"/><th width="170px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="180px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
-<tr><td/><td>FM48</td><td id="FM48-version"/><td id="FM48-api"/><td class="dropbtn" id="FM48-param1" onclick="setParam(this)"/><td class="dropbtn" id="FM48-param2" onclick="setParam(this)"/><td class="dropbtn" id="FM48-param3" onclick="setParam(this)"/><td class="dropbtn" id="FM48-param4" onclick="setParam(this)"/><td class="dropbtn" id="FM48-param5" onclick="setParam(this)"/><td class="dropbtn" id="FM48-param6" onclick="setParam(this)"/><td><label class="button" alt="test"><input type="file" name="FM48" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM48" disabled="true"></td><td><input type="button" name="FM48" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM48-size"/><td id="FM48-description"/></tr>
-<tr><td/><td>FM64</td><td id="FM64-version"/><td id="FM64-api"/><td class="dropbtn" id="FM64-param1"/><td class="dropbtn" id="FM64-param2"/><td class="dropbtn" id="FM64-param3"/><td class="dropbtn" id="FM64-param4"/><td class="dropbtn" id="FM64-param5"/><td class="dropbtn" id="FM64-param6"/><td><label class="button" alt="test"><input type="file" name="FM64" accept=".syx,.dx7,.32" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM64" disabled="true"></td><td><input type="button" name="FM64" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM64-size"/><td id="FM64-description"/></tr>
-<tr><td/><td>FM66</td><td id="FM66-version"/><td id="FM66-api"/><td class="dropbtn" id="FM66-param1"/><td class="dropbtn" id="FM66-param2"/><td class="dropbtn" id="FM66-param3"/><td class="dropbtn" id="FM66-param4"/><td class="dropbtn" id="FM66-param5"/><td class="dropbtn" id="FM66-param6"/><td><label class="button" alt="test"><input type="file" name="FM66" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM66" disabled="true"></td><td><input type="button" name="FM66" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM66-size"/><td id="FM66-description"/></tr>
-<tr><td/><td>FM67</td><td id="FM67-version"/><td id="FM67-api"/><td class="dropbtn" id="FM67-param1"/><td class="dropbtn" id="FM67-param2"/><td class="dropbtn" id="FM67-param3"/><td class="dropbtn" id="FM67-param4"/><td class="dropbtn" id="FM67-param5"/><td class="dropbtn" id="FM67-param6"/><td><label class="button" alt="test"><input type="file" name="FM67" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM67" disabled="true"></td><td><input type="button" name="FM67" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM67-size"/><td id="FM67-description"/></tr>
-<tr><td/><td>FM68</td><td id="FM68-version"/><td id="FM68-api"/><td class="dropbtn" id="FM68-param1"/><td class="dropbtn" id="FM68-param2"/><td class="dropbtn" id="FM68-param3"/><td class="dropbtn" id="FM68-param4"/><td class="dropbtn" id="FM68-param5"/><td class="dropbtn" id="FM68-param6"/><td><label class="button" alt="test"><input type="file" name="FM68" accept=".syx,.dx7,.32,.wav" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="FM68" disabled="true"></td><td><input type="button" name="FM68" value="Download" disabled="true" onClick="inject(this);"/></td><td id="FM68-size"/><td id="FM68-description"/></tr>
-<tr><td/><td>Morpheus</td><td id="Morpheus-version"/><td id="Morpheus-api"/><td class="dropbtn" id="Morpheus-param1"/><td class="dropbtn" id="Morpheus-param2"/><td class="dropbtn" id="Morpheus-param3"/><td class="dropbtn" id="Morpheus-param4"/><td class="dropbtn" id="Morpheus-param5"/><td class="dropbtn" id="Morpheus-param6"/><td><label class="button"><input type="file" name="Morpheus" accept=".wav" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Morpheus" disabled="true"></td><td><input type="button" name="Morpheus" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Morpheus-size"/><td id="Morpheus-description"/></tr>
-<tr><td/><td>Anthologue</td><td id="Anthologue-version"/><td id="Anthologue-api"/><td class="dropbtn" id="Anthologue-param1"/><td class="dropbtn" id="Anthologue-param2"/><td class="dropbtn" id="Anthologue-param3"/><td class="dropbtn" id="Anthologue-param4"/><td class="dropbtn" id="Anthologue-param5"/><td class="dropbtn" id="Anthologue-param6"/><td><label class="button"><input type="file" name="Anthologue" accept=".prog_bin" multiple="true" onchange="handleFiles(this);">Upload</label></td><td><input type="text" name="Anthologue" disabled="true"></td><td><input type="button" name="Anthologue" value="Download" disabled="true" onClick="inject(this);"/></td><td id="Anthologue-size"/><td id="Anthologue-description"/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
