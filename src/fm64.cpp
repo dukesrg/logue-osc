@@ -3,7 +3,7 @@
  *
  * DX7/DX21/DX11-series compatible FM oscillator
  * 
- * 2020 (c) Oleg Burdaev
+ * 2020-2021 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */
@@ -25,6 +25,14 @@
 
 #include "fm64.h"
 
+//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
+//#define SHAPE_LFO //map Shape LFO to parameters
+#define EG_SAMPLED //precalculate EG stages length in samples
+//#define PEG //pitch EG enable
+#define FINE_TUNE //16-bit precision for cents/detune
+//#define SPLIT_MODE //split mode enable
+//#define CUSTOM_PARAMS //customizable params
+
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
   CUSTOM_PARAM_INIT(
@@ -36,13 +44,6 @@
     k_user_osc_custom_param_id4
   );
 #endif
-
-//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
-//#define SHAPE_LFO //map Shape LFO to parameters
-#define EG_SAMPLED //precalculate EG stages length in samples
-//#define PEG //pitch EG enable
-#define FINE_TUNE //16-bit precision for cents/detune
-//#define SPLIT_MODE //split mode enable
 
 #define USE_Q31
 #ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
@@ -219,10 +220,36 @@
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
 static uint32_t s_algorithm_idx;
-static int32_t s_algorithm_offs;
+#ifdef CUSTOM_PARAMS
+#define FINE_TUNE_FACTOR 65536.f
+static int8_t s_level_offset = 0;
+static float s_level_scale = LEVEL_SCALE_FACTORF;
+static float s_kls_offset = 0.f;
+static float s_kls_scale = LEVEL_SCALE_FACTORF;
+static float s_kvs_offset = 0.f;
+static float s_kvs_scale = 1.f;
+static int8_t s_egrate_offset = 0;
+static float s_egrate_scale = 1.f;
+static float s_krs_offset = 0.f;
+static float s_krs_scale = 1.f;
+static float s_feedback_offset = 0.f;
+static float s_feedback_scale = 1.f;
+static float s_detune_offset = 0.f;
+static float s_detune_scale = FINE_TUNE_FACTOR;
+static uint8_t s_feedback_level;
+#else
+static float s_egrate_offset = 0.f;
+static float s_egrate_scale = 1.f;
+#endif
+static int32_t s_algorithm_offset = 0;
 static const uint8_t *s_algorithm;
+#ifdef CUSTOM_PARAMS
+static int8_t s_left_depth[OPERATOR_COUNT];
+static int8_t s_right_depth[OPERATOR_COUNT];
+#else
 static float s_left_depth[OPERATOR_COUNT];
 static float s_right_depth[OPERATOR_COUNT];
+#endif
 static uint8_t s_pitchfreq[OPERATOR_COUNT];
 static uint8_t s_egstage[OPERATOR_COUNT];
 static uint8_t s_kvs[OPERATOR_COUNT];
@@ -231,9 +258,15 @@ static uint8_t s_left_curve[OPERATOR_COUNT];
 static uint8_t s_right_curve[OPERATOR_COUNT];
 static uint8_t s_opi;
 #ifdef FINE_TUNE
+#ifndef CUSTOM_PARAMS
 static uint16_t s_detune_scale;
 #endif
+#endif
+#ifdef CUSTOM_PARAMS
+static int8_t s_detune[OPERATOR_COUNT];
+#else
 static int16_t s_detune[OPERATOR_COUNT];
+#endif
 static int8_t s_transpose;
 //static int32_t s_transpose;
 //static int32_t s_detune[OPERATOR_COUNT];
@@ -244,19 +277,30 @@ static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 //static uint32_t s_sample_count[2][OPERATOR_COUNT][EG_STAGE_COUNT - 1];
 #endif
 
+#ifdef CUSTOM_PARAMS
+static float s_velocity = -0.000066780348f;
+#else
 static param_t s_velocity = DEFAULT_VELOCITY;
+#endif
 #ifdef FEEDBACK
 static param_t s_feedback;
 #endif
+
+#ifdef CUSTOM_PARAMS
+static int8_t s_op_level[OPERATOR_COUNT];
+#else
 static param_t s_op_level[OPERATOR_COUNT];
+#endif
 static float s_op_rate_scale[OPERATOR_COUNT];
 #ifdef WFBITS
 static uint32_t s_op_waveform[OPERATOR_COUNT];
 #endif
+#ifndef CUSTOM_PARAMS
 #ifdef SHAPE_LFO
 static uint32_t s_assignable[3];
 #else
 static uint32_t s_assignable[2];
+#endif
 #endif
 
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
@@ -267,7 +311,11 @@ static param_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egval[OPERATOR_COUNT];
 static param_t s_opval[OPERATOR_COUNT];
 static param_t s_oplevel[OPERATOR_COUNT];
+#ifdef CUSTOM_PARAMS
+static float s_level_scaling[OPERATOR_COUNT];
+#else
 static param_t s_level_scaling[OPERATOR_COUNT];
+#endif
 
 static float s_attack_rate_exp_factor;
 static float s_release_rate_exp_factor;
@@ -295,9 +343,6 @@ static pitch_t s_oppitch[OPERATOR_COUNT];
 //static int16_t s_oppitch[OPERATOR_COUNT];
 static phase_t s_phase[OPERATOR_COUNT];
 
-static float s_egrate_shift;
-static float s_egrate_scale;
-
 enum {
   state_running = 0,
   state_noteon,
@@ -312,8 +357,27 @@ static uint32_t s_state = 0;
 static param_t eg_lut[1024];
 #endif
 
-void initalg() {
-  s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offs, ALGORITHM_COUNT - 1)];
+#ifdef CUSTOM_PARAMS
+void setLevel() {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    s_oplevel[i] = f32_to_param(
+      scale_level(clipminmaxi32(0, s_op_level[i] + s_level_offset, 99)) * s_level_scale +
+      s_velocity * clipminmaxf(0.f, s_kvs[i] + s_kvs_offset, 7.f) * s_kvs_scale +
+      s_level_scaling[i]
+    );
+    if (s_oplevel[i] < ZERO)
+      s_oplevel[i] = ZERO;
+  }
+}
+
+void setFeedback() {
+  float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
+  s_feedback = value <= 0.f ? ZERO : f32_to_param(powf(2.f, value * s_feedback_scale) * FEEDBACK_RECIPF);
+}
+#endif
+
+void setAlgorithm() {
+  s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offset, ALGORITHM_COUNT - 1)];
 //  for (i = 0; !(s_algorithm[i] & ALG_FBK_MASK); i++);
 //  s_feedback_src = s_algorithm[i] & (ALG_MOD_MASK - 1);
   int32_t comp = 0;
@@ -337,9 +401,11 @@ void initvoice() {
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 
 #ifdef FEEDBACK
+#ifdef CUSTOM_PARAMS
+    s_feedback_level = voice->fbl;
+#else
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
-    s_feedback_opval[0] = ZERO;
-    s_feedback_opval[1] = ZERO;
+#endif
 #endif
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
@@ -376,21 +442,41 @@ void initvoice() {
 
       s_kvs[i] = voice->op[i].ts;
       s_op_rate_scale[i] = voice->op[i].rs * DX7_RATE_SCALING_FACTOR;
+#ifdef CUSTOM_PARAMS
+      s_op_level[i] = voice->op[i].tl;
+#else
       s_op_level[i] = scale_level(voice->op[i].tl) * LEVEL_SCALE_FACTOR;
+#endif
       s_break_point[i] = voice->op[i].bp + NOTE_A_1;
 //fold negative/position curves into curve depth sign
       if (voice->op[i].lc < 2) {
+#ifdef CUSTOM_PARAMS
+        s_left_depth[i] = voice->op[i].ld;
+#else
         s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTORF;
+#endif
         s_left_curve[i] = voice->op[i].lc;
       } else {
+#ifdef CUSTOM_PARAMS
+        s_left_depth[i] = - voice->op[i].ld;
+#else
         s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTORF;
+#endif
         s_left_curve[i] = 3 - voice->op[i].lc;
       }
       if (voice->op[i].rc < 2) {
+#ifdef CUSTOM_PARAMS
+        s_right_depth[i] = - voice->op[i].rd;
+#else
         s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTORF;
+#endif
         s_right_curve[i] = voice->op[i].rc;
       } else {
+#ifdef CUSTOM_PARAMS
+        s_right_depth[i] = voice->op[i].rd;
+#else
         s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTORF;
+#endif
         s_right_curve[i] = 3 - voice->op[i].rc;
       }
     }
@@ -409,7 +495,11 @@ void initvoice() {
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
 #ifdef FEEDBACK
+#ifdef CUSTOM_PARAMS
+    s_feedback_level = voice->fbl;
+#else
     s_feedback = (0x80 >> (8 - voice->fbl)) * FEEDBACK_RECIP;
+#endif
 #endif
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
@@ -452,12 +542,18 @@ void initvoice() {
 
       s_kvs[i] = voice->op[i].kvs;
       s_op_rate_scale[i] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
+#ifdef CUSTOM_PARAMS
+      s_op_level[i] = voice->op[i].out;
+      s_left_depth[i] = 0;
+      s_right_depth[i] = - voice->op[i].ls;
+#else
       s_op_level[i] = scale_level(voice->op[i].out) * LEVEL_SCALE_FACTOR;
-      s_break_point[i] = NOTE_C1;
       s_left_depth[i] = 0.f;
       s_right_depth[i] = - voice->op[i].ls * LEVEL_SCALE_FACTORF;
+#endif
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
+      s_break_point[i] = NOTE_C1;
     }
     s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
@@ -476,7 +572,14 @@ void initvoice() {
 #endif
 #endif
   }
-  initalg();
+#ifdef FEEDBACK
+  s_feedback_opval[0] = ZERO;
+  s_feedback_opval[1] = ZERO;
+#endif
+#ifdef CUSTOM_PARAMS
+  setFeedback();
+#endif
+  setAlgorithm();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
@@ -503,7 +606,9 @@ void initvoice() {
   s_pegval = 0;
 #endif
 #ifdef FINE_TUNE
+#ifndef CUSTOM_PARAMS
   s_detune_scale = 512;
+#endif
 #endif
 }
 
@@ -535,10 +640,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
       s_opval[i] = ZERO;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
+#ifdef CUSTOM_PARAMS
+      setLevel();
+#else
       s_oplevel[i] = param_sum(s_op_level[i], s_velocity * s_kvs[i], s_level_scaling[i]);
 //      s_oplevel[i] = s_params[p_op6_level + i * 10];
       if (s_oplevel[i] < ZERO)
           s_oplevel[i] = ZERO;
+#endif
     }
 #ifdef EG_SAMPLED
     s_sample_num = 0;
@@ -605,7 +714,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   pitch_t basew0;
 #ifdef SHAPE_LFO
 //  param_t oplevel[OPERATOR_COUNT];
-#ifdef FEEDBACK
+#if defined(FEEDBACK) && !defined(CUSTOM_PARAMS)
   param_t feedback = s_feedback;
 #endif
   param_t lfo = 0;
@@ -613,7 +722,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_pitchfreq[i]) {
 #ifdef FINE_TUNE
-      uint32_t p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 5);
+      uint32_t p;
+#ifdef CUSTOM_PARAMS
+      p = (pitch << 16) + (s_detune[i] + s_detune_offset) * s_detune_scale;
+#else
+      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 5);
+#endif
       uint8_t note = (p >> 24) + s_transpose;
       basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
 #else
@@ -668,7 +782,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       break;
 */
 //  }
-#ifdef FEEDBACK
+#if defined(FEEDBACK) && !defined(CUSTOM_PARAMS)
   if (s_assignable[2])
     feedback = param_add(feedback, params->shape_lfo);
   else
@@ -799,7 +913,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     }
 #ifdef FEEDBACK
     s_feedback_opval[1] = s_feedback_opval[0];
-#ifdef SHAPE_LFO
+#if defined(SHAPE_LFO) && !defined(CUSTOM_PARAMS)
     s_feedback_opval[0] = param_feedback(s_opval[s_feedback_src], feedback);
 #else
     s_feedback_opval[0] = param_feedback(s_opval[s_feedback_src], s_feedback);
@@ -828,8 +942,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 }
 
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
+#ifdef CUSTOM_PARAMS
+  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + s_krs_offset, 7.f) * s_krs_scale;
+  float rate = clipminmaxi32(0, s_egrate[i][j] + s_egrate_offset, 99) * s_egrate_scale;
+  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
+#else
   float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
-  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_shift)));
+  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_offset)));
+#endif
 //  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
 }
 
@@ -881,12 +1001,20 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
        curve = s_right_curve[i];
        depth = s_right_depth[i];
     }
+#ifdef CUSTOM_PARAMS
+    depth = clipminmaxf(0.f, depth + s_kls_offset, 99.f) * s_kls_scale;
+    if (dp == 0)
+      s_level_scaling[i] = 0.f;
+    else
+      s_level_scaling[i] = depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+#else
     if (dp == 0)
       s_level_scaling[i] = ZERO;
     else
 //      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
       s_level_scaling[i] = f32_to_param(depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
 //    s_detune_val[i] = s_detune[i] * 6.f * powf(2.f, - params->pitch * 0.000108506944f); //2 * (48/4096) * 2^ (- note / 36) * detune
+#endif
   }
 /*
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -927,12 +1055,21 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 {
 #ifdef CUSTOM_PARAMS
   index = CUSTOM_PARAM_GET(index);
+  if (index >= k_user_osc_custom_param_id1 && value == 0)
+    value += 100; //logues bipolar percent parameter initialization workaround
 #endif
   switch (index) {
+#ifndef CUSTOM_PARAMS
     case k_user_osc_param_shiftshape:
       if (s_assignable[0] == s_assignable[1])
         break;
+#endif
     case k_user_osc_param_shape:
+#ifdef CUSTOM_PARAMS
+          s_velocity = (powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f;
+//                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
+     setLevel();
+#else
       index = s_assignable[index - k_user_osc_param_shape];
       switch (index) {
 #ifdef FEEDBACK
@@ -956,7 +1093,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         break;
 #endif
         case p_rate_shift:
-          s_egrate_shift = (value * .097751711f) - 50.f; // 100/1023
+          s_egrate_offset = (value * .097751711f) - 50.f; // 100/1023
         break;
         case p_rate_scale:
           s_egrate_scale = value * .0019550342f; // 2/1023
@@ -1037,6 +1174,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         default:
           break;
       }
+#endif
       break;
     case k_user_osc_param_id1:
       if (s_voice != value) { //NTS-1 parameter change bounce workaround
@@ -1050,6 +1188,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         initvoice();
       }
       break;
+#ifndef CUSTOM_PARAMS
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
 #ifdef SHAPE_LFO
@@ -1059,11 +1198,68 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case k_user_osc_param_id6:
       if (value == 0) //logues bipolar percent parameter initialization workaround
-        s_algorithm_offs = 0;
+        s_algorithm_offset = 0;
       else
-        s_algorithm_offs = value - 100;
-      initalg();
+        s_algorithm_offset = value - 100;
+      setAlgorithm();
       break;
+#endif
+#ifdef CUSTOM_PARAMS
+    case k_user_osc_custom_param_id1:
+      s_level_offset = value - 100;
+      setLevel();
+      break;
+    case k_user_osc_custom_param_id2:
+      s_level_scale = value * .01f * LEVEL_SCALE_FACTORF;
+      setLevel();
+      break;
+    case k_user_osc_custom_param_id3:
+      s_kls_offset = value - 100;
+      break;
+    case k_user_osc_custom_param_id4:
+      s_kls_scale = value * .01f * LEVEL_SCALE_FACTORF;
+      break;
+    case k_user_osc_custom_param_id5:
+      s_kvs_offset = (value - 100) * 0.07f;
+      setLevel();
+      break;
+    case k_user_osc_custom_param_id6:
+      s_kvs_scale = value * .01f;
+      setLevel();
+      break;
+    case k_user_osc_custom_param_id7:
+      s_egrate_offset = value - 100;
+      break;
+    case k_user_osc_custom_param_id8:
+      s_egrate_scale = value * .01f;
+      break;
+    case k_user_osc_custom_param_id9:
+      s_krs_offset = (value - 100) * .07f;
+      break;
+    case k_user_osc_custom_param_id10:
+      s_krs_scale = value * .01f;
+      break;
+    case k_user_osc_custom_param_id11:
+      s_detune_offset = (value - 100) * 2.56f;
+      break;
+#ifdef FINE_TUNE
+    case k_user_osc_custom_param_id12:
+      s_detune_scale = value * 0.01f * FINE_TUNE_FACTOR;
+      break;
+#endif
+    case k_user_osc_custom_param_id13:
+      s_feedback_offset = (value - 100) * .07f;
+      setFeedback();
+      break;
+    case k_user_osc_custom_param_id14:
+      s_feedback_scale = value * .01f;
+      setFeedback();
+      break;
+    case k_user_osc_custom_param_id15:
+      s_algorithm_offset = value - 100;
+      setAlgorithm();
+      break;
+#endif
     default:
       break;
   }

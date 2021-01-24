@@ -99,7 +99,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level / -|Op. level / -|
 |x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale / -|Op. rate scale / -|
 |x2|Feedback|Waveform|Waveform|Waveform|Waveform|Waveform / -|Waveform / -|
-|x3|Detune Scale 0x&hellip;2x|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents/ -|Detune -50&hellip;+50 cents/ -|
+|x3|Detune Scale x0&hellip;x2|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents/ -|Detune -50&hellip;+50 cents/ -|
 |x4|Rate Shift -50&hellip;+50|-|-|-|-|-|-|
 |x5|Rate Scale 0x&hellip;2x|-|-|-|-|-|-|
 |x6|-|-|-|-|-|-|-|
@@ -111,6 +111,24 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|
 |1|Amp|
 |2|Feedback level|
+
+|#|FMxx<br>Custom params|Range|Description|
+|-|-|-|-|
+|1|Level offset|-99&hellip;99|Level offset for all operators|
+|2|Level scale|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for all operators|
+|3|KLS offset|-99&hellip;99|Keyboard level scaling offset for all operators|
+|4|KLS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard level scaling multiplier for all operators|
+|5|KVS offset|-99&hellip;100 (-6.93&hellip;+7)|Key velocity sensitivity offset for all operators|
+|6|KVS scale|-99&hellip;100 (x0.01&hellip;x2)|Key velocity sensitivity multiplier for all operators|
+|7|Rate offset|-99&hellip;99|EG rate offset for all operators|
+|8|Rate scale|-99&hellip;100 (x0.01&hellip;x2)|EG rate multiplier for all operators|
+|9|KRS offset|-99&hellip;100 (-6.93&hellip;+7)|Keyboard EG rate scaling offset for all operators|
+|10|KRS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard EG rate multiplier for all operators|
+|11|Detune offs|-99&hellip;100 (cents)|Detune offset in cents for all operators|
+|12|Detune scale|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all operators|
+|13|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
+|14|FB scale|-99&hellip;100 (x0.01&hellip;x2)|Feedback multiplier|
+|15|Algorithm|-39&hellip;39|Algorithm offset|
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|
