@@ -129,6 +129,16 @@ For user-customizable oscillators, an online constructor is available at https:/
 |13|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
 |14|FB scale|-99&hellip;100 (x0.01&hellip;x2)|Feedback multiplier|
 |15|Algorithm|-39&hellip;39|Algorithm offset|
+|16|Waveform All|-7&hellip;7|Waveform offset for all operators|
+|17|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
+|18|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
+|19|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
+|20|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
+|21|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
+|22|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
+|23|Waveform 6/5|-77&hellip;77|Waveform offset for operator 6 (higher digit) and 5 (lower digit)|
+|24|Waveform 4/3|-77&hellip;77|Waveform offset for operator 4 (higher digit) and 3 (lower digit)|
+|25|Waveform 2/1|-77&hellip;77|Waveform offset for operator 2 (higher digit) and 1 (lower digit)|
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|

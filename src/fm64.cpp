@@ -293,7 +293,12 @@ static param_t s_op_level[OPERATOR_COUNT];
 #endif
 static float s_op_rate_scale[OPERATOR_COUNT];
 #ifdef WFBITS
+#ifdef CUSTOM_PARAMS
+static uint8_t s_op_waveform[OPERATOR_COUNT];
+static uint32_t s_waveform[OPERATOR_COUNT];
+#else
 static uint32_t s_op_waveform[OPERATOR_COUNT];
+#endif
 #endif
 #ifndef CUSTOM_PARAMS
 #ifdef SHAPE_LFO
@@ -877,7 +882,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_wavebank(modw0, (uint32_t)s_params[p_op6_waveform + i * 10]), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
+#ifdef CUSTOM_PARAMS
+      s_opval[i] = param_mul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i]));
+#else
       s_opval[i] = param_mul(osc_wavebank(modw0, s_op_waveform[i]), param_eglut(s_egval[i], s_oplevel[i]));
+#endif
 //#endif
 #else
 //#ifdef SHAPE_LFO
@@ -1259,6 +1268,31 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       s_algorithm_offset = value - 100;
       setAlgorithm();
       break;
+#ifdef WFBITS
+    case k_user_osc_custom_param_id16:
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
+      }
+      break;
+    break;
+    case k_user_osc_custom_param_id17:
+    case k_user_osc_custom_param_id18:
+    case k_user_osc_custom_param_id19:
+    case k_user_osc_custom_param_id20:
+    case k_user_osc_custom_param_id21:
+    case k_user_osc_custom_param_id22:
+      index -= k_user_osc_custom_param_id17;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
+      break;
+    case k_user_osc_custom_param_id23:
+    case k_user_osc_custom_param_id24:
+    case k_user_osc_custom_param_id25:
+      index = (index - k_user_osc_custom_param_id23) << 1;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
+      index++;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
+    break;
+#endif
 #endif
     default:
       break;
