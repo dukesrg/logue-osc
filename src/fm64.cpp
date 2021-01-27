@@ -726,7 +726,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef CUSTOM_PARAMS
       p = (pitch << 16) + (s_detune[i] + s_detune_offset) * s_detune_scale;
 #else
-      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 5);
+      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
 #endif
       uint8_t note = (p >> 24) + s_transpose;
       basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
