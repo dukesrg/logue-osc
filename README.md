@@ -114,12 +114,12 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |#|FMxx<br>Custom params|Range|Description|
 |-|-|-|-|
-|1|Level offs.M|-99&hellip;99|Level offset for modulators only|
-|2|Level offs.C|-99&hellip;99|Level offset for carriers only|
-|3|Level offs.A|-99&hellip;99|Level offset for all operators|
-|4|Level scal.M|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for modulators only|
-|5|Level scal.C|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for carriers only|
-|6|Level scal.A|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for all operators|
+|1|Lvl offs Mod|-99&hellip;99|Level offset for modulators|
+|2|Lvl offs Car|-99&hellip;99|Level offset for carriers|
+|3|Lvl offs All|-99&hellip;99|Level offset for all operators|
+|4|Lvl scal Mod|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for modulators only|
+|5|Lvl scal Car|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for carriers only|
+|6|Lvl scal All|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for all operators|
 |7|KLS offset|-99&hellip;99|Keyboard level scaling offset for all operators|
 |8|KLS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard level scaling multiplier for all operators|
 |9|KVS offset|-99&hellip;100 (-6.93&hellip;+7)|Key velocity sensitivity offset for all operators|
@@ -128,21 +128,37 @@ For user-customizable oscillators, an online constructor is available at https:/
 |12|Rate scale|-99&hellip;100 (x0.01&hellip;x2)|EG rate multiplier for all operators|
 |13|KRS offset|-99&hellip;100 (-6.93&hellip;+7)|Keyboard EG rate scaling offset for all operators|
 |14|KRS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard EG rate multiplier for all operators|
-|15|Detune offs|-99&hellip;100 (cents)|Detune offset in cents for all operators|
-|16|Detune scale|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all operators|
-|17|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
-|18|FB scale|-99&hellip;100 (x0.01&hellip;x2)|Feedback multiplier|
-|19|Algorithm|-39&hellip;39|Algorithm offset|
-|20|Waveform All|-7&hellip;7|Waveform offset for all operators|
-|21|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
-|22|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
-|23|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
-|24|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
-|25|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
-|26|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
-|27|Waveform 6/5|-77&hellip;77|Waveform offset for operator 6 (higher digit) and 5 (lower digit)|
-|28|Waveform 4/3|-77&hellip;77|Waveform offset for operator 4 (higher digit) and 3 (lower digit)|
-|29|Waveform 2/1|-77&hellip;77|Waveform offset for operator 2 (higher digit) and 1 (lower digit)|
+|15|Det offs Op6|-99&hellip;100 (cents)|Detune offset in cents for operator 6|
+|16|Det offs Op5|-99&hellip;100 (cents)|Detune offset in cents for operator 5|
+|17|Det offs Op4|-99&hellip;100 (cents)|Detune offset in cents for operator 4|
+|18|Det offs Op3|-99&hellip;100 (cents)|Detune offset in cents for operator 3|
+|19|Det offs Op2|-99&hellip;100 (cents)|Detune offset in cents for operator 2|
+|20|Det offs Op1|-99&hellip;100 (cents)|Detune offset in cents for operator 1|
+|21|Det offs Mod|-99&hellip;100 (cents)|Detune offset in cents for modulators|
+|22|Det offs Car|-99&hellip;100 (cents)|Detune offset in cents for carriers|
+|23|Det offs All|-99&hellip;100 (cents)|Detune offset in cents for all operators|
+|24|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 6|
+|25|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 5|
+|26|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 4|
+|27|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 3|
+|28|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 2|
+|29|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 1|
+|30|Det scal Mod|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all modulators|
+|31|Det scal Car|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all carriers|
+|32|Det scal All|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all operators|
+|33|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
+|34|FB scale|-99&hellip;100 (x0.01&hellip;x2)|Feedback multiplier|
+|35|Algorithm|-39&hellip;39|Algorithm offset|
+|36|Waveform All|-7&hellip;7|Waveform offset for all operators|
+|37|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
+|38|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
+|39|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
+|40|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
+|41|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
+|42|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
+|43|Waveform 6/5|-77&hellip;77|Waveform offset for operator 6 (higher digit) and 5 (lower digit)|
+|44|Waveform 4/3|-77&hellip;77|Waveform offset for operator 4 (higher digit) and 3 (lower digit)|
+|45|Waveform 2/1|-77&hellip;77|Waveform offset for operator 2 (higher digit) and 1 (lower digit)|
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|
