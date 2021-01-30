@@ -1265,36 +1265,36 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_custom_param_id14:
       s_krs_scale = value * .01f;
       break;
-    case k_user_osc_custom_param_id21:
-    case k_user_osc_custom_param_id22:
-    case k_user_osc_custom_param_id23:
-#ifdef OP6
-    case k_user_osc_custom_param_id19:
-    case k_user_osc_custom_param_id20:
-#else
-      index -= 2;
-#endif
     case k_user_osc_custom_param_id15:
     case k_user_osc_custom_param_id16:
     case k_user_osc_custom_param_id17:
-    case k_user_osc_custom_param_id18:
-      s_detune_offset[index - k_user_osc_custom_param_id15] = (value - 100) * 2.56f;
-      break;
-#ifdef FINE_TUNE
-    case k_user_osc_custom_param_id30:
-    case k_user_osc_custom_param_id31:
-    case k_user_osc_custom_param_id32:
 #ifdef OP6
-    case k_user_osc_custom_param_id28:
-    case k_user_osc_custom_param_id29:
+    case k_user_osc_custom_param_id18:
+    case k_user_osc_custom_param_id19:
 #else
       index -= 2;
 #endif
+    case k_user_osc_custom_param_id20:
+    case k_user_osc_custom_param_id21:
+    case k_user_osc_custom_param_id22:
+    case k_user_osc_custom_param_id23:
+      s_detune_offset[k_user_osc_custom_param_id23 - index] = (value - 100) * 2.56f;
+      break;
+#ifdef FINE_TUNE
     case k_user_osc_custom_param_id24:
     case k_user_osc_custom_param_id25:
     case k_user_osc_custom_param_id26:
+#ifdef OP6
     case k_user_osc_custom_param_id27:
-      s_detune_scale[index - k_user_osc_custom_param_id24] = value * 0.01f;
+    case k_user_osc_custom_param_id28:
+#else
+      index -= 2;
+#endif
+    case k_user_osc_custom_param_id29:
+    case k_user_osc_custom_param_id30:
+    case k_user_osc_custom_param_id31:
+    case k_user_osc_custom_param_id32:
+      s_detune_scale[k_user_osc_custom_param_id32 - index] = value * 0.01f;
       break;
 #endif
     case k_user_osc_custom_param_id33:
@@ -1315,28 +1315,27 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
       }
       break;
-    break;
+#ifdef OP6
     case k_user_osc_custom_param_id37:
+#endif
     case k_user_osc_custom_param_id38:
     case k_user_osc_custom_param_id39:
-    case k_user_osc_custom_param_id40:
+      index = (k_user_osc_custom_param_id39 - index) << 1;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
+      index++;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
+    break;
 #ifdef OP6
+    case k_user_osc_custom_param_id40:
     case k_user_osc_custom_param_id41:
-    case k_user_osc_custom_param_id42:
 #endif
-      index -= k_user_osc_custom_param_id37;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
-      break;
+    case k_user_osc_custom_param_id42:
     case k_user_osc_custom_param_id43:
     case k_user_osc_custom_param_id44:
-#ifdef OP6
     case k_user_osc_custom_param_id45:
-#endif
-      index = (index - k_user_osc_custom_param_id43) << 1;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
-      index++;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
-    break;
+      index = k_user_osc_custom_param_id45 - index;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
+      break;
 #endif
 #endif
     default:
