@@ -273,8 +273,8 @@ function getInfo(osc, rowindex) {
           if (!count[osc][i])
             count[osc][i] = 1;
           maxsize[osc][i] = manifest.header.custom_data[i][2];
-          maxsize[osc][i] *= count[osc][i];
           document.querySelector('#' + osc + '-size').innerHTML += maxsize[osc][i] + ' x ' + count[osc][i] + "<br>";
+          maxsize[osc][i] *= count[osc][i];
           document.querySelector('#' + osc + '-description').innerHTML += manifest.header.custom_data[i][0]+"<br>";
         }
       }
