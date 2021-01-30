@@ -97,6 +97,11 @@
     background-color: #333;
     color: #777;
     font-size: small;
+    overflow-y: scroll;
+    scrollbar-width: none;
+  }
+  .popup::-webkit-scrollbar {
+    display: none;
   }
   .popup table {
     border-collapse: collapse;
@@ -750,6 +755,7 @@ function setParam(param) {
   popup.appendChild(table);
   popup.style.left = rect.left;
   popup.style.top = rect.top;
+  popup.style['max-height'] = document.getElementsByClassName("list")[0].getBoundingClientRect().bottom - rect.top;
   document.body.appendChild(popup);
 }
 
