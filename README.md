@@ -114,31 +114,35 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |#|FMxx<br>Custom params|Range|Description|
 |-|-|-|-|
-|1|Level offset|-99&hellip;99|Level offset for all operators|
-|2|Level scale|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for all operators|
-|3|KLS offset|-99&hellip;99|Keyboard level scaling offset for all operators|
-|4|KLS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard level scaling multiplier for all operators|
-|5|KVS offset|-99&hellip;100 (-6.93&hellip;+7)|Key velocity sensitivity offset for all operators|
-|6|KVS scale|-99&hellip;100 (x0.01&hellip;x2)|Key velocity sensitivity multiplier for all operators|
-|7|Rate offset|-99&hellip;99|EG rate offset for all operators|
-|8|Rate scale|-99&hellip;100 (x0.01&hellip;x2)|EG rate multiplier for all operators|
-|9|KRS offset|-99&hellip;100 (-6.93&hellip;+7)|Keyboard EG rate scaling offset for all operators|
-|10|KRS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard EG rate multiplier for all operators|
-|11|Detune offs|-99&hellip;100 (cents)|Detune offset in cents for all operators|
-|12|Detune scale|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all operators|
-|13|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
-|14|FB scale|-99&hellip;100 (x0.01&hellip;x2)|Feedback multiplier|
-|15|Algorithm|-39&hellip;39|Algorithm offset|
-|16|Waveform All|-7&hellip;7|Waveform offset for all operators|
-|17|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
-|18|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
-|19|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
-|20|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
-|21|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
-|22|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
-|23|Waveform 6/5|-77&hellip;77|Waveform offset for operator 6 (higher digit) and 5 (lower digit)|
-|24|Waveform 4/3|-77&hellip;77|Waveform offset for operator 4 (higher digit) and 3 (lower digit)|
-|25|Waveform 2/1|-77&hellip;77|Waveform offset for operator 2 (higher digit) and 1 (lower digit)|
+|1|Level offs.M|-99&hellip;99|Level offset for modulators only|
+|2|Level offs.C|-99&hellip;99|Level offset for carriers only|
+|3|Level offs.A|-99&hellip;99|Level offset for all operators|
+|4|Level scal.M|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for modulators only|
+|5|Level scal.C|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for carriers only|
+|6|Level scal.A|-99&hellip;100 (x0.01&hellip;x2)|Level multiplier for all operators|
+|7|KLS offset|-99&hellip;99|Keyboard level scaling offset for all operators|
+|8|KLS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard level scaling multiplier for all operators|
+|9|KVS offset|-99&hellip;100 (-6.93&hellip;+7)|Key velocity sensitivity offset for all operators|
+|10|KVS scale|-99&hellip;100 (x0.01&hellip;x2)|Key velocity sensitivity multiplier for all operators|
+|11|Rate offset|-99&hellip;99|EG rate offset for all operators|
+|12|Rate scale|-99&hellip;100 (x0.01&hellip;x2)|EG rate multiplier for all operators|
+|13|KRS offset|-99&hellip;100 (-6.93&hellip;+7)|Keyboard EG rate scaling offset for all operators|
+|14|KRS scale|-99&hellip;100 (x0.01&hellip;x2)|Keyboard EG rate multiplier for all operators|
+|15|Detune offs|-99&hellip;100 (cents)|Detune offset in cents for all operators|
+|16|Detune scale|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for all operators|
+|17|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
+|18|FB scale|-99&hellip;100 (x0.01&hellip;x2)|Feedback multiplier|
+|19|Algorithm|-39&hellip;39|Algorithm offset|
+|20|Waveform All|-7&hellip;7|Waveform offset for all operators|
+|21|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
+|22|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
+|23|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
+|24|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
+|25|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
+|26|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
+|27|Waveform 6/5|-77&hellip;77|Waveform offset for operator 6 (higher digit) and 5 (lower digit)|
+|28|Waveform 4/3|-77&hellip;77|Waveform offset for operator 4 (higher digit) and 3 (lower digit)|
+|29|Waveform 2/1|-77&hellip;77|Waveform offset for operator 2 (higher digit) and 1 (lower digit)|
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|

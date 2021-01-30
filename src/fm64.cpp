@@ -222,8 +222,8 @@ static uint32_t s_voice = -1;
 static uint32_t s_algorithm_idx;
 #ifdef CUSTOM_PARAMS
 #define FINE_TUNE_FACTOR 65536.f
-static int8_t s_level_offset = 0;
-static float s_level_scale = LEVEL_SCALE_FACTORF;
+static int8_t s_level_offset[3] = {0, 0, 0};
+static float s_level_scale[3] = {LEVEL_SCALE_FACTORF, LEVEL_SCALE_FACTORF, LEVEL_SCALE_FACTORF};
 static float s_kls_offset = 0.f;
 static float s_kls_scale = LEVEL_SCALE_FACTORF;
 static float s_kvs_offset = 0.f;
@@ -365,8 +365,9 @@ static param_t eg_lut[1024];
 #ifdef CUSTOM_PARAMS
 void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    uint32_t carrier = (s_algorithm[i] & ALG_OUT_MASK) >> 7;
     s_oplevel[i] = f32_to_param(
-      scale_level(clipminmaxi32(0, s_op_level[i] + s_level_offset, 99)) * s_level_scale +
+      scale_level(clipminmaxi32(0, s_op_level[i] + s_level_offset[2] + s_level_offset[carrier], 99)) * (s_level_scale[2] + s_level_scale[carrier]) +
       s_velocity * clipminmaxf(0.f, s_kvs[i] + s_kvs_offset, 7.f) * s_kvs_scale +
       s_level_scaling[i]
     );
@@ -395,6 +396,9 @@ void setAlgorithm() {
       comp++;
   }
   s_comp = f32_to_param(1.f / comp);
+#ifdef CUSTOM_PARAMS
+  setLevel();
+#endif
 }
 
 void initvoice() {
@@ -581,10 +585,10 @@ void initvoice() {
   s_feedback_opval[0] = ZERO;
   s_feedback_opval[1] = ZERO;
 #endif
+  setAlgorithm();
 #ifdef CUSTOM_PARAMS
   setFeedback();
 #endif
-  setAlgorithm();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef EG_SAMPLED
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
@@ -1215,79 +1219,83 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef CUSTOM_PARAMS
     case k_user_osc_custom_param_id1:
-      s_level_offset = value - 100;
-      setLevel();
-      break;
     case k_user_osc_custom_param_id2:
-      s_level_scale = value * .01f * LEVEL_SCALE_FACTORF;
-      setLevel();
-      break;
     case k_user_osc_custom_param_id3:
-      s_kls_offset = value - 100;
+      s_level_offset[index - k_user_osc_custom_param_id1] = value - 100;
+      setLevel();
       break;
     case k_user_osc_custom_param_id4:
-      s_kls_scale = value * .01f * LEVEL_SCALE_FACTORF;
-      break;
     case k_user_osc_custom_param_id5:
-      s_kvs_offset = (value - 100) * 0.07f;
-      setLevel();
-      break;
     case k_user_osc_custom_param_id6:
-      s_kvs_scale = value * .01f;
+      s_level_scale[index - k_user_osc_custom_param_id4] = value * .01f * LEVEL_SCALE_FACTORF;
       setLevel();
       break;
     case k_user_osc_custom_param_id7:
-      s_egrate_offset = value - 100;
+      s_kls_offset = value - 100;
       break;
     case k_user_osc_custom_param_id8:
-      s_egrate_scale = value * .01f;
+      s_kls_scale = value * .01f * LEVEL_SCALE_FACTORF;
       break;
     case k_user_osc_custom_param_id9:
-      s_krs_offset = (value - 100) * .07f;
+      s_kvs_offset = (value - 100) * 0.07f;
+      setLevel();
       break;
     case k_user_osc_custom_param_id10:
-      s_krs_scale = value * .01f;
+      s_kvs_scale = value * .01f;
+      setLevel();
       break;
     case k_user_osc_custom_param_id11:
+      s_egrate_offset = value - 100;
+      break;
+    case k_user_osc_custom_param_id12:
+      s_egrate_scale = value * .01f;
+      break;
+    case k_user_osc_custom_param_id13:
+      s_krs_offset = (value - 100) * .07f;
+      break;
+    case k_user_osc_custom_param_id14:
+      s_krs_scale = value * .01f;
+      break;
+    case k_user_osc_custom_param_id15:
       s_detune_offset = (value - 100) * 2.56f;
       break;
 #ifdef FINE_TUNE
-    case k_user_osc_custom_param_id12:
+    case k_user_osc_custom_param_id16:
       s_detune_scale = value * 0.01f * FINE_TUNE_FACTOR;
       break;
 #endif
-    case k_user_osc_custom_param_id13:
+    case k_user_osc_custom_param_id17:
       s_feedback_offset = (value - 100) * .07f;
       setFeedback();
       break;
-    case k_user_osc_custom_param_id14:
+    case k_user_osc_custom_param_id18:
       s_feedback_scale = value * .01f;
       setFeedback();
       break;
-    case k_user_osc_custom_param_id15:
+    case k_user_osc_custom_param_id19:
       s_algorithm_offset = value - 100;
       setAlgorithm();
       break;
 #ifdef WFBITS
-    case k_user_osc_custom_param_id16:
+    case k_user_osc_custom_param_id20:
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
         s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
       }
       break;
     break;
-    case k_user_osc_custom_param_id17:
-    case k_user_osc_custom_param_id18:
-    case k_user_osc_custom_param_id19:
-    case k_user_osc_custom_param_id20:
     case k_user_osc_custom_param_id21:
     case k_user_osc_custom_param_id22:
-      index -= k_user_osc_custom_param_id17;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
-      break;
     case k_user_osc_custom_param_id23:
     case k_user_osc_custom_param_id24:
     case k_user_osc_custom_param_id25:
-      index = (index - k_user_osc_custom_param_id23) << 1;
+    case k_user_osc_custom_param_id26:
+      index -= k_user_osc_custom_param_id21;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
+      break;
+    case k_user_osc_custom_param_id27:
+    case k_user_osc_custom_param_id28:
+    case k_user_osc_custom_param_id29:
+      index = (index - k_user_osc_custom_param_id27) << 1;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
       index++;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);

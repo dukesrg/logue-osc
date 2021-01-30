@@ -6,24 +6,28 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.3-5",
+        "version" : "1.3-6",
         "name" : "FM64",
         "num_param" : 6,
         "params" : [
             ["Voice", 0, 31, ""],
             ["Bank", 0, 3, ""],
-            ["Level offset", -99, 99, "%"],
-            ["Level scale", -100, 100, "%"],
-            ["KLS offset", -99, 99, "%"],
-            ["KLS scale", -100, 100, "%"]
+            ["Level offs.M", -99, 99, "%"],
+            ["Level offs.C", -99, 99, "%"],
+            ["Level offs.A", -99, 99, "%"],
+            ["Level scal.M", -99, 100, "%"]
         ],
         "custom_data" : [
             ["Yamaha DX7-series voice banks", 64, 4096, 4, 1],
             ["custom_params", 16448, 2, 8, 256]
         ],
         "custom_params" : [
-            ["Level offset", -99, 99, "%"],
-            ["Level scale", -99, 100, "%"],
+            ["Level offs.M", -99, 99, "%"],
+            ["Level offs.C", -99, 99, "%"],
+            ["Level offs.A", -99, 99, "%"],
+            ["Level scal.M", -99, 100, "%"],
+            ["Level scal.C", -99, 100, "%"],
+            ["Level scal.A", -99, 100, "%"],
             ["KLS offset", -99, 99, "%"],
             ["KLS scale", -99, 100, "%"],
             ["KVS offset", -99, 100, "%"],
