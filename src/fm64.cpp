@@ -1246,7 +1246,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(7):
     case CUSTOM_PARAM_ID(8):
 #else
-      index -= 2;
+      index += 2;
 #endif
     case CUSTOM_PARAM_ID(9):
     case CUSTOM_PARAM_ID(10):
@@ -1262,7 +1262,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(16):
     case CUSTOM_PARAM_ID(17):
 #else
-      index -= 2;
+      index += 2;
 #endif
     case CUSTOM_PARAM_ID(18):
     case CUSTOM_PARAM_ID(19):
@@ -1304,7 +1304,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(33):
     case CUSTOM_PARAM_ID(34):
 #else
-      index -= 2;
+      index += 2;
 #endif
     case CUSTOM_PARAM_ID(35):
     case CUSTOM_PARAM_ID(36):
@@ -1320,7 +1320,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(42):
     case CUSTOM_PARAM_ID(43):
 #else
-      index -= 2;
+      index += 2;
 #endif
     case CUSTOM_PARAM_ID(44):
     case CUSTOM_PARAM_ID(45):
