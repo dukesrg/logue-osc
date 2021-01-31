@@ -230,19 +230,19 @@ static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
 #ifdef OP6
-static float s_level_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_kls_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_kvs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_egrate_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_krs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_detune_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static int8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static int8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static int8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static int8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static int8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static int8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
 #else
-static float s_level_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_kls_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_kvs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_egrate_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_krs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
-static float s_detune_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static int8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static int8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static int8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static int8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static int8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static int8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 #endif
 static float s_feedback_offset = 0.f;
 static float s_feedback_scale = 1.f;
@@ -372,11 +372,11 @@ static param_t eg_lut[1024];
 #endif
 
 #ifdef CUSTOM_PARAMS
-float paramScale(float *param, uint32_t opidx) {
-  return param[opidx] * param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] * param[OPERATOR_COUNT + 2];
+float paramScale(int8_t *param, uint32_t opidx) {
+  return .000001f * param[opidx] * param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] * param[OPERATOR_COUNT + 2];
 }
 
-int8_t paramOffset(int8_t *param, uint32_t opidx) {
+int32_t paramOffset(int8_t *param, uint32_t opidx) {
   return param[opidx] + param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] + param[OPERATOR_COUNT + 2];
 }
 
@@ -384,7 +384,7 @@ void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_oplevel[i] = f32_to_param(
       scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF +
-      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) +
+      s_velocity * clipminmaxi32(0, s_kvs[i] + paramOffset(s_kvs_offset, i), 100) *  0.07f * paramScale(s_kvs_scale, i) +
       s_level_scaling[i]
     );
     if (s_oplevel[i] < ZERO)
@@ -971,7 +971,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
 #ifdef CUSTOM_PARAMS
-  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
+  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxi32(0, s_op_rate_scale[i] + paramOffset(s_krs_offset, i), 100) * .07f* paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
 #else
@@ -986,7 +986,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   float rate_factor;
   int32_t dl, dp, curve = 0;
 #ifdef CUSTOM_PARAMS
-  int8_t depth = 0;
+  int32_t depth = 0;
 #else
   float depth = 0.f;
 #endif
@@ -1288,7 +1288,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(19):
     case CUSTOM_PARAM_ID(20):
     case CUSTOM_PARAM_ID(21):
-      s_level_scale[CUSTOM_PARAM_ID(21) - index] = value * .01f;
+      s_level_scale[CUSTOM_PARAM_ID(21) - index] = value;
       setLevel();
       break;
     case CUSTOM_PARAM_ID(22):
@@ -1319,7 +1319,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(37):
     case CUSTOM_PARAM_ID(38):
     case CUSTOM_PARAM_ID(39):
-      s_kls_scale[CUSTOM_PARAM_ID(39) - index] = value * .01f;
+      s_kls_scale[CUSTOM_PARAM_ID(39) - index] = value;
       break;
     case CUSTOM_PARAM_ID(40):
     case CUSTOM_PARAM_ID(41):
@@ -1350,7 +1350,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(55):
     case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
-      s_kvs_scale[CUSTOM_PARAM_ID(57) - index] = value * .01f;
+      s_kvs_scale[CUSTOM_PARAM_ID(57) - index] = value;
       setLevel();
       break;
     case CUSTOM_PARAM_ID(58):
@@ -1381,7 +1381,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(73):
     case CUSTOM_PARAM_ID(74):
     case CUSTOM_PARAM_ID(75):
-      s_egrate_scale[CUSTOM_PARAM_ID(75) - index] = value * .01f;
+      s_egrate_scale[CUSTOM_PARAM_ID(75) - index] = value;
       break;
     case CUSTOM_PARAM_ID(76):
     case CUSTOM_PARAM_ID(77):
@@ -1411,7 +1411,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(91):
     case CUSTOM_PARAM_ID(92):
     case CUSTOM_PARAM_ID(93):
-      s_krs_scale[CUSTOM_PARAM_ID(93) - index] = value * .01f;
+      s_krs_scale[CUSTOM_PARAM_ID(93) - index] = value;
       break;
     case CUSTOM_PARAM_ID(94):
     case CUSTOM_PARAM_ID(95):
@@ -1442,7 +1442,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(109):
     case CUSTOM_PARAM_ID(110):
     case CUSTOM_PARAM_ID(111):
-      s_detune_scale[CUSTOM_PARAM_ID(111) - index] = value * 0.01f;
+      s_detune_scale[CUSTOM_PARAM_ID(111) - index] = value;
       break;
 #endif
 #ifdef WFBITS
