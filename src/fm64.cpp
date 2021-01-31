@@ -38,10 +38,10 @@
   CUSTOM_PARAM_INIT(
     k_user_osc_param_id1,
     k_user_osc_param_id2,
-    k_user_osc_custom_param_id1,
-    k_user_osc_custom_param_id2,
-    k_user_osc_custom_param_id3,
-    k_user_osc_custom_param_id4
+    CUSTOM_PARAM_ID(1),
+    CUSTOM_PARAM_ID(2),
+    CUSTOM_PARAM_ID(3),
+    CUSTOM_PARAM_ID(4)
   );
 #endif
 
@@ -1077,7 +1077,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 {
 #ifdef CUSTOM_PARAMS
   index = CUSTOM_PARAM_GET(index);
-  if (index >= k_user_osc_custom_param_id1 && value == 0)
+  if (index >= CUSTOM_PARAM_ID(1) && value == 0)
     value += 100; //logues bipolar percent parameter initialization workaround
 #endif
   switch (index) {
@@ -1227,133 +1227,133 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
 #endif
 #ifdef CUSTOM_PARAMS
-    case k_user_osc_custom_param_id1:
+    case CUSTOM_PARAM_ID(1):
       s_feedback_offset = (value - 100) * .07f;
       setFeedback();
       break;
-    case k_user_osc_custom_param_id2:
+    case CUSTOM_PARAM_ID(2):
       s_feedback_scale = value * .01f;
       setFeedback();
       break;
-    case k_user_osc_custom_param_id3:
+    case CUSTOM_PARAM_ID(3):
       s_algorithm_offset = value - 100;
       setAlgorithm();
       break;
-    case k_user_osc_custom_param_id4:
-    case k_user_osc_custom_param_id5:
-    case k_user_osc_custom_param_id6:
+    case CUSTOM_PARAM_ID(4):
+    case CUSTOM_PARAM_ID(5):
+    case CUSTOM_PARAM_ID(6):
 #ifdef OP6
-    case k_user_osc_custom_param_id7:
-    case k_user_osc_custom_param_id8:
+    case CUSTOM_PARAM_ID(7):
+    case CUSTOM_PARAM_ID(8):
 #else
       index -= 2;
 #endif
-    case k_user_osc_custom_param_id9:
-    case k_user_osc_custom_param_id10:
-    case k_user_osc_custom_param_id11:
-    case k_user_osc_custom_param_id12:
-      s_level_offset[index - k_user_osc_custom_param_id12] = value - 100;
+    case CUSTOM_PARAM_ID(9):
+    case CUSTOM_PARAM_ID(10):
+    case CUSTOM_PARAM_ID(11):
+    case CUSTOM_PARAM_ID(12):
+      s_level_offset[index - CUSTOM_PARAM_ID(12)] = value - 100;
       setLevel();
       break;
-    case k_user_osc_custom_param_id13:
-    case k_user_osc_custom_param_id14:
-    case k_user_osc_custom_param_id15:
+    case CUSTOM_PARAM_ID(13):
+    case CUSTOM_PARAM_ID(14):
+    case CUSTOM_PARAM_ID(15):
 #ifdef OP6
-    case k_user_osc_custom_param_id16:
-    case k_user_osc_custom_param_id17:
+    case CUSTOM_PARAM_ID(16):
+    case CUSTOM_PARAM_ID(17):
 #else
       index -= 2;
 #endif
-    case k_user_osc_custom_param_id18:
-    case k_user_osc_custom_param_id19:
-    case k_user_osc_custom_param_id20:
-    case k_user_osc_custom_param_id21:
-      s_level_scale[index - k_user_osc_custom_param_id21] = value * .01f;
+    case CUSTOM_PARAM_ID(18):
+    case CUSTOM_PARAM_ID(19):
+    case CUSTOM_PARAM_ID(20):
+    case CUSTOM_PARAM_ID(21):
+      s_level_scale[index - CUSTOM_PARAM_ID(21)] = value * .01f;
       setLevel();
       break;
-    case k_user_osc_custom_param_id22:
+    case CUSTOM_PARAM_ID(22):
       s_kls_offset = value - 100.f;
       break;
-    case k_user_osc_custom_param_id23:
+    case CUSTOM_PARAM_ID(23):
       s_kls_scale = value * .01f;
       break;
-    case k_user_osc_custom_param_id24:
+    case CUSTOM_PARAM_ID(24):
       s_kvs_offset = (value - 100) * 0.07f;
       setLevel();
       break;
-    case k_user_osc_custom_param_id25:
+    case CUSTOM_PARAM_ID(25):
       s_kvs_scale = value * .01f;
       setLevel();
       break;
-    case k_user_osc_custom_param_id26:
+    case CUSTOM_PARAM_ID(26):
       s_egrate_offset = value - 100;
       break;
-    case k_user_osc_custom_param_id27:
+    case CUSTOM_PARAM_ID(27):
       s_egrate_scale = value * .01f;
       break;
-    case k_user_osc_custom_param_id28:
+    case CUSTOM_PARAM_ID(28):
       s_krs_offset = (value - 100) * .07f;
       break;
-    case k_user_osc_custom_param_id29:
+    case CUSTOM_PARAM_ID(29):
       s_krs_scale = value * .01f;
       break;
-    case k_user_osc_custom_param_id30:
-    case k_user_osc_custom_param_id31:
-    case k_user_osc_custom_param_id32:
+    case CUSTOM_PARAM_ID(30):
+    case CUSTOM_PARAM_ID(31):
+    case CUSTOM_PARAM_ID(32):
 #ifdef OP6
-    case k_user_osc_custom_param_id33:
-    case k_user_osc_custom_param_id34:
+    case CUSTOM_PARAM_ID(33):
+    case CUSTOM_PARAM_ID(34):
 #else
       index -= 2;
 #endif
-    case k_user_osc_custom_param_id35:
-    case k_user_osc_custom_param_id36:
-    case k_user_osc_custom_param_id37:
-    case k_user_osc_custom_param_id38:
-      s_detune_offset[k_user_osc_custom_param_id38 - index] = (value - 100) * 2.56f;
+    case CUSTOM_PARAM_ID(35):
+    case CUSTOM_PARAM_ID(36):
+    case CUSTOM_PARAM_ID(37):
+    case CUSTOM_PARAM_ID(38):
+      s_detune_offset[CUSTOM_PARAM_ID(38) - index] = (value - 100) * 2.56f;
       break;
 #ifdef FINE_TUNE
-    case k_user_osc_custom_param_id39:
-    case k_user_osc_custom_param_id40:
-    case k_user_osc_custom_param_id41:
+    case CUSTOM_PARAM_ID(39):
+    case CUSTOM_PARAM_ID(40):
+    case CUSTOM_PARAM_ID(41):
 #ifdef OP6
-    case k_user_osc_custom_param_id42:
-    case k_user_osc_custom_param_id43:
+    case CUSTOM_PARAM_ID(42):
+    case CUSTOM_PARAM_ID(43):
 #else
       index -= 2;
 #endif
-    case k_user_osc_custom_param_id44:
-    case k_user_osc_custom_param_id45:
-    case k_user_osc_custom_param_id46:
-    case k_user_osc_custom_param_id47:
-      s_detune_scale[k_user_osc_custom_param_id47 - index] = value * 0.01f;
+    case CUSTOM_PARAM_ID(44):
+    case CUSTOM_PARAM_ID(45):
+    case CUSTOM_PARAM_ID(46):
+    case CUSTOM_PARAM_ID(47):
+      s_detune_scale[CUSTOM_PARAM_ID(47) - index] = value * 0.01f;
       break;
 #endif
 #ifdef WFBITS
-    case k_user_osc_custom_param_id48:
+    case CUSTOM_PARAM_ID(48):
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
         s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
       }
       break;
 #ifdef OP6
-    case k_user_osc_custom_param_id49:
+    case CUSTOM_PARAM_ID(49):
 #endif
-    case k_user_osc_custom_param_id50:
-    case k_user_osc_custom_param_id51:
-      index = (k_user_osc_custom_param_id51 - index) << 1;
+    case CUSTOM_PARAM_ID(50):
+    case CUSTOM_PARAM_ID(51):
+      index = (CUSTOM_PARAM_ID(51) - index) << 1;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
       index++;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
     break;
 #ifdef OP6
-    case k_user_osc_custom_param_id52:
-    case k_user_osc_custom_param_id53:
+    case CUSTOM_PARAM_ID(52):
+    case CUSTOM_PARAM_ID(53):
 #endif
-    case k_user_osc_custom_param_id54:
-    case k_user_osc_custom_param_id55:
-    case k_user_osc_custom_param_id56:
-    case k_user_osc_custom_param_id57:
-      index = k_user_osc_custom_param_id57 - index;
+    case CUSTOM_PARAM_ID(54):
+    case CUSTOM_PARAM_ID(55):
+    case CUSTOM_PARAM_ID(56):
+    case CUSTOM_PARAM_ID(57):
+      index = CUSTOM_PARAM_ID(57) - index;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
       break;
 #endif
