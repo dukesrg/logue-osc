@@ -219,37 +219,38 @@
 
 static uint32_t s_bank = -1;
 static uint32_t s_voice = -1;
-static uint32_t s_algorithm_idx;
+static uint8_t s_algorithm_idx;
+static int8_t s_algorithm_offset = 0;
 #ifdef CUSTOM_PARAMS
 #define FINE_TUNE_FACTOR 65536.f
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
-static float s_level_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f
+static int8_t s_kls_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_kvs_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
 #ifdef OP6
-  , 1.f, 1.f
+static float s_level_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_kls_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_kvs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_egrate_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_krs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_detune_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+#else
+static float s_level_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_kls_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_kvs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_egrate_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_krs_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_detune_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
 #endif
-};
-static float s_kls_offset = 0.f;
-static float s_kls_scale = 1.f;
-static float s_kvs_offset = 0.f;
-static float s_kvs_scale = 1.f;
-static int8_t s_egrate_offset = 0;
-static float s_egrate_scale = 1.f;
-static float s_krs_offset = 0.f;
-static float s_krs_scale = 1.f;
 static float s_feedback_offset = 0.f;
 static float s_feedback_scale = 1.f;
-static float s_detune_offset[OPERATOR_COUNT + 3] = {0.f};
-static float s_detune_scale[OPERATOR_COUNT + 3] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f
-#ifdef OP6
-  , 1.f, 1.f
-#endif
-};
 static uint8_t s_feedback_level;
 #else
 static float s_egrate_offset = 0.f;
 static float s_egrate_scale = 1.f;
 #endif
-static int32_t s_algorithm_offset = 0;
 static const uint8_t *s_algorithm;
 #ifdef CUSTOM_PARAMS
 static int8_t s_left_depth[OPERATOR_COUNT];
@@ -371,12 +372,19 @@ static param_t eg_lut[1024];
 #endif
 
 #ifdef CUSTOM_PARAMS
+float paramScale(float *param, uint32_t opidx) {
+  return param[opidx] * param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] * param[OPERATOR_COUNT + 2];
+}
+
+int8_t paramOffset(int8_t *param, uint32_t opidx) {
+  return param[opidx] + param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] + param[OPERATOR_COUNT + 2];
+}
+
 void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    uint32_t carrier = ((s_algorithm[i] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT;
     s_oplevel[i] = f32_to_param(
-      scale_level(clipminmaxi32(0, s_op_level[i] + s_level_offset[i] + s_level_offset[carrier] + s_level_offset[OPERATOR_COUNT + 2], 99)) * s_level_scale[i] * s_level_scale[carrier] * s_level_scale[OPERATOR_COUNT + 2] * LEVEL_SCALE_FACTORF +
-      s_velocity * clipminmaxf(0.f, s_kvs[i] + s_kvs_offset, 7.f) * s_kvs_scale +
+      scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF +
+      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) +
       s_level_scaling[i]
     );
     if (s_oplevel[i] < ZERO)
@@ -741,8 +749,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef FINE_TUNE
       uint32_t p;
 #ifdef CUSTOM_PARAMS
-      uint32_t carrier = ((s_algorithm[i] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT;
-      p = (pitch << 16) + (s_detune[i] + s_detune_offset[i] + s_detune_offset[carrier] + s_detune_offset[OPERATOR_COUNT + 2]) * s_detune_scale[i] * s_detune_scale[carrier] * s_detune_scale[OPERATOR_COUNT + 2] * FINE_TUNE_FACTOR;
+      p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
 #else
       p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
 #endif
@@ -965,8 +972,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
 #ifdef CUSTOM_PARAMS
-  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + s_krs_offset, 7.f) * s_krs_scale;
-  float rate = clipminmaxi32(0, s_egrate[i][j] + s_egrate_offset, 99) * s_egrate_scale;
+  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
+  float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
 #else
   float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
@@ -979,7 +986,11 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor;
   int32_t dl, dp, curve = 0;
+#ifdef CUSTOM_PARAMS
+  int8_t depth = 0;
+#else
   float depth = 0.f;
+#endif
 //  uint8_t shadow_rate = s_active_rate ^ 1;
 #ifdef EG_SAMPLED
   uint32_t samples;
@@ -1024,11 +1035,10 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
        depth = s_right_depth[i];
     }
 #ifdef CUSTOM_PARAMS
-    depth = clipminmaxf(0.f, depth + s_kls_offset, 99.f) * s_kls_scale * LEVEL_SCALE_FACTORF;
     if (dp == 0)
       s_level_scaling[i] = 0.f;
     else
-      s_level_scaling[i] = depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+      s_level_scaling[i] = clipminmaxf(0, depth + paramOffset(s_kls_offset, i), 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
 #else
     if (dp == 0)
       s_level_scaling[i] = ZERO;
@@ -1272,88 +1282,184 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       setLevel();
       break;
     case CUSTOM_PARAM_ID(22):
-      s_kls_offset = value - 100.f;
-      break;
     case CUSTOM_PARAM_ID(23):
-      s_kls_scale = value * .01f;
-      break;
     case CUSTOM_PARAM_ID(24):
-      s_kvs_offset = (value - 100) * 0.07f;
-      setLevel();
-      break;
-    case CUSTOM_PARAM_ID(25):
-      s_kvs_scale = value * .01f;
-      setLevel();
-      break;
-    case CUSTOM_PARAM_ID(26):
-      s_egrate_offset = value - 100;
-      break;
-    case CUSTOM_PARAM_ID(27):
-      s_egrate_scale = value * .01f;
-      break;
-    case CUSTOM_PARAM_ID(28):
-      s_krs_offset = (value - 100) * .07f;
-      break;
-    case CUSTOM_PARAM_ID(29):
-      s_krs_scale = value * .01f;
-      break;
-    case CUSTOM_PARAM_ID(30):
-    case CUSTOM_PARAM_ID(31):
-    case CUSTOM_PARAM_ID(32):
 #ifdef OP6
-    case CUSTOM_PARAM_ID(33):
-    case CUSTOM_PARAM_ID(34):
+    case CUSTOM_PARAM_ID(25):
+    case CUSTOM_PARAM_ID(26):
 #else
       index += 2;
 #endif
+    case CUSTOM_PARAM_ID(27):
+    case CUSTOM_PARAM_ID(28):
+    case CUSTOM_PARAM_ID(29):
+    case CUSTOM_PARAM_ID(30):
+      s_kls_offset[index - CUSTOM_PARAM_ID(30)] = value - 100;
+      break;
+    case CUSTOM_PARAM_ID(31):
+    case CUSTOM_PARAM_ID(32):
+    case CUSTOM_PARAM_ID(33):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(34):
     case CUSTOM_PARAM_ID(35):
+#else
+      index += 2;
+#endif
     case CUSTOM_PARAM_ID(36):
     case CUSTOM_PARAM_ID(37):
     case CUSTOM_PARAM_ID(38):
-      s_detune_offset[CUSTOM_PARAM_ID(38) - index] = (value - 100) * 2.56f;
-      break;
-#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(39):
+      s_kls_scale[index - CUSTOM_PARAM_ID(39)] = value * .01f;
+      break;
     case CUSTOM_PARAM_ID(40):
     case CUSTOM_PARAM_ID(41):
-#ifdef OP6
     case CUSTOM_PARAM_ID(42):
+#ifdef OP6
     case CUSTOM_PARAM_ID(43):
+    case CUSTOM_PARAM_ID(44):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(44):
     case CUSTOM_PARAM_ID(45):
     case CUSTOM_PARAM_ID(46):
     case CUSTOM_PARAM_ID(47):
-      s_detune_scale[CUSTOM_PARAM_ID(47) - index] = value * 0.01f;
-      break;
-#endif
-#ifdef WFBITS
     case CUSTOM_PARAM_ID(48):
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
-      }
+      s_kvs_offset[index - CUSTOM_PARAM_ID(48)] = value - 100;
+      setLevel();
       break;
-#ifdef OP6
     case CUSTOM_PARAM_ID(49):
-#endif
     case CUSTOM_PARAM_ID(50):
     case CUSTOM_PARAM_ID(51):
-      index = (CUSTOM_PARAM_ID(51) - index) << 1;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
-      index++;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
-    break;
 #ifdef OP6
     case CUSTOM_PARAM_ID(52):
     case CUSTOM_PARAM_ID(53):
+#else
+      index += 2;
 #endif
     case CUSTOM_PARAM_ID(54):
     case CUSTOM_PARAM_ID(55):
     case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
-      index = CUSTOM_PARAM_ID(57) - index;
+      s_kvs_scale[index - CUSTOM_PARAM_ID(57)] = value * .01f;
+      setLevel();
+      break;
+    case CUSTOM_PARAM_ID(58):
+    case CUSTOM_PARAM_ID(59):
+    case CUSTOM_PARAM_ID(60):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(61):
+    case CUSTOM_PARAM_ID(62):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(63):
+    case CUSTOM_PARAM_ID(64):
+    case CUSTOM_PARAM_ID(65):
+    case CUSTOM_PARAM_ID(66):
+      s_egrate_offset[index - CUSTOM_PARAM_ID(66)] = value - 100;
+      break;
+    case CUSTOM_PARAM_ID(67):
+    case CUSTOM_PARAM_ID(68):
+    case CUSTOM_PARAM_ID(69):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(70):
+    case CUSTOM_PARAM_ID(71):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(72):
+    case CUSTOM_PARAM_ID(73):
+    case CUSTOM_PARAM_ID(74):
+    case CUSTOM_PARAM_ID(75):
+      s_egrate_scale[index - CUSTOM_PARAM_ID(75)] = value * .01f;
+      break;
+    case CUSTOM_PARAM_ID(76):
+    case CUSTOM_PARAM_ID(77):
+    case CUSTOM_PARAM_ID(78):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(79):
+    case CUSTOM_PARAM_ID(80):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(81):
+    case CUSTOM_PARAM_ID(82):
+    case CUSTOM_PARAM_ID(83):
+    case CUSTOM_PARAM_ID(84):
+      s_krs_offset[index - CUSTOM_PARAM_ID(84)] = value - 100;
+      break;
+    case CUSTOM_PARAM_ID(85):
+    case CUSTOM_PARAM_ID(86):
+    case CUSTOM_PARAM_ID(87):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(88):
+    case CUSTOM_PARAM_ID(89):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(90):
+    case CUSTOM_PARAM_ID(91):
+    case CUSTOM_PARAM_ID(92):
+    case CUSTOM_PARAM_ID(93):
+      s_krs_scale[index - CUSTOM_PARAM_ID(93)] = value * .01f;
+      break;
+    case CUSTOM_PARAM_ID(94):
+    case CUSTOM_PARAM_ID(95):
+    case CUSTOM_PARAM_ID(96):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(97):
+    case CUSTOM_PARAM_ID(98):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(99):
+    case CUSTOM_PARAM_ID(100):
+    case CUSTOM_PARAM_ID(101):
+    case CUSTOM_PARAM_ID(102):
+      s_detune_offset[CUSTOM_PARAM_ID(102) - index] = value - 100;
+      break;
+#ifdef FINE_TUNE
+    case CUSTOM_PARAM_ID(103):
+    case CUSTOM_PARAM_ID(104):
+    case CUSTOM_PARAM_ID(105):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(106):
+    case CUSTOM_PARAM_ID(107):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(108):
+    case CUSTOM_PARAM_ID(109):
+    case CUSTOM_PARAM_ID(110):
+    case CUSTOM_PARAM_ID(111):
+      s_detune_scale[CUSTOM_PARAM_ID(111) - index] = value * 0.01f;
+      break;
+#endif
+#ifdef WFBITS
+    case CUSTOM_PARAM_ID(112):
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
+      }
+      break;
+#ifdef OP6
+    case CUSTOM_PARAM_ID(113):
+#endif
+    case CUSTOM_PARAM_ID(114):
+    case CUSTOM_PARAM_ID(115):
+      index = (CUSTOM_PARAM_ID(115) - index) << 1;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
+      index++;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
+    break;
+#ifdef OP6
+    case CUSTOM_PARAM_ID(116):
+    case CUSTOM_PARAM_ID(117):
+#endif
+    case CUSTOM_PARAM_ID(118):
+    case CUSTOM_PARAM_ID(119):
+    case CUSTOM_PARAM_ID(120):
+    case CUSTOM_PARAM_ID(121):
+      index = CUSTOM_PARAM_ID(121) - index;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
       break;
 #endif
