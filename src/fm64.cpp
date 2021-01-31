@@ -1038,7 +1038,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = 0.f;
     else
-      s_level_scaling[i] = clipminmaxf(0, depth + paramOffset(s_kls_offset, i), 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+      s_level_scaling[i] = clipminmaxf(-99, depth + paramOffset(s_kls_offset, i), 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
 #else
     if (dp == 0)
       s_level_scaling[i] = ZERO;
@@ -1262,7 +1262,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(10):
     case CUSTOM_PARAM_ID(11):
     case CUSTOM_PARAM_ID(12):
-      s_level_offset[index - CUSTOM_PARAM_ID(12)] = value - 100;
+      s_level_offset[CUSTOM_PARAM_ID(12) - index] = value - 100;
       setLevel();
       break;
     case CUSTOM_PARAM_ID(13):
@@ -1278,7 +1278,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(19):
     case CUSTOM_PARAM_ID(20):
     case CUSTOM_PARAM_ID(21):
-      s_level_scale[index - CUSTOM_PARAM_ID(21)] = value * .01f;
+      s_level_scale[CUSTOM_PARAM_ID(21) - index] = value * .01f;
       setLevel();
       break;
     case CUSTOM_PARAM_ID(22):
@@ -1294,7 +1294,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(28):
     case CUSTOM_PARAM_ID(29):
     case CUSTOM_PARAM_ID(30):
-      s_kls_offset[index - CUSTOM_PARAM_ID(30)] = value - 100;
+      s_kls_offset[CUSTOM_PARAM_ID(30) - index] = value - 100;
       break;
     case CUSTOM_PARAM_ID(31):
     case CUSTOM_PARAM_ID(32):
@@ -1309,7 +1309,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(37):
     case CUSTOM_PARAM_ID(38):
     case CUSTOM_PARAM_ID(39):
-      s_kls_scale[index - CUSTOM_PARAM_ID(39)] = value * .01f;
+      s_kls_scale[CUSTOM_PARAM_ID(39) - index] = value * .01f;
       break;
     case CUSTOM_PARAM_ID(40):
     case CUSTOM_PARAM_ID(41):
@@ -1324,7 +1324,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(46):
     case CUSTOM_PARAM_ID(47):
     case CUSTOM_PARAM_ID(48):
-      s_kvs_offset[index - CUSTOM_PARAM_ID(48)] = value - 100;
+      s_kvs_offset[CUSTOM_PARAM_ID(48) - index] = value - 100;
       setLevel();
       break;
     case CUSTOM_PARAM_ID(49):
@@ -1340,7 +1340,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(55):
     case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
-      s_kvs_scale[index - CUSTOM_PARAM_ID(57)] = value * .01f;
+      s_kvs_scale[CUSTOM_PARAM_ID(57) - index] = value * .01f;
       setLevel();
       break;
     case CUSTOM_PARAM_ID(58):
@@ -1356,7 +1356,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(64):
     case CUSTOM_PARAM_ID(65):
     case CUSTOM_PARAM_ID(66):
-      s_egrate_offset[index - CUSTOM_PARAM_ID(66)] = value - 100;
+      s_egrate_offset[CUSTOM_PARAM_ID(66) - index] = value - 100;
       break;
     case CUSTOM_PARAM_ID(67):
     case CUSTOM_PARAM_ID(68):
@@ -1371,7 +1371,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(73):
     case CUSTOM_PARAM_ID(74):
     case CUSTOM_PARAM_ID(75):
-      s_egrate_scale[index - CUSTOM_PARAM_ID(75)] = value * .01f;
+      s_egrate_scale[CUSTOM_PARAM_ID(75) - index] = value * .01f;
       break;
     case CUSTOM_PARAM_ID(76):
     case CUSTOM_PARAM_ID(77):
@@ -1386,7 +1386,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(82):
     case CUSTOM_PARAM_ID(83):
     case CUSTOM_PARAM_ID(84):
-      s_krs_offset[index - CUSTOM_PARAM_ID(84)] = value - 100;
+      s_krs_offset[CUSTOM_PARAM_ID(84) - index] = value - 100;
       break;
     case CUSTOM_PARAM_ID(85):
     case CUSTOM_PARAM_ID(86):
@@ -1401,7 +1401,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(91):
     case CUSTOM_PARAM_ID(92):
     case CUSTOM_PARAM_ID(93):
-      s_krs_scale[index - CUSTOM_PARAM_ID(93)] = value * .01f;
+      s_krs_scale[CUSTOM_PARAM_ID(93) - index] = value * .01f;
       break;
     case CUSTOM_PARAM_ID(94):
     case CUSTOM_PARAM_ID(95):
