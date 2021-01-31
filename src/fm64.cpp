@@ -474,36 +474,35 @@ void initvoice() {
 #endif
       s_break_point[i] = voice->op[i].bp + NOTE_A_1;
 //fold negative/position curves into curve depth sign
-      if (voice->op[i].lc < 2) {
 #ifdef CUSTOM_PARAMS
-        s_left_depth[i] = voice->op[i].ld;
-#else
-        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTORF;
-#endif
+      s_left_depth[i] = voice->op[i].ld;
+      s_right_depth[i] = voice->op[i].rd;
+      if (voice->op[i].lc < 2) {
         s_left_curve[i] = voice->op[i].lc;
       } else {
-#ifdef CUSTOM_PARAMS
-        s_left_depth[i] = - voice->op[i].ld;
+        s_left_curve[i] = 5 - voice->op[i].lc;
+      }
+      if (voice->op[i].rc < 2) {
+        s_right_curve[i] = voice->op[i].rc;
+      } else {
+        s_right_curve[i] = 5 - voice->op[i].rc;
+      }
 #else
+      if (voice->op[i].lc < 2) {
+        s_left_depth[i] = voice->op[i].ld * LEVEL_SCALE_FACTORF;
+        s_left_curve[i] = voice->op[i].lc;
+      } else {
         s_left_depth[i] = - voice->op[i].ld * LEVEL_SCALE_FACTORF;
-#endif
         s_left_curve[i] = 3 - voice->op[i].lc;
       }
       if (voice->op[i].rc < 2) {
-#ifdef CUSTOM_PARAMS
-        s_right_depth[i] = - voice->op[i].rd;
-#else
         s_right_depth[i] = - voice->op[i].rd * LEVEL_SCALE_FACTORF;
-#endif
         s_right_curve[i] = voice->op[i].rc;
       } else {
-#ifdef CUSTOM_PARAMS
-        s_right_depth[i] = voice->op[i].rd;
-#else
         s_right_depth[i] = voice->op[i].rd * LEVEL_SCALE_FACTORF;
-#endif
         s_right_curve[i] = 3 - voice->op[i].rc;
       }
+#endif
     }
     s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX7_RATE_EXP_FACTOR;
@@ -1027,19 +1026,30 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #endif
     }
     dp = (params->pitch >> 8) - s_break_point[i];
-    if (dp < 0) {
-       curve = s_left_curve[i];
-       depth = s_left_depth[i];
-    } else if (dp > 0) {
-       curve = s_right_curve[i];
-       depth = s_right_depth[i];
-    }
 #ifdef CUSTOM_PARAMS
+    if (dp < 0) {
+       depth = s_left_depth[i] + paramOffset(s_kls_offset, i);
+       curve = s_left_curve[i];
+       if (curve >= 2)
+         depth = - depth;
+    } else if (dp > 0) {
+       depth = s_right_depth[i] + paramOffset(s_kls_offset, i);
+       curve = s_right_curve[i];
+       if (curve < 2)
+         depth = - depth;
+    }
     if (dp == 0)
       s_level_scaling[i] = 0.f;
     else
-      s_level_scaling[i] = clipminmaxf(-99, depth + paramOffset(s_kls_offset, i), 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
 #else
+    if (dp < 0) {
+       depth = s_left_depth[i];
+       curve = s_left_curve[i];
+    } else if (dp > 0) {
+       depth = s_right_depth[i];
+       curve = s_right_curve[i];
+    }
     if (dp == 0)
       s_level_scaling[i] = ZERO;
     else
