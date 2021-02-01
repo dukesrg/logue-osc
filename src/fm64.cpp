@@ -384,7 +384,7 @@ void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_oplevel[i] = f32_to_param(
       scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF +
-      s_velocity * clipminmaxi32(0, s_kvs[i] + paramOffset(s_kvs_offset, i), 100) *  0.07f * paramScale(s_kvs_scale, i) +
+      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) +
       s_level_scaling[i]
     );
     if (s_oplevel[i] < ZERO)
@@ -971,7 +971,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
 #ifdef CUSTOM_PARAMS
-  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxi32(0, s_op_rate_scale[i] + paramOffset(s_krs_offset, i), 100) * .07f* paramScale(s_krs_scale, i);
+  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
 #else
