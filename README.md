@@ -292,6 +292,7 @@ Custom data descriptors are themselves arrays, and should contain 3-5 values:
 2. size (int) : custom data element size.
 3. count (int) : optional maximum number of custom data elements (if more than one).
 4. param (int) : optional index of parameter that controls custom element selection (to reflect actual number of elements injected), for the "custom_params" case this is an offset for the customizable parameter numbers.
+5. param multiplier (int) : optional scaler for parameter value.
 
 * custom_params (array) : contains ordered list of all supported parameter descriptors
 

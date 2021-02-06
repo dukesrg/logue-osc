@@ -11,14 +11,14 @@
         "num_param" : 6,
         "params" : [
             ["Voice", 0, 31, ""],
-            ["Bank", 0, 2, ""],
             ["FB offset", -99, 100, "%"],
             ["FB scale", -99, 100, "%"],
             ["Algorithm", -39, 39, "%"],
-            ["Lvl offs All", -99, 99, "%"]
+            ["Lvl offs All", -99, 99, "%"],
+            ["Lvl offs Car", -99, 99, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 3, 1],
+            ["Yamaha DX7-series voice banks", 64, 4096, 3, 0, 32],
             ["Raw 16-bit PCM waveforms", 12352, 512, 8],
             ["custom_params", 16448, 2, 8, 256]
         ],

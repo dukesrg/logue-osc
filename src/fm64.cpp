@@ -32,16 +32,22 @@
 #define FINE_TUNE //16-bit precision for cents/detune
 //#define SPLIT_MODE //split mode enable
 //#define CUSTOM_PARAMS //customizable params
+//#define BANK_SELECT //dedicated param for bank select
 
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
   CUSTOM_PARAM_INIT(
     k_user_osc_param_id1,
+#ifdef BANK_SELECT
     k_user_osc_param_id2,
+#endif
     CUSTOM_PARAM_ID(1),
     CUSTOM_PARAM_ID(2),
     CUSTOM_PARAM_ID(3),
     CUSTOM_PARAM_ID(4)
+#ifndef BANK_SELECT
+    , CUSTOM_PARAM_ID(5)
+#endif
   );
 #endif
 
@@ -217,7 +223,9 @@
 #define PEG_RATE_EXP_FACTOR .16f
 #define PEG_RATE_FACTOR 4.66187255859375e-7f
 
+#ifdef BANK_SELECT
 static uint32_t s_bank = -1;
+#endif
 static uint32_t s_voice = -1;
 static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
@@ -418,9 +426,17 @@ void setAlgorithm() {
 }
 
 void initvoice() {
+#ifdef BANK_SELECT
   if (dx_voices[s_bank][s_voice].dx7.vnam[0]) {
+#else
+  if (dx_voices[0][s_voice].dx7.vnam[0]) {
+#endif
 #ifdef OP6
+#ifdef BANK_SELECT
     const dx7_voice_t *voice = &dx_voices[s_bank][s_voice].dx7;
+#else
+    const dx7_voice_t *voice = &dx_voices[0][s_voice].dx7;
+#endif
     s_opi = voice->opi;
     s_algorithm_idx = voice->als;
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
@@ -510,7 +526,11 @@ void initvoice() {
 #endif
   } else {
 #ifdef OP4
+#ifdef BANK_SELECT
     const dx11_voice_t *voice = &dx_voices[s_bank][s_voice].dx11;
+#else
+    const dx11_voice_t *voice = &dx_voices[0][s_voice].dx11;
+#endif
 #ifdef TWEAK_ALG
     s_algorithm_idx = dx11_algorithm_lut[voice->alg + (voice->alghi << 3)];
 #else
@@ -1224,12 +1244,14 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         initvoice();
       }
       break;
+#ifdef BANK_SELECT
     case k_user_osc_param_id2:
       if (s_bank != value) { //NTS-1 parameter change bounce workaround
         s_bank = value;
         initvoice();
       }
       break;
+#endif
 #ifndef CUSTOM_PARAMS
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
