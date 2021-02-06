@@ -441,7 +441,7 @@ void initvoice() {
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_pitchfreq[i] = !voice->op[i].pm;
-      s_detune[i] = (voice->op[i].pd - DX7_DETUNE_CENTER) * 6;
+      s_detune[i] = (voice->op[i].pd - DX7_DETUNE_CENTER) * 1;
 #ifdef WFBITS
 #ifdef TWEAK_WF
       s_op_waveform[i] = voice->op[i].osw & ((1 << WFBITS) - 1);
@@ -540,7 +540,7 @@ void initvoice() {
         i = k;
 
       s_pitchfreq[i] = !voice->opadd[i].fixrg;
-      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 6;
+      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 1;
 #ifdef WFBITS
       s_op_waveform[i] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
 #endif
@@ -1447,29 +1447,49 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef WFBITS
     case CUSTOM_PARAM_ID(112):
+      value -= 100;
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value - 100, 7);
+        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + value, 7);
+      }
+      break;
+    case CUSTOM_PARAM_ID(113):
+      value -= 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + ((s_algorithm[i] & ALG_OUT_MASK) ? value : 0), 7);
+      }
+      break;
+    case CUSTOM_PARAM_ID(114):
+      value -= 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + ((s_algorithm[i] & ALG_OUT_MASK) ? 0 : value), 7);
+      }
+      break;
+    case CUSTOM_PARAM_ID(115):
+      value -= 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + ((s_algorithm[i] & ALG_OUT_MASK) ? (value / 10) : (value % 10)), 7);
       }
       break;
 #ifdef OP6
-    case CUSTOM_PARAM_ID(113):
+    case CUSTOM_PARAM_ID(116):
 #endif
-    case CUSTOM_PARAM_ID(114):
-    case CUSTOM_PARAM_ID(115):
-      index = (CUSTOM_PARAM_ID(115) - index) << 1;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) % 10, 7);
+    case CUSTOM_PARAM_ID(117):
+    case CUSTOM_PARAM_ID(118):
+      index = (CUSTOM_PARAM_ID(119) - index) << 1;
+      value -= 100;
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value % 10, 7);
       index++;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + (value - 100) / 10, 7);
+      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value / 10, 7);
     break;
 #ifdef OP6
-    case CUSTOM_PARAM_ID(116):
-    case CUSTOM_PARAM_ID(117):
-#endif
-    case CUSTOM_PARAM_ID(118):
     case CUSTOM_PARAM_ID(119):
     case CUSTOM_PARAM_ID(120):
+#endif
     case CUSTOM_PARAM_ID(121):
-      index = CUSTOM_PARAM_ID(121) - index;
+    case CUSTOM_PARAM_ID(122):
+    case CUSTOM_PARAM_ID(123):
+    case CUSTOM_PARAM_ID(124):
+      index = CUSTOM_PARAM_ID(124) - index;
       s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
       break;
 #endif
