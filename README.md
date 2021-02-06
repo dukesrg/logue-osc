@@ -225,19 +225,16 @@ For user-customizable oscillators, an online constructor is available at https:/
 |109|Det scal Op4|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 4|
 |110|Det scal Op5|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 5|
 |111|Det scal Op6|-99&hellip;100 (x0.01&hellip;x2)|Detune multiplier for operator 6|
-|112|Waveform All|-7&hellip;7|Waveform offset for all operators|
-|113|Waveform Car|-7&hellip;7|Waveform offset for carriers|
-|114|Waveform Mod|-7&hellip;7|Waveform offset for modulators|
-|115|Waveform C+M|-77&hellip;77|Waveform offset for carriers (higher digit) and modulators (lower digit)|
-|116|Waveform 1+2|-77&hellip;77|Waveform offset for operator 1 (higher digit) and 2 (lower digit)|
-|117|Waveform 3+4|-77&hellip;77|Waveform offset for operator 3 (higher digit) and 4 (lower digit)|
-|118|Waveform 5+6|-77&hellip;77|Waveform offset for operator 5 (higher digit) and 6 (lower digit)|
-|119|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
-|120|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
-|121|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
-|122|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
-|123|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
-|124|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
+|112|Waveform C+M|-77&hellip;77|Waveform offset for carriers (higher digit) and modulators (lower digit)|
+|113|Waveform 1+2|-77&hellip;77|Waveform offset for operator 1 (higher digit) and 2 (lower digit)|
+|114|Waveform 3+4|-77&hellip;77|Waveform offset for operator 3 (higher digit) and 4 (lower digit)|
+|115|Waveform 5+6|-77&hellip;77|Waveform offset for operator 5 (higher digit) and 6 (lower digit)|
+|116|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
+|117|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
+|118|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
+|119|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
+|120|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
+|121|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
 |-|-|-|-|-|-|-|-|-|
