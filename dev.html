@@ -177,8 +177,9 @@ function inject(osc) {
         manifest.header.name = name.substring(0, 12);
         for (var i = 0; i < custom_count[osc.name]; i++) {
           var paramidx = manifest.header.custom_data[i][4];
+          var parammul = manifest.header.custom_data[i][5];
           if (typeof paramidx !== 'undefined')
-            manifest.header.params[paramidx][2] = data[i].length - 1;
+            manifest.header.params[paramidx][2] = data[i].length * (typeof parammul == 'undefined' ? 1 : parammul) - 1;
         }
         for (var i = 0; i < 6; i++) {
           var param_num = custom_params[osc.name].indexOf(document.querySelector('#' + osc.name + '-param' + (i + 1)).innerHTML); 
