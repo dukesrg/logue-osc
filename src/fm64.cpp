@@ -255,6 +255,13 @@ static int8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100
 static float s_feedback_offset = 0.f;
 static float s_feedback_scale = 1.f;
 static uint8_t s_feedback_level;
+#ifdef WFBITS
+#ifdef OP6
+static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
+#else
+static int8_t s_waveform_offset[OPERATOR_COUNT + 3] = {0};
+#endif
+#endif
 #else
 static float s_egrate_offset = 0.f;
 static float s_egrate_scale = 1.f;
@@ -400,6 +407,19 @@ void setLevel() {
   }
 }
 
+#ifdef WFBITS
+void setWaveform() {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+    s_waveform[i] = clipminmaxi32(
+      0, s_op_waveform[i] +
+      s_waveform_offset[i] +
+      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] % 10)) +
+      ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
+      7
+    );
+}
+#endif
+
 void setFeedback() {
   float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
   s_feedback = value <= 0.f ? ZERO : f32_to_param(powf(2.f, value * s_feedback_scale) * FEEDBACK_RECIPF);
@@ -422,6 +442,9 @@ void setAlgorithm() {
   s_comp = f32_to_param(1.f / comp);
 #ifdef CUSTOM_PARAMS
   setLevel();
+#ifdef WFBITS
+  setWaveform();
+#endif
 #endif
 }
 
@@ -1469,32 +1492,25 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef WFBITS
     case CUSTOM_PARAM_ID(112):
-      value -= 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-        s_waveform[i] = clipminmaxi32(0, s_op_waveform[i] + ((s_algorithm[i] & ALG_OUT_MASK) ? (value / 10) : (value % 10)), 7);
-      }
-      break;
 #ifdef OP6
     case CUSTOM_PARAM_ID(113):
+#else
+      index++;
 #endif
     case CUSTOM_PARAM_ID(114):
     case CUSTOM_PARAM_ID(115):
-      index = (CUSTOM_PARAM_ID(115) - index) << 1;
-      value -= 100;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value % 10, 7);
-      index++;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value / 10, 7);
-    break;
 #ifdef OP6
     case CUSTOM_PARAM_ID(116):
     case CUSTOM_PARAM_ID(117):
+#else
+      index += 2;
 #endif
     case CUSTOM_PARAM_ID(118):
     case CUSTOM_PARAM_ID(119):
     case CUSTOM_PARAM_ID(120):
     case CUSTOM_PARAM_ID(121):
-      index = CUSTOM_PARAM_ID(121) - index;
-      s_waveform[index] = clipminmaxi32(0, s_op_waveform[index] + value - 100, 7);
+      s_waveform_offset[CUSTOM_PARAM_ID(121) - index] = value - 100;
+      setWaveform();
       break;
 #endif
 #endif
