@@ -41,12 +41,12 @@
 #ifdef BANK_SELECT
     k_user_osc_param_id2,
 #endif
-    CUSTOM_PARAM_ID(1),
-    CUSTOM_PARAM_ID(2),
-    CUSTOM_PARAM_ID(3),
-    CUSTOM_PARAM_ID(4)
+    CUSTOM_PARAM_ID(106),
+    CUSTOM_PARAM_ID(61),
+    CUSTOM_PARAM_ID(8),
+    CUSTOM_PARAM_ID(6)
 #ifndef BANK_SELECT
-    , CUSTOM_PARAM_ID(5)
+    , CUSTOM_PARAM_ID(115)
 #endif
   );
 #endif
@@ -238,19 +238,19 @@ static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
 #ifdef OP6
-static int8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static int8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static int8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static int8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static int8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static int8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
 #else
-static int8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static int8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static int8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static int8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static int8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static int8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
+static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 #endif
 static float s_feedback_offset = 0.f;
 static float s_feedback_scale = 1.f;
@@ -324,14 +324,15 @@ static uint32_t s_waveform[OPERATOR_COUNT];
 static uint32_t s_op_waveform[OPERATOR_COUNT];
 #endif
 #endif
-#ifndef CUSTOM_PARAMS
+#ifdef CUSTOM_PARAMS
+static int16_t s_assignable[2] = {CUSTOM_PARAM_ID(1), CUSTOM_PARAM_ID(5)};
+#else
 #ifdef SHAPE_LFO
 static uint32_t s_assignable[3];
 #else
 static uint32_t s_assignable[2];
 #endif
 #endif
-
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static param_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 //static param_t s_egsrate[2][OPERATOR_COUNT][EG_STAGE_COUNT - 1];
@@ -387,7 +388,7 @@ static param_t eg_lut[1024];
 #endif
 
 #ifdef CUSTOM_PARAMS
-float paramScale(int8_t *param, uint32_t opidx) {
+float paramScale(uint8_t *param, uint32_t opidx) {
   return .000001f * param[opidx] * param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] * param[OPERATOR_COUNT + 2];
 }
 
@@ -480,7 +481,7 @@ void initvoice() {
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       s_pitchfreq[i] = !voice->op[i].pm;
-      s_detune[i] = (voice->op[i].pd - DX7_DETUNE_CENTER) * 1;
+      s_detune[i] = (voice->op[i].pd - DX7_DETUNE_CENTER) * 3;
 #ifdef WFBITS
 #ifdef TWEAK_WF
       s_op_waveform[i] = voice->op[i].osw & ((1 << WFBITS) - 1);
@@ -583,7 +584,7 @@ void initvoice() {
         i = k;
 
       s_pitchfreq[i] = !voice->opadd[i].fixrg;
-      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 1;
+      s_detune[i] = (voice->op[i].det - DX11_DETUNE_CENTER) * 3;
 #ifdef WFBITS
       s_op_waveform[i] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
 #endif
@@ -1139,22 +1140,32 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
 #ifdef CUSTOM_PARAMS
+  if (index == k_user_osc_param_shiftshape && s_assignable[0] == s_assignable[1])
+    return;
+  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
+  uint8_t negative = 0;
   index = CUSTOM_PARAM_GET(index);
-  if (index >= CUSTOM_PARAM_ID(1) && value == 0)
-    value += 100; //logues bipolar percent parameter initialization workaround
+  if (tenbits) {
+    index -= k_user_osc_param_shape;
+    if (s_assignable[index] < 0) {
+      negative = 1;
+      index = - s_assignable[index];
+    } else
+      index = s_assignable[index];
+  }
+  if (index > CUSTOM_PARAM_ID(1)) {
+    if (tenbits)
+      value >>= 3;
+    if (tenbits || value == 0)
+      value = 100 + (negative ? - value : value);
+  }
 #endif
   switch (index) {
 #ifndef CUSTOM_PARAMS
     case k_user_osc_param_shiftshape:
       if (s_assignable[0] == s_assignable[1])
         break;
-#endif
     case k_user_osc_param_shape:
-#ifdef CUSTOM_PARAMS
-          s_velocity = (powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f;
-//                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
-     setLevel();
-#else
       index = s_assignable[index - k_user_osc_param_shape];
       switch (index) {
 #ifdef FEEDBACK
@@ -1259,8 +1270,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         default:
           break;
       }
-#endif
       break;
+#endif
     case k_user_osc_param_id1:
       if (s_voice != value) { //NTS-1 parameter change bounce workaround
         s_voice = value;
@@ -1293,223 +1304,232 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef CUSTOM_PARAMS
     case CUSTOM_PARAM_ID(1):
+      s_velocity = (powf(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
+//                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
+      setLevel();
+      break;
+    case CUSTOM_PARAM_ID(2):
+    case CUSTOM_PARAM_ID(3):
+      s_assignable[index - CUSTOM_PARAM_ID(2)] = value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1));
+      break;
+    case CUSTOM_PARAM_ID(4):
       s_feedback_offset = (value - 100) * .07f;
       setFeedback();
       break;
-    case CUSTOM_PARAM_ID(2):
+    case CUSTOM_PARAM_ID(5):
       s_feedback_scale = value * .01f;
       setFeedback();
       break;
-    case CUSTOM_PARAM_ID(3):
+    case CUSTOM_PARAM_ID(6):
       s_algorithm_offset = value - 100;
       setAlgorithm();
       break;
-    case CUSTOM_PARAM_ID(4):
-    case CUSTOM_PARAM_ID(5):
-    case CUSTOM_PARAM_ID(6):
-#ifdef OP6
     case CUSTOM_PARAM_ID(7):
     case CUSTOM_PARAM_ID(8):
+    case CUSTOM_PARAM_ID(9):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(10):
+    case CUSTOM_PARAM_ID(11):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(9):
-    case CUSTOM_PARAM_ID(10):
-    case CUSTOM_PARAM_ID(11):
     case CUSTOM_PARAM_ID(12):
-      s_level_offset[CUSTOM_PARAM_ID(12) - index] = value - 100;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(13):
     case CUSTOM_PARAM_ID(14):
     case CUSTOM_PARAM_ID(15):
-#ifdef OP6
+      s_level_offset[CUSTOM_PARAM_ID(15) - index] = value - 100;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(16):
     case CUSTOM_PARAM_ID(17):
+    case CUSTOM_PARAM_ID(18):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(19):
+    case CUSTOM_PARAM_ID(20):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(18):
-    case CUSTOM_PARAM_ID(19):
-    case CUSTOM_PARAM_ID(20):
     case CUSTOM_PARAM_ID(21):
-      s_level_scale[CUSTOM_PARAM_ID(21) - index] = value;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(22):
     case CUSTOM_PARAM_ID(23):
     case CUSTOM_PARAM_ID(24):
-#ifdef OP6
+      s_level_scale[CUSTOM_PARAM_ID(24) - index] = value;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(25):
     case CUSTOM_PARAM_ID(26):
+    case CUSTOM_PARAM_ID(27):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(28):
+    case CUSTOM_PARAM_ID(29):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(27):
-    case CUSTOM_PARAM_ID(28):
-    case CUSTOM_PARAM_ID(29):
     case CUSTOM_PARAM_ID(30):
-      s_kls_offset[CUSTOM_PARAM_ID(30) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(31):
     case CUSTOM_PARAM_ID(32):
     case CUSTOM_PARAM_ID(33):
-#ifdef OP6
+      s_kls_offset[CUSTOM_PARAM_ID(33) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(34):
     case CUSTOM_PARAM_ID(35):
+    case CUSTOM_PARAM_ID(36):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(37):
+    case CUSTOM_PARAM_ID(38):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(36):
-    case CUSTOM_PARAM_ID(37):
-    case CUSTOM_PARAM_ID(38):
     case CUSTOM_PARAM_ID(39):
-      s_kls_scale[CUSTOM_PARAM_ID(39) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(40):
     case CUSTOM_PARAM_ID(41):
     case CUSTOM_PARAM_ID(42):
-#ifdef OP6
+      s_kls_scale[CUSTOM_PARAM_ID(42) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(43):
     case CUSTOM_PARAM_ID(44):
+    case CUSTOM_PARAM_ID(45):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(46):
+    case CUSTOM_PARAM_ID(47):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(45):
-    case CUSTOM_PARAM_ID(46):
-    case CUSTOM_PARAM_ID(47):
     case CUSTOM_PARAM_ID(48):
-      s_kvs_offset[CUSTOM_PARAM_ID(48) - index] = value - 100;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(49):
     case CUSTOM_PARAM_ID(50):
     case CUSTOM_PARAM_ID(51):
-#ifdef OP6
+      s_kvs_offset[CUSTOM_PARAM_ID(51) - index] = value - 100;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(52):
     case CUSTOM_PARAM_ID(53):
+    case CUSTOM_PARAM_ID(54):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(55):
+    case CUSTOM_PARAM_ID(56):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(54):
-    case CUSTOM_PARAM_ID(55):
-    case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
-      s_kvs_scale[CUSTOM_PARAM_ID(57) - index] = value;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(58):
     case CUSTOM_PARAM_ID(59):
     case CUSTOM_PARAM_ID(60):
-#ifdef OP6
+      s_kvs_scale[CUSTOM_PARAM_ID(60) - index] = value;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(61):
     case CUSTOM_PARAM_ID(62):
+    case CUSTOM_PARAM_ID(63):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(64):
+    case CUSTOM_PARAM_ID(65):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(63):
-    case CUSTOM_PARAM_ID(64):
-    case CUSTOM_PARAM_ID(65):
     case CUSTOM_PARAM_ID(66):
-      s_egrate_offset[CUSTOM_PARAM_ID(66) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(67):
     case CUSTOM_PARAM_ID(68):
     case CUSTOM_PARAM_ID(69):
-#ifdef OP6
+      s_egrate_offset[CUSTOM_PARAM_ID(69) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(70):
     case CUSTOM_PARAM_ID(71):
+    case CUSTOM_PARAM_ID(72):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(73):
+    case CUSTOM_PARAM_ID(74):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(72):
-    case CUSTOM_PARAM_ID(73):
-    case CUSTOM_PARAM_ID(74):
     case CUSTOM_PARAM_ID(75):
-      s_egrate_scale[CUSTOM_PARAM_ID(75) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(76):
     case CUSTOM_PARAM_ID(77):
     case CUSTOM_PARAM_ID(78):
-#ifdef OP6
+      s_egrate_scale[CUSTOM_PARAM_ID(78) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(79):
     case CUSTOM_PARAM_ID(80):
+    case CUSTOM_PARAM_ID(81):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(82):
+    case CUSTOM_PARAM_ID(83):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(81):
-    case CUSTOM_PARAM_ID(82):
-    case CUSTOM_PARAM_ID(83):
     case CUSTOM_PARAM_ID(84):
-      s_krs_offset[CUSTOM_PARAM_ID(84) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(85):
     case CUSTOM_PARAM_ID(86):
     case CUSTOM_PARAM_ID(87):
-#ifdef OP6
+      s_krs_offset[CUSTOM_PARAM_ID(87) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(88):
     case CUSTOM_PARAM_ID(89):
+    case CUSTOM_PARAM_ID(90):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(91):
+    case CUSTOM_PARAM_ID(92):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(90):
-    case CUSTOM_PARAM_ID(91):
-    case CUSTOM_PARAM_ID(92):
     case CUSTOM_PARAM_ID(93):
-      s_krs_scale[CUSTOM_PARAM_ID(93) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(94):
     case CUSTOM_PARAM_ID(95):
     case CUSTOM_PARAM_ID(96):
-#ifdef OP6
+      s_krs_scale[CUSTOM_PARAM_ID(96) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(97):
     case CUSTOM_PARAM_ID(98):
+    case CUSTOM_PARAM_ID(99):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(100):
+    case CUSTOM_PARAM_ID(101):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(99):
-    case CUSTOM_PARAM_ID(100):
-    case CUSTOM_PARAM_ID(101):
     case CUSTOM_PARAM_ID(102):
-      s_detune_offset[CUSTOM_PARAM_ID(102) - index] = value - 100;
-      break;
-#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(103):
     case CUSTOM_PARAM_ID(104):
     case CUSTOM_PARAM_ID(105):
-#ifdef OP6
+      s_detune_offset[CUSTOM_PARAM_ID(105) - index] = value - 100;
+      break;
+#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(106):
     case CUSTOM_PARAM_ID(107):
+    case CUSTOM_PARAM_ID(108):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(109):
+    case CUSTOM_PARAM_ID(110):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(108):
-    case CUSTOM_PARAM_ID(109):
-    case CUSTOM_PARAM_ID(110):
     case CUSTOM_PARAM_ID(111):
-      s_detune_scale[CUSTOM_PARAM_ID(111) - index] = value;
+    case CUSTOM_PARAM_ID(112):
+    case CUSTOM_PARAM_ID(113):
+    case CUSTOM_PARAM_ID(114):
+      s_detune_scale[CUSTOM_PARAM_ID(114) - index] = value;
       break;
 #endif
 #ifdef WFBITS
-    case CUSTOM_PARAM_ID(112):
-#ifdef OP6
-    case CUSTOM_PARAM_ID(113):
-#else
-      index++;
-#endif
-    case CUSTOM_PARAM_ID(114):
     case CUSTOM_PARAM_ID(115):
 #ifdef OP6
     case CUSTOM_PARAM_ID(116):
+#else
+      index++;
+#endif
     case CUSTOM_PARAM_ID(117):
+    case CUSTOM_PARAM_ID(118):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(119):
+    case CUSTOM_PARAM_ID(120):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(118):
-    case CUSTOM_PARAM_ID(119):
-    case CUSTOM_PARAM_ID(120):
     case CUSTOM_PARAM_ID(121):
-      s_waveform_offset[CUSTOM_PARAM_ID(121) - index] = value - 100;
+    case CUSTOM_PARAM_ID(122):
+    case CUSTOM_PARAM_ID(123):
+    case CUSTOM_PARAM_ID(124):
+      s_waveform_offset[CUSTOM_PARAM_ID(124) - index] = value - 100;
       setWaveform();
       break;
 #endif
