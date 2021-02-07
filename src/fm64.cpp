@@ -44,10 +44,12 @@
     CUSTOM_PARAM_ID(106),
     CUSTOM_PARAM_ID(61),
     CUSTOM_PARAM_ID(8),
-    CUSTOM_PARAM_ID(6)
+    CUSTOM_PARAM_ID(6),
 #ifndef BANK_SELECT
-    , CUSTOM_PARAM_ID(115)
+    CUSTOM_PARAM_ID(115),
 #endif
+    CUSTOM_PARAM_ID(1),
+    CUSTOM_PARAM_ID(5)
   );
 #endif
 
@@ -325,7 +327,13 @@ static uint32_t s_op_waveform[OPERATOR_COUNT];
 #endif
 #endif
 #ifdef CUSTOM_PARAMS
-static int16_t s_assignable[2] = {CUSTOM_PARAM_ID(1), CUSTOM_PARAM_ID(5)};
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
+static int16_t s_assignable[2] = {
+  CUSTOM_PARAM_GET(k_user_osc_param_shape),
+  CUSTOM_PARAM_GET(k_user_osc_param_shiftshape)
+};
+#pragma GCC diagnostic pop
 #else
 #ifdef SHAPE_LFO
 static uint32_t s_assignable[3];
@@ -1144,7 +1152,6 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     return;
   uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
   uint8_t negative = 0;
-  index = CUSTOM_PARAM_GET(index);
   if (tenbits) {
     index -= k_user_osc_param_shape;
     if (s_assignable[index] < 0) {
@@ -1152,6 +1159,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       index = - s_assignable[index];
     } else
       index = s_assignable[index];
+  } else {
+    index = CUSTOM_PARAM_GET(index);
   }
   if (index > CUSTOM_PARAM_ID(1)) {
     if (tenbits)
