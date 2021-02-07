@@ -326,9 +326,7 @@ static uint32_t s_waveform[OPERATOR_COUNT];
 static uint32_t s_op_waveform[OPERATOR_COUNT];
 #endif
 #endif
-#ifdef CUSTOM_PARAMS
-volatile int16_t *s_assignable = (int16_t *)(void*)(&CUSTOM_PARAM_GET(k_user_osc_param_shape)); //this is dirty
-#else
+#ifndef CUSTOM_PARAMS
 #ifdef SHAPE_LFO
 static uint32_t s_assignable[3];
 #else
@@ -1142,19 +1140,14 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
 #ifdef CUSTOM_PARAMS
-  if (index == k_user_osc_param_shiftshape && s_assignable[0] == s_assignable[1])
+  if (index == k_user_osc_param_shiftshape && CUSTOM_PARAM_GET(k_user_osc_param_shape) == CUSTOM_PARAM_GET(k_user_osc_param_shiftshape))
     return;
   uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
   uint8_t negative = 0;
-  if (tenbits) {
-    index -= k_user_osc_param_shape;
-    if (s_assignable[index] < 0) {
-      negative = 1;
-      index = - s_assignable[index];
-    } else
-      index = s_assignable[index];
-  } else {
-    index = CUSTOM_PARAM_GET(index);
+  index = CUSTOM_PARAM_GET(index);
+  if (tenbits && (int16_t)index < 0) {
+    index = - (int16_t)index;
+    negative = 1;
   }
   if (index > CUSTOM_PARAM_ID(1)) {
     if (tenbits)
@@ -1313,7 +1306,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case CUSTOM_PARAM_ID(2):
     case CUSTOM_PARAM_ID(3):
-      s_assignable[index - CUSTOM_PARAM_ID(2)] = value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1));
+      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(2), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
     case CUSTOM_PARAM_ID(4):
       s_feedback_offset = (value - 100) * .07f;
