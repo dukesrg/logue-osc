@@ -327,13 +327,7 @@ static uint32_t s_op_waveform[OPERATOR_COUNT];
 #endif
 #endif
 #ifdef CUSTOM_PARAMS
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnarrowing"
-static int16_t s_assignable[2] = {
-  CUSTOM_PARAM_GET(k_user_osc_param_shape),
-  CUSTOM_PARAM_GET(k_user_osc_param_shiftshape)
-};
-#pragma GCC diagnostic pop
+volatile int16_t *s_assignable = (int16_t *)(void*)(&CUSTOM_PARAM_GET(k_user_osc_param_shape)); //this is dirty
 #else
 #ifdef SHAPE_LFO
 static uint32_t s_assignable[3];
