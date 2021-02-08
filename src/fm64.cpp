@@ -254,9 +254,11 @@ static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 10
 static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 #endif
+#ifdef FEEDBACK
 static float s_feedback_offset = 0.f;
 static float s_feedback_scale = 1.f;
 static uint8_t s_feedback_level;
+#endif
 #ifdef WFBITS
 #ifdef OP6
 static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
@@ -421,10 +423,12 @@ void setWaveform() {
 }
 #endif
 
+#ifdef FEEDBACK
 void setFeedback() {
   float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
   s_feedback = value <= 0.f ? ZERO : f32_to_param(powf(2.f, value * s_feedback_scale) * FEEDBACK_RECIPF);
 }
+#endif
 #endif
 
 void setAlgorithm() {
@@ -645,7 +649,7 @@ void initvoice() {
   s_feedback_opval[1] = ZERO;
 #endif
   setAlgorithm();
-#ifdef CUSTOM_PARAMS
+#if defined(CUSTOM_PARAMS) && defined(FEEDBACK)
   setFeedback();
 #endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -1308,6 +1312,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(3):
       CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(2), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
+#ifdef FEEDBACK
     case CUSTOM_PARAM_ID(4):
       s_feedback_offset = (value - 100) * .07f;
       setFeedback();
@@ -1316,6 +1321,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       s_feedback_scale = value * .01f;
       setFeedback();
       break;
+#endif
     case CUSTOM_PARAM_ID(6):
       s_algorithm_offset = value - 100;
       setAlgorithm();
