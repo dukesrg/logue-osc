@@ -37,19 +37,19 @@
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
   CUSTOM_PARAM_INIT(
-    k_user_osc_param_id1,
+    CUSTOM_PARAM_ID(2),
 #ifdef BANK_SELECT
     k_user_osc_param_id2,
 #endif
-    CUSTOM_PARAM_ID(106),
-    CUSTOM_PARAM_ID(61),
-    CUSTOM_PARAM_ID(8),
-    CUSTOM_PARAM_ID(6),
+    CUSTOM_PARAM_ID(107),
+    CUSTOM_PARAM_ID(62),
+    CUSTOM_PARAM_ID(9),
+    CUSTOM_PARAM_ID(7),
 #ifndef BANK_SELECT
-    CUSTOM_PARAM_ID(115),
+    CUSTOM_PARAM_ID(116),
 #endif
     CUSTOM_PARAM_ID(1),
-    CUSTOM_PARAM_ID(5)
+    CUSTOM_PARAM_ID(6)
   );
 #endif
 
@@ -1270,6 +1270,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       }
       break;
 #endif
+#ifdef CUSTOM_PARAMS
+    case CUSTOM_PARAM_ID(2):
+      value -= 100;
+#endif
     case k_user_osc_param_id1:
       if (s_voice != value) { //NTS-1 parameter change bounce workaround
         s_voice = value;
@@ -1306,230 +1310,230 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 //                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
       setLevel();
       break;
-    case CUSTOM_PARAM_ID(2):
     case CUSTOM_PARAM_ID(3):
-      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(2), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+    case CUSTOM_PARAM_ID(4):
+      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(3), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
 #ifdef FEEDBACK
-    case CUSTOM_PARAM_ID(4):
+    case CUSTOM_PARAM_ID(5):
       s_feedback_offset = (value - 100) * .07f;
       setFeedback();
       break;
-    case CUSTOM_PARAM_ID(5):
+    case CUSTOM_PARAM_ID(6):
       s_feedback_scale = value * .01f;
       setFeedback();
       break;
 #endif
-    case CUSTOM_PARAM_ID(6):
+    case CUSTOM_PARAM_ID(7):
       s_algorithm_offset = value - 100;
       setAlgorithm();
       break;
-    case CUSTOM_PARAM_ID(7):
     case CUSTOM_PARAM_ID(8):
     case CUSTOM_PARAM_ID(9):
-#ifdef OP6
     case CUSTOM_PARAM_ID(10):
+#ifdef OP6
     case CUSTOM_PARAM_ID(11):
+    case CUSTOM_PARAM_ID(12):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(12):
     case CUSTOM_PARAM_ID(13):
     case CUSTOM_PARAM_ID(14):
     case CUSTOM_PARAM_ID(15):
-      s_level_offset[CUSTOM_PARAM_ID(15) - index] = value - 100;
+    case CUSTOM_PARAM_ID(16):
+      s_level_offset[CUSTOM_PARAM_ID(16) - index] = value - 100;
       setLevel();
       break;
-    case CUSTOM_PARAM_ID(16):
     case CUSTOM_PARAM_ID(17):
     case CUSTOM_PARAM_ID(18):
-#ifdef OP6
     case CUSTOM_PARAM_ID(19):
+#ifdef OP6
     case CUSTOM_PARAM_ID(20):
+    case CUSTOM_PARAM_ID(21):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(21):
     case CUSTOM_PARAM_ID(22):
     case CUSTOM_PARAM_ID(23):
     case CUSTOM_PARAM_ID(24):
-      s_level_scale[CUSTOM_PARAM_ID(24) - index] = value;
+    case CUSTOM_PARAM_ID(25):
+      s_level_scale[CUSTOM_PARAM_ID(25) - index] = value;
       setLevel();
       break;
-    case CUSTOM_PARAM_ID(25):
     case CUSTOM_PARAM_ID(26):
     case CUSTOM_PARAM_ID(27):
-#ifdef OP6
     case CUSTOM_PARAM_ID(28):
+#ifdef OP6
     case CUSTOM_PARAM_ID(29):
+    case CUSTOM_PARAM_ID(30):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(30):
     case CUSTOM_PARAM_ID(31):
     case CUSTOM_PARAM_ID(32):
     case CUSTOM_PARAM_ID(33):
-      s_kls_offset[CUSTOM_PARAM_ID(33) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(34):
+      s_kls_offset[CUSTOM_PARAM_ID(34) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(35):
     case CUSTOM_PARAM_ID(36):
-#ifdef OP6
     case CUSTOM_PARAM_ID(37):
+#ifdef OP6
     case CUSTOM_PARAM_ID(38):
+    case CUSTOM_PARAM_ID(39):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(39):
     case CUSTOM_PARAM_ID(40):
     case CUSTOM_PARAM_ID(41):
     case CUSTOM_PARAM_ID(42):
-      s_kls_scale[CUSTOM_PARAM_ID(42) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(43):
+      s_kls_scale[CUSTOM_PARAM_ID(43) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(44):
     case CUSTOM_PARAM_ID(45):
-#ifdef OP6
     case CUSTOM_PARAM_ID(46):
+#ifdef OP6
     case CUSTOM_PARAM_ID(47):
+    case CUSTOM_PARAM_ID(48):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(48):
     case CUSTOM_PARAM_ID(49):
     case CUSTOM_PARAM_ID(50):
     case CUSTOM_PARAM_ID(51):
-      s_kvs_offset[CUSTOM_PARAM_ID(51) - index] = value - 100;
+    case CUSTOM_PARAM_ID(52):
+      s_kvs_offset[CUSTOM_PARAM_ID(52) - index] = value - 100;
       setLevel();
       break;
-    case CUSTOM_PARAM_ID(52):
     case CUSTOM_PARAM_ID(53):
     case CUSTOM_PARAM_ID(54):
-#ifdef OP6
     case CUSTOM_PARAM_ID(55):
+#ifdef OP6
     case CUSTOM_PARAM_ID(56):
+    case CUSTOM_PARAM_ID(57):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(57):
     case CUSTOM_PARAM_ID(58):
     case CUSTOM_PARAM_ID(59):
     case CUSTOM_PARAM_ID(60):
-      s_kvs_scale[CUSTOM_PARAM_ID(60) - index] = value;
+    case CUSTOM_PARAM_ID(61):
+      s_kvs_scale[CUSTOM_PARAM_ID(61) - index] = value;
       setLevel();
       break;
-    case CUSTOM_PARAM_ID(61):
     case CUSTOM_PARAM_ID(62):
     case CUSTOM_PARAM_ID(63):
-#ifdef OP6
     case CUSTOM_PARAM_ID(64):
+#ifdef OP6
     case CUSTOM_PARAM_ID(65):
+    case CUSTOM_PARAM_ID(66):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(66):
     case CUSTOM_PARAM_ID(67):
     case CUSTOM_PARAM_ID(68):
     case CUSTOM_PARAM_ID(69):
-      s_egrate_offset[CUSTOM_PARAM_ID(69) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(70):
+      s_egrate_offset[CUSTOM_PARAM_ID(70) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(71):
     case CUSTOM_PARAM_ID(72):
-#ifdef OP6
     case CUSTOM_PARAM_ID(73):
+#ifdef OP6
     case CUSTOM_PARAM_ID(74):
+    case CUSTOM_PARAM_ID(75):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(75):
     case CUSTOM_PARAM_ID(76):
     case CUSTOM_PARAM_ID(77):
     case CUSTOM_PARAM_ID(78):
-      s_egrate_scale[CUSTOM_PARAM_ID(78) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(79):
+      s_egrate_scale[CUSTOM_PARAM_ID(79) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(80):
     case CUSTOM_PARAM_ID(81):
-#ifdef OP6
     case CUSTOM_PARAM_ID(82):
+#ifdef OP6
     case CUSTOM_PARAM_ID(83):
+    case CUSTOM_PARAM_ID(84):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(84):
     case CUSTOM_PARAM_ID(85):
     case CUSTOM_PARAM_ID(86):
     case CUSTOM_PARAM_ID(87):
-      s_krs_offset[CUSTOM_PARAM_ID(87) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(88):
+      s_krs_offset[CUSTOM_PARAM_ID(88) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(89):
     case CUSTOM_PARAM_ID(90):
-#ifdef OP6
     case CUSTOM_PARAM_ID(91):
+#ifdef OP6
     case CUSTOM_PARAM_ID(92):
+    case CUSTOM_PARAM_ID(93):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(93):
     case CUSTOM_PARAM_ID(94):
     case CUSTOM_PARAM_ID(95):
     case CUSTOM_PARAM_ID(96):
-      s_krs_scale[CUSTOM_PARAM_ID(96) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(97):
+      s_krs_scale[CUSTOM_PARAM_ID(97) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(98):
     case CUSTOM_PARAM_ID(99):
-#ifdef OP6
     case CUSTOM_PARAM_ID(100):
+#ifdef OP6
     case CUSTOM_PARAM_ID(101):
+    case CUSTOM_PARAM_ID(102):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(102):
     case CUSTOM_PARAM_ID(103):
     case CUSTOM_PARAM_ID(104):
     case CUSTOM_PARAM_ID(105):
-      s_detune_offset[CUSTOM_PARAM_ID(105) - index] = value - 100;
+    case CUSTOM_PARAM_ID(106):
+      s_detune_offset[CUSTOM_PARAM_ID(106) - index] = value - 100;
       break;
 #ifdef FINE_TUNE
-    case CUSTOM_PARAM_ID(106):
     case CUSTOM_PARAM_ID(107):
     case CUSTOM_PARAM_ID(108):
-#ifdef OP6
     case CUSTOM_PARAM_ID(109):
+#ifdef OP6
     case CUSTOM_PARAM_ID(110):
+    case CUSTOM_PARAM_ID(111):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(111):
     case CUSTOM_PARAM_ID(112):
     case CUSTOM_PARAM_ID(113):
     case CUSTOM_PARAM_ID(114):
-      s_detune_scale[CUSTOM_PARAM_ID(114) - index] = value;
+    case CUSTOM_PARAM_ID(115):
+      s_detune_scale[CUSTOM_PARAM_ID(115) - index] = value;
       break;
 #endif
 #ifdef WFBITS
-    case CUSTOM_PARAM_ID(115):
-#ifdef OP6
     case CUSTOM_PARAM_ID(116):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(117):
 #else
       index++;
 #endif
-    case CUSTOM_PARAM_ID(117):
     case CUSTOM_PARAM_ID(118):
-#ifdef OP6
     case CUSTOM_PARAM_ID(119):
+#ifdef OP6
     case CUSTOM_PARAM_ID(120):
+    case CUSTOM_PARAM_ID(121):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(121):
     case CUSTOM_PARAM_ID(122):
     case CUSTOM_PARAM_ID(123):
     case CUSTOM_PARAM_ID(124):
-      s_waveform_offset[CUSTOM_PARAM_ID(124) - index] = value - 100;
+    case CUSTOM_PARAM_ID(125):
+      s_waveform_offset[CUSTOM_PARAM_ID(125) - index] = value - 100;
       setWaveform();
       break;
 #endif

@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.4-0",
+        "version" : "1.4-1",
         "name" : "FM66",
         "num_param" : 6,
         "params" : [
@@ -24,6 +24,7 @@
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
+            ["Voice", 0, 31, ""],
             ["Shape Assign", -99, 99, "%"],
             ["Alt Assign", -99, 99, "%"],
             ["FB offset", -99, 100, "%"],
