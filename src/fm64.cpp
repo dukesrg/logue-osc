@@ -1037,15 +1037,13 @@ param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_fact
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor;
-  int32_t dl, dp = params->pitch >> 8, curve = 0;
+  int32_t dl, dp = (params->pitch >> 8), curve = 0;
 #ifdef CUSTOM_PARAMS
   int32_t depth = 0;
 //  dl = dp >= s_split_point[0] ? 0 : dp >= s_split_point[1] ? 1 : 2;
   for (dl = 0; dl < 2 && dp < s_split_point[dl]; dl++);
   initvoice(s_voice[dl]);
   s_zone_transposed = s_zone_transpose[dl];
-  dp += s_zone_transposed;
-  s_zone_transposed += s_transpose;
 #else
   float depth = 0.f;
 #endif
@@ -1065,7 +1063,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
         } else {
           rate_factor = DX7_ATTACK_RATE_FACTOR;
         }
-        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
+        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch + (s_zone_transposed << 8));
 //        s_egsrate[shadow_rate][i][j] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 //        s_egsrate[i][j] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 #ifdef EG_SAMPLED
@@ -1084,7 +1082,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 //      s_sample_count[i][j] = samples;
 #endif
     }
-    dp -= s_break_point[i];
+    dp = (params->pitch >> 8) - s_break_point[i] + s_zone_transposed;
 #ifdef CUSTOM_PARAMS
     if (dp < 0) {
        depth = s_left_depth[i] + paramOffset(s_kls_offset, i);
@@ -1134,6 +1132,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     s_sample_num = 0;
 #endif
 */
+#ifdef CUSTOM_PARAMS
+  s_zone_transposed += s_transpose;
+#endif
   s_state = state_noteon;
 }
 
