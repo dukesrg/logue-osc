@@ -177,17 +177,17 @@ function inject(osc) {
       zip.file(osc.name + "/manifest.json").async("string").then((text) => {
         manifest = JSON.parse(text);
         manifest.header.name = name.substring(0, 12);
+        for (var i = 0; i < 6; i++) {
+          var param_num = custom_params[osc.name].indexOf(document.querySelector('#' + osc.name + '-param' + (i + 1)).innerHTML); 
+          if (param_num >= 0) {
+            manifest.header.params[i] = manifest.header.custom_params[param_num];
+          }
+        }
         for (var i = 0; i < custom_count[osc.name]; i++) {
           var paramidx = manifest.header.custom_data[i][4];
           if (typeof paramidx !== 'undefined') {
             var parammul = manifest.header.custom_data[i][5];
             manifest.header.params[paramidx][2] = data[i].length * (typeof parammul == 'undefined' ? 1 : parammul) - 1;
-          }
-        }
-        for (var i = 0; i < 6; i++) {
-          var param_num = custom_params[osc.name].indexOf(document.querySelector('#' + osc.name + '-param' + (i + 1)).innerHTML); 
-          if (param_num >= 0) {
-            manifest.header.params[i] = manifest.header.custom_params[param_num];
           }
         }
         manifest = JSON.stringify(manifest, null, "  ");
