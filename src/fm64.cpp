@@ -30,13 +30,21 @@
 #define EG_SAMPLED //precalculate EG stages length in samples
 //#define PEG //pitch EG enable
 #define FINE_TUNE //16-bit precision for cents/detune
-//#define SPLIT_MODE //split mode enable
 //#define CUSTOM_PARAMS //customizable params
 //#define BANK_SELECT //dedicated param for bank select
+//#define KIT_MODE //key tracking to voice
 
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
   CUSTOM_PARAM_INIT(
+#ifdef KIT_MODE
+    CUSTOM_PARAM_ID(7),
+    CUSTOM_PARAM_ID(5),
+    CUSTOM_PARAM_ID(8),
+    CUSTOM_PARAM_ID(6),
+    CUSTOM_PARAM_ID(9),
+    CUSTOM_PARAM_ID(106),
+#else
     CUSTOM_PARAM_ID(2),
 #ifdef BANK_SELECT
     k_user_osc_param_id2,
@@ -47,6 +55,7 @@
     CUSTOM_PARAM_ID(14),
 #ifndef BANK_SELECT
     CUSTOM_PARAM_ID(123),
+#endif
 #endif
     CUSTOM_PARAM_ID(1),
     CUSTOM_PARAM_ID(13)
@@ -232,10 +241,12 @@ static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
 #ifdef CUSTOM_PARAMS
 #define FINE_TUNE_FACTOR 65536.f
-static uint8_t s_voice[3] = {0};
-static int8_t s_zone_transpose[3] = {0};
-static int8_t s_zone_transposed = 0;
 static uint8_t s_split_point[2] = {0};
+static int8_t s_zone_transpose[3] = {0};
+#ifndef KIT_MODE
+static int8_t s_zone_transposed = 0;
+static uint8_t s_voice[3] = {0};
+#endif
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_kls_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_kvs_offset[OPERATOR_COUNT + 3] = {0};
@@ -800,8 +811,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef FINE_TUNE
       uint32_t p;
 #ifdef CUSTOM_PARAMS
+#ifdef KIT_MODE
+      p = (KIT_CENTER << 24) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
+      uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
+#else
       p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
       uint8_t note = clipmini32(0, (p >> 24) + s_zone_transposed);
+#endif
 #else
       p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
       uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
@@ -1042,8 +1058,12 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   int32_t depth = 0;
 //  dl = dp >= s_split_point[0] ? 0 : dp >= s_split_point[1] ? 1 : 2;
   for (dl = 0; dl < 2 && dp < s_split_point[dl]; dl++);
+#ifdef KIT_MODE
+  initvoice(clipminmaxi32(0, dp + s_zone_transpose[dl], 127));
+#else
   initvoice(s_voice[dl]);
   s_zone_transposed = s_zone_transpose[dl];
+#endif
 #else
   float depth = 0.f;
 #endif
@@ -1063,7 +1083,15 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
         } else {
           rate_factor = DX7_ATTACK_RATE_FACTOR;
         }
+#ifdef CUSTOM_PARAMS
+#ifdef KIT_MODE
+        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, KIT_CENTER << 8);
+#else
         s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch + (s_zone_transposed << 8));
+#endif
+#else
+        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
+#endif
 //        s_egsrate[shadow_rate][i][j] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 //        s_egsrate[i][j] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 #ifdef EG_SAMPLED
@@ -1082,7 +1110,15 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 //      s_sample_count[i][j] = samples;
 #endif
     }
+#ifdef CUSTOM_PARAMS
+#ifdef KIT_MODE
+    dp = KIT_CENTER - s_break_point[i];
+#else
     dp = (params->pitch >> 8) - s_break_point[i] + s_zone_transposed;
+#endif
+#else
+    dp = (params->pitch >> 8) - s_break_point[i];
+#endif
 #ifdef CUSTOM_PARAMS
     if (dp < 0) {
        depth = s_left_depth[i] + paramOffset(s_kls_offset, i);
@@ -1133,7 +1169,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #endif
 */
 #ifdef CUSTOM_PARAMS
+#ifndef KIT_MODE
   s_zone_transposed += s_transpose;
+#endif
 #endif
   s_state = state_noteon;
 }
@@ -1324,11 +1362,13 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 //                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
       setLevel();
       break;
+#ifndef KIT_MODE
     case CUSTOM_PARAM_ID(2):
     case CUSTOM_PARAM_ID(3):
     case CUSTOM_PARAM_ID(4):
       s_voice[index - CUSTOM_PARAM_ID(2)] = value;
       break;
+#endif
     case CUSTOM_PARAM_ID(5):
     case CUSTOM_PARAM_ID(6):
       s_split_point[index - CUSTOM_PARAM_ID(5)] = value;
