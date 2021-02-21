@@ -233,7 +233,8 @@ static int8_t s_algorithm_offset = 0;
 #ifdef CUSTOM_PARAMS
 #define FINE_TUNE_FACTOR 65536.f
 static uint8_t s_voice[3] = {0};
-static uint8_t s_zone_transpose[3] = {0};
+static int8_t s_zone_transpose[3] = {0};
+static int8_t s_zone_transposed = 0;
 static uint8_t s_split_point[2] = {0};
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_kls_offset[OPERATOR_COUNT + 3] = {0};
@@ -800,10 +801,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       uint32_t p;
 #ifdef CUSTOM_PARAMS
       p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
+      uint8_t note = clipmini32(0, (p >> 24) + s_zone_transposed);
 #else
       p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
+      uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
 #endif
-      uint8_t note = (p >> 24) + s_transpose;
       basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
 #else
       basew0 = f32_to_pitch(osc_w0f_for_note(((pitch + s_detune[i]) >> 8) + s_transpose, (pitch + s_detune[i]) & 0xFF));
@@ -1038,7 +1040,12 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   int32_t dl, dp = params->pitch >> 8, curve = 0;
 #ifdef CUSTOM_PARAMS
   int32_t depth = 0;
-  initvoice(s_voice[dp >= s_split_point[0] ? 0 : dp >= s_split_point[1] ? 1 : 2]);
+//  dl = dp >= s_split_point[0] ? 0 : dp >= s_split_point[1] ? 1 : 2;
+  for (dl = 0; dl < 2 && dp < s_split_point[dl]; dl++);
+  initvoice(s_voice[dl]);
+  s_zone_transposed = s_zone_transpose[dl];
+  dp += s_zone_transposed;
+  s_zone_transposed += s_transpose;
 #else
   float depth = 0.f;
 #endif
@@ -1150,6 +1157,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #ifdef CUSTOM_PARAMS
   uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
   uint8_t negative = 0;
+  int16_t uvalue = value;
   index = CUSTOM_PARAM_GET(index);
   if (tenbits && (int16_t)index < 0) {
     index = - (int16_t)index;
@@ -1160,6 +1168,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       value >>= 3;
     if (index > CUSTOM_PARAM_ID(6) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
+    uvalue = value; //looks like optimizer is crazy: this saves over 100 bypes just by assigning to used valiable with sign conversion >%-O
   }
 #endif
   switch (index) {
@@ -1498,7 +1507,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(102):
     case CUSTOM_PARAM_ID(103):
     case CUSTOM_PARAM_ID(104):
-      s_krs_scale[CUSTOM_PARAM_ID(104) - index] = value;
+      s_krs_scale[CUSTOM_PARAM_ID(104) - index] = uvalue;
       break;
     case CUSTOM_PARAM_ID(105):
     case CUSTOM_PARAM_ID(106):
