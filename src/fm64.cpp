@@ -33,6 +33,7 @@
 //#define CUSTOM_PARAMS //customizable params
 //#define BANK_SELECT //dedicated param for bank select
 //#define KIT_MODE //key tracking to voice
+#define SPLIT_ZONES 3
 
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
@@ -241,12 +242,12 @@ static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
 #ifdef CUSTOM_PARAMS
 #define FINE_TUNE_FACTOR 65536.f
-static uint8_t s_zone = 0;
-static uint8_t s_split_point[2] = {0};
-static int8_t s_zone_transpose[3] = {0};
+static uint8_t s_split_point[SPLIT_ZONES - 1] = {0};
+static int8_t s_zone_transpose[SPLIT_ZONES] = {0};
 static int8_t s_zone_transposed = 0;
 #ifndef KIT_MODE
-static uint8_t s_voice[3] = {0};
+static uint8_t s_kit_voice = 0;
+static uint8_t s_voice[SPLIT_ZONES] = {0};
 #endif
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_kls_offset[OPERATOR_COUNT + 3] = {0};
@@ -796,7 +797,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   uint32_t pitch = params->pitch;
 #ifdef CUSTOM_PARAMS
 #ifndef KIT_MODE
-  if (s_voice[s_zone] == 100)
+  if (s_kit_voice)
 #endif
     pitch = KIT_CENTER << 8;
 #endif
@@ -1040,13 +1041,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 }
 
-param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, uint16_t pitch) {
+param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
 #ifdef CUSTOM_PARAMS
-  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
+  float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
 #else
-  float rscale = ((pitch >> 8) - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
+  float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
   return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_offset)));
 #endif
 //  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
@@ -1055,22 +1056,25 @@ param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_fact
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   float rate_factor;
-  int32_t dl, dp = (params->pitch >> 8), curve = 0;
+  int32_t dl, dp, note = params->pitch >> 8, curve = 0;
 #ifdef CUSTOM_PARAMS
   int32_t depth = 0;
-//  dl = dp >= s_split_point[0] ? 0 : dp >= s_split_point[1] ? 1 : 2;
-  for (s_zone = 0; s_zone < 2 && dp < s_split_point[s_zone]; s_zone++);
+  uint32_t zone, voice;
+  for (zone = 0; zone < (SPLIT_ZONES - 1) && note < s_split_point[zone]; zone++);
+  s_zone_transposed = s_zone_transpose[zone];
+  note += s_zone_transposed;
 #ifndef KIT_MODE
-  if (s_voice[s_zone] == 100) {
+  voice = s_voice[zone];
+  s_kit_voice = (voice == 100);
+  if (s_kit_voice) {
 #endif
-    initvoice(clipminmaxi32(0, dp + s_zone_transpose[s_zone], 127));
+    voice = note;
     s_zone_transposed = 0;
+    note = KIT_CENTER;
 #ifndef KIT_MODE
-  } else {
-    initvoice(s_voice[s_zone]);
-    s_zone_transposed = s_zone_transpose[s_zone];
   }
 #endif
+  initvoice(voice);
 #else
   float depth = 0.f;
 #endif
@@ -1090,15 +1094,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
         } else {
           rate_factor = DX7_ATTACK_RATE_FACTOR;
         }
-#ifdef CUSTOM_PARAMS
-#ifdef KIT_MODE
-        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, KIT_CENTER << 8);
-#else
-      s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, s_voice[s_zone] == 100 ? (KIT_CENTER << 8) : (params->pitch + (s_zone_transposed << 8)));
-#endif
-#else
-        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
-#endif
+        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, note);
 //        s_egsrate[shadow_rate][i][j] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 //        s_egsrate[i][j] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
 #ifdef EG_SAMPLED
@@ -1117,15 +1113,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 //      s_sample_count[i][j] = samples;
 #endif
     }
-#ifdef CUSTOM_PARAMS
-#ifdef KIT_MODE
-    dp = KIT_CENTER - s_break_point[i];
-#else
-    dp = (s_voice[s_zone] == 100 ? KIT_CENTER : ((params->pitch >> 8) + s_zone_transposed)) - s_break_point[i];
-#endif
-#else
-    dp = (params->pitch >> 8) - s_break_point[i];
-#endif
+    dp = note - s_break_point[i];
 #ifdef CUSTOM_PARAMS
     if (dp < 0) {
        depth = s_left_depth[i] + paramOffset(s_kls_offset, i);
@@ -1184,8 +1172,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch);
-    s_egsrate[i][EG_STAGE_COUNT * 2 - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, s_attack_rate_exp_factor, params->pitch);
+    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch >> 8);
+    s_egsrate[i][EG_STAGE_COUNT * 2 - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, s_attack_rate_exp_factor, params->pitch >> 8);
     s_egsrate_recip[i][0] = 1.f / s_egsrate[i][EG_STAGE_COUNT - 1];
     s_egsrate_recip[i][1] = 1.f / s_egsrate[i][EG_STAGE_COUNT * 2 - 1];
 //    s_egsrate[s_active_rate ^ 1][i][EG_STAGE_COUNT - 2] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch);
