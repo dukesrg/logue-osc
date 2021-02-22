@@ -77,19 +77,22 @@ For user-customizable oscillators, an online constructor is available at https:/
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|FMxx features|FM48|FM64|FM66|FM67|FM68|
-|-|-|-|-|-|-|
-|Custom params||6|7|||
-|Assignable controllers|2|||2|2|
-|Algorithm count|40|40|40|40|40|
-|Operators count|4|6|6|6|6|
-|Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|
-|Voice bank count|4|4|3|2|2|
-|Waveform count|8|1|8|16|8|
-|Waveform bit depth|32|16|16|16|32|
-|Waveform customization|||+|+|+|
-|Feedback supported|+|+|+|+|+|
-|Shape LFO target supported|+|+|+|+|+|
+|FMxx features|FM48|FM64|FM66|FM67|FM68|FM77|
+|-|-|-|-|-|-|-|
+|Custom params||7|8|||8|
+|Assignable controllers|2|||2|2||
+|Algorithm count|40|40|40|40|40|40|
+|Operators count|4|6|6|6|6|6"
+|Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
+|Voice bank count|4|4|3|2|2|4|
+|Waveform count|8|1|8|16|8|1|
+|Waveform bit depth|32|16|16|16|32|16|
+|Waveform customization|||+|+|+||
+|Feedback supported|+|+|+|+|+|+|
+|Shape LFO target supported|+|+|+|+|+||
+|Split zones|1|3|3|1|1|3|
+|Chromatic mode|+|+|+|+|+||
+|Kit mode|||+|||+|
 
 |FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
 |-|-|-|
@@ -117,9 +120,9 @@ For user-customizable oscillators, an online constructor is available at https:/
 |#|FMxx<br>Custom params|Range|Description|
 |-|-|-|-|
 |0|Velocity|0&hellip;100|Velocity control (maximum is 100/127 when using param and 127/127 with fractional 10-bit resolution when assigned Shape/Alt)|
-|1|Voice 1|1&hellip;?|Set zone 1 voice (single or right), keep it bound to Param 1, otherwise bank injection won't be able to set the current voice count (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
-|2|Voice 2|1&hellip;96|Set zone 2 voice (left or middle), may be out of bounds (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
-|3|Voice 3|1&hellip;96|Set zone 3 voice (left), may be out of bounds (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|1|Voice 1|1&hellip;101|Set zone 1 voice (single or right), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|2|Voice 2|1&hellip;101|Set zone 2 voice (left or middle), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|3|Voice 3|1&hellip;101|Set zone 3 voice (left), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
 |4|Split Point1|1&hellip;101|Split point between zone 1 and 2|
 |5|Split Point2|1&hellip;101|Split point between zone 2 and 3|
 |6|Transpose 1|-99&hellip;100 (semitones)|Transpose for zone 1|

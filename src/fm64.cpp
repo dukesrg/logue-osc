@@ -241,10 +241,11 @@ static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
 #ifdef CUSTOM_PARAMS
 #define FINE_TUNE_FACTOR 65536.f
+static uint8_t s_zone = 0;
 static uint8_t s_split_point[2] = {0};
 static int8_t s_zone_transpose[3] = {0};
-#ifndef KIT_MODE
 static int8_t s_zone_transposed = 0;
+#ifndef KIT_MODE
 static uint8_t s_voice[3] = {0};
 #endif
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
@@ -793,6 +794,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
   uint32_t pitch = params->pitch;
+#ifdef CUSTOM_PARAMS
+#ifndef KIT_MODE
+  if (s_voice[s_zone] == 100)
+#endif
+    pitch = KIT_CENTER << 8;
+#endif
 //  int32_t pitch = params->pitch + s_transpose;
 #ifdef PEG
   pitch += s_pegval;
@@ -811,13 +818,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef FINE_TUNE
       uint32_t p;
 #ifdef CUSTOM_PARAMS
-#ifdef KIT_MODE
-      p = (KIT_CENTER << 24) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
-      uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
-#else
       p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
       uint8_t note = clipmini32(0, (p >> 24) + s_zone_transposed);
-#endif
 #else
       p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
       uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
@@ -1057,12 +1059,17 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef CUSTOM_PARAMS
   int32_t depth = 0;
 //  dl = dp >= s_split_point[0] ? 0 : dp >= s_split_point[1] ? 1 : 2;
-  for (dl = 0; dl < 2 && dp < s_split_point[dl]; dl++);
-#ifdef KIT_MODE
-  initvoice(clipminmaxi32(0, dp + s_zone_transpose[dl], 127));
-#else
-  initvoice(s_voice[dl]);
-  s_zone_transposed = s_zone_transpose[dl];
+  for (s_zone = 0; s_zone < 2 && dp < s_split_point[s_zone]; s_zone++);
+#ifndef KIT_MODE
+  if (s_voice[s_zone] == 100) {
+#endif
+    initvoice(clipminmaxi32(0, dp + s_zone_transpose[s_zone], 127));
+    s_zone_transposed = 0;
+#ifndef KIT_MODE
+  } else {
+    initvoice(s_voice[s_zone]);
+    s_zone_transposed = s_zone_transpose[s_zone];
+  }
 #endif
 #else
   float depth = 0.f;
@@ -1087,7 +1094,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef KIT_MODE
         s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, KIT_CENTER << 8);
 #else
-        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch + (s_zone_transposed << 8));
+      s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, s_voice[s_zone] == 100 ? (KIT_CENTER << 8) : (params->pitch + (s_zone_transposed << 8)));
 #endif
 #else
         s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, params->pitch);
@@ -1114,7 +1121,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #ifdef KIT_MODE
     dp = KIT_CENTER - s_break_point[i];
 #else
-    dp = (params->pitch >> 8) - s_break_point[i] + s_zone_transposed;
+    dp = (s_voice[s_zone] == 100 ? KIT_CENTER : ((params->pitch >> 8) + s_zone_transposed)) - s_break_point[i];
 #endif
 #else
     dp = (params->pitch >> 8) - s_break_point[i];
@@ -1169,9 +1176,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 #endif
 */
 #ifdef CUSTOM_PARAMS
-#ifndef KIT_MODE
   s_zone_transposed += s_transpose;
-#endif
 #endif
   s_state = state_noteon;
 }
