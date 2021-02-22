@@ -33,6 +33,7 @@
 #define DX7_DETUNE_CENTER 7
 #define DX11_DETUNE_CENTER 3
 #define PEG_CENTER 50
+#define KIT_CENTER 60
 
 #define ALG_OUT_MASK 0x80
 #define ALG_FBK_MASK 0x40
