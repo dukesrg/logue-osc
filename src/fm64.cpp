@@ -213,7 +213,7 @@
 #define DX7_DECAY_RATE_FACTOR -6.0966294280205275641423448928849e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
 //#define DX7_DECAY_RATE_FACTOR 23.9674129f
 //#define DX7_DECAY_RATE_FACTOR (24.f - EG_FREQ_CORRECT)
-#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
+//#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
 //#define DX7_HOLD_RATE_FACTOR 0.9674129f
 //#define DX7_HOLD_RATE_FACTOR (1.f - EG_FREQ_CORRECT)
 //#define RATE_SCALING_FACTOR .061421131f
@@ -231,7 +231,7 @@
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
-#define PEG_SCALE 245.76f // 48/50 * 256
+#define PEG_SCALE (245.76f * 65536.0f) // 48/50 * 256
 #define PEG_RATE_EXP_FACTOR .16f
 #define PEG_RATE_FACTOR 4.66187255859375e-7f
 
@@ -497,7 +497,7 @@ void initvoice(uint8_t voice_index) {
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = (voice->pl[i] - PEG_CENTER) * PEG_SCALE;
-      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]);
+      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]));
     }
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -594,7 +594,7 @@ void initvoice(uint8_t voice_index) {
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = (voice->pl[i - s_peg_stage_start] - PEG_CENTER) * PEG_SCALE;
-      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]);
+      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]));
     }
 #endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
@@ -803,7 +803,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 //  int32_t pitch = params->pitch + s_transpose;
 #ifdef PEG
-  pitch += s_pegval;
+  pitch += s_pegval >> 16;
 #endif
 //  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((pitch >> 8) + s_transpose, pitch & 0xFF));
   pitch_t basew0;

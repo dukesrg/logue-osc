@@ -146,6 +146,22 @@ uint8_t scale_level(uint8_t x) {
     return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
 }
 
+static const int8_t pitch_level_lut_low[] = {
+  -128, -116, -104, -95, -85, -76, -68, -61, -56, -52, -49, -46, -43, -41, -39, -37, -35,
+  38, 40, 43, 46, 49, 53, 58, 65, 73, 82, 92, 103, 115 //, 128
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+int32_t scale_pitch_level(uint8_t x) {
+  if (x < 17)
+    return pitch_level_lut_low[x];
+  if (x < 86)
+    return x - PEG_CENTER;
+  if (x < 99)
+    return pitch_level_lut_low[x - 69]; //86 - 17
+  return 128;
+}
+
 #ifdef OP4
 static const float dx11_ratio_lut[64] = {
   .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
