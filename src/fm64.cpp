@@ -231,7 +231,7 @@
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
-#define PEG_SCALE (245.76f * 65536.0f) // 48/50 * 256
+#define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
 #define PEG_RATE_EXP_FACTOR .16f
 #define PEG_RATE_FACTOR 4.66187255859375e-7f
 
@@ -496,7 +496,7 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = (voice->pl[i] - PEG_CENTER) * PEG_SCALE;
+      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
       s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]));
     }
 #endif
@@ -593,7 +593,7 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = (voice->pl[i - s_peg_stage_start] - PEG_CENTER) * PEG_SCALE;
+      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
       s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]));
     }
 #endif
