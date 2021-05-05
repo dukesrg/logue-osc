@@ -497,7 +497,8 @@ void initvoice(uint8_t voice_index) {
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
-      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]));
+//      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]));
+      s_pegrate[i] = (5.f * powf(2.0f, voice->pr[i] * .058f) - 4.f) * 213.75f;
     }
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -594,7 +595,8 @@ void initvoice(uint8_t voice_index) {
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
-      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]));
+//      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]));
+      s_pegrate[i] = (5.f * powf(2.0f, voice->pr[i - s_peg_stage_start] * .058f) - 4.f) * 213.75f;
     }
 #endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
