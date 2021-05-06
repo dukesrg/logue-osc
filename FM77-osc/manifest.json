@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.5-2",
+        "version" : "1.5-4",
         "name" : "FM77",
         "num_param" : 6,
         "params" : [
@@ -18,8 +18,8 @@
             ["Det offs Car", -99, 100, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 4],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 3],
+            ["custom_params", 12352, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],

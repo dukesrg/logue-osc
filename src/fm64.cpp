@@ -498,7 +498,7 @@ void initvoice(uint8_t voice_index) {
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
 //      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]));
-      s_pegrate[i] = (5.f * powf(2.0f, voice->pr[i] * .058f) - 4.f) * 213.75f;
+      s_pegrate[i] = (5.f * powf(2.0f, voice->pr[i] * .058f) - 4.f) * 213.75f; // ~ 192 >> 24 semitones per sample at 49096.545
     }
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -796,16 +796,28 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
+#ifdef FINE_TUNE
+  uint32_t pitch = params->pitch << 16;
+#else
   uint32_t pitch = params->pitch;
+#endif
 #ifdef CUSTOM_PARAMS
 #ifndef KIT_MODE
   if (s_kit_voice)
 #endif
+#ifdef FINE_TUNE
+    pitch = KIT_CENTER << 24;
+#else
     pitch = KIT_CENTER << 8;
+#endif
 #endif
 //  int32_t pitch = params->pitch + s_transpose;
 #ifdef PEG
+#ifdef FINE_TUNE
+  pitch += s_pegval;
+#else
   pitch += s_pegval >> 16;
+#endif
 #endif
 //  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((pitch >> 8) + s_transpose, pitch & 0xFF));
   pitch_t basew0;
@@ -821,10 +833,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef FINE_TUNE
       uint32_t p;
 #ifdef CUSTOM_PARAMS
-      p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
+//      p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
+      p = pitch + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
       uint8_t note = clipmini32(0, (p >> 24) + s_zone_transposed);
 #else
-      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
+//      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
+      p = pitch + ((s_detune[i] * s_detune_scale) << 7);
       uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
 #endif
       basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
