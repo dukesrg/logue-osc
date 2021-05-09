@@ -81,15 +81,16 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|
 |Custom params||7|8|||8|
 |Assignable controllers|2|||2|2||
-|Algorithm count|40|40|40|40|40|32|
-|Operators count|4|6|6|6|6|6"
+|Algorithm count|40|40|40|40|40|40|
+|Operators count|4|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
-|Voice bank count|4|4|3|2|2|4|
+|Voice bank count|4|4|3|2|2|3|
 |Waveform count|8|1|8|16|8|1|
 |Waveform bit depth|32|16|16|16|32|16|
 |Waveform customization|||+|+|+||
 |Feedback supported|+|+|+|+|+|+|
-|Shape LFO target supported|+|+|+|+|+||
+|Shape LFO target supported|+|+|+|+|+|+|
+|Pitch EG supported||||+|+|+|
 |Split zones|1|3|3|1|1|3|
 |Chromatic mode|+|+|+|+|+||
 |Kit mode|||+|||+|

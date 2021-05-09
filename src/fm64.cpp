@@ -685,8 +685,12 @@ void initvoice(uint8_t voice_index) {
   }
 #ifdef PEG
   uint32_t samples = 0;
+  int32_t dl;
   for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT - 1; i++) {
-    samples += (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]) / s_pegrate[i];
+    dl = (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]);
+    if (dl < 0)
+      s_pegrate[i] = -s_pegrate[i];
+    samples += dl / s_pegrate[i];
     s_peg_sample_count[i] = samples;
   }
   s_pegrate[PEG_STAGE_COUNT] = s_pegrate[PEG_STAGE_COUNT - 1];
