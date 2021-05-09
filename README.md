@@ -84,13 +84,13 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Algorithm count|40|40|40|40|40|40|
 |Operators count|4|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
-|Voice bank count|4|4|3|2|2|3|
+|Voice bank count|4|3|2|2|2|3|
 |Waveform count|8|1|8|16|8|1|
 |Waveform bit depth|32|16|16|16|32|16|
 |Waveform customization|||+|+|+||
 |Feedback supported|+|+|+|+|+|+|
 |Shape LFO target supported|+|+|+|+|+|+|
-|Pitch EG supported||||+|+|+|
+|Pitch EG supported||+|+|||+|
 |Split zones|1|3|3|1|1|3|
 |Chromatic mode|+|+|+|+|+||
 |Kit mode|||+|||+|
@@ -126,9 +126,13 @@ For user-customizable oscillators, an online constructor is available at https:/
 |3|Voice 3|1&hellip;101|Set zone 3 voice (left), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
 |4|Split Point1|1&hellip;101|Split point between zone 1 and 2|
 |5|Split Point2|1&hellip;101|Split point between zone 2 and 3|
-|6|Transpose 1|-99&hellip;100 (semitones)|Transpose for zone 1|
-|7|Transpose 2|-99&hellip;100 (semitones)|Transpose for zone 2|
-|8|Transpose 3|-99&hellip;100 (semitones)|Transpose for zone 3|
+|6|Transpose 1|-99&hellip;100 (semitones)|Transpose for zone 1 (always affects pitch)|
+|7|Transpose 2|-99&hellip;100 (semitones)|Transpose for zone 2 (always affects pitch)|
+|8|Transpose 3|-99&hellip;100 (semitones)|Transpose for zone 3 (always affects pitch)|
+|9|Key Shift 1|-99&hellip;100 (semitones)|Transpose for zone 1 (affects pitch in chrimatic mode and voice in kit mode)|
+|10|Key Shift 2|-99&hellip;100 (semitones)|Transpose for zone 2 (affects pitch in chrimatic mode and voice in kit mode)|
+|11|Key Shift 3|-99&hellip;100 (semitones)|Transpose for zone 3 (affects pitch in chrimatic mode and voice in kit mode)|
+
 |9|Shape Assign|-99&hellip;99|Assign param to Shape, default is Velocity (sign controls bipolar parameter value directon, higer 7 bits of the Shape value used as param value)|
 |10|Alt Assign|-99&hellip;99|Assign param to Alt, default is FB scale (sign controls bipolar parameter value directon, higer 7 bits of the Alt value used as param value)|
 |11|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|

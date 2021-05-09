@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.4-6",
+        "version" : "1.5-6",
         "name" : "FM66",
         "num_param" : 6,
         "params" : [
@@ -18,9 +18,9 @@
             ["Waveform C+M", -77, 77, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 3],
-            ["Raw 16-bit PCM waveforms", 12352, 512, 8],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 2],
+            ["Raw 16-bit PCM waveforms", 8256, 512, 8],
+            ["custom_params", 12352, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -32,6 +32,9 @@
             ["Transpose 1", -99, 100, "%"],
             ["Transpose 2", -99, 100, "%"],
             ["Transpose 3", -99, 100, "%"],
+            ["Key Shift 1", -99, 100, "%"],
+            ["Key Shift 2", -99, 100, "%"],
+            ["Key Shift 3", -99, 100, "%"],
             ["Shape Assign", -99, 99, "%"],
             ["Alt Assign", -99, 99, "%"],
             ["FB offset", -99, 100, "%"],
