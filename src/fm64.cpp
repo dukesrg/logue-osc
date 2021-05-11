@@ -23,17 +23,18 @@
 #define TWEAK_ALG //use reserved bits for extended algorithms count support
 #define TWEAK_WF //use reserved bits for extended waveforms count support
 
-#include "fm64.h"
-
-//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
-//#define SHAPE_LFO //map Shape LFO to parameters
+//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves (~164-332 bytes)
+//#define SHAPE_LFO //map Shape LFO to parameters (~28-40 bytes)
 #define EG_SAMPLED //precalculate EG stages length in samples
-//#define PEG //pitch EG enable
+//#define PEG //pitch EG enable (~530-600 bytes)
+//#define PEG_RATE_LUT //PEG Rate from LUT close to DX7, instead of approximated function (~44-176 bytes)
 #define FINE_TUNE //16-bit precision for cents/detune
 //#define CUSTOM_PARAMS //customizable params
 //#define BANK_SELECT //dedicated param for bank select
-//#define KIT_MODE //key tracking to voice
+//#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
+
+#include "fm64.h"
 
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
@@ -232,8 +233,7 @@
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 #define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
-#define PEG_RATE_EXP_FACTOR .16f
-#define PEG_RATE_FACTOR 4.66187255859375e-7f
+#define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
 #ifdef BANK_SELECT
 static uint32_t s_bank = -1;
@@ -498,8 +498,7 @@ void initvoice(uint8_t voice_index) {
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
-//      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]));
-      s_pegrate[i] = (5.f * powf(2.0f, voice->pr[i] * .058f) - 4.f) * 213.75f; // ~ 192 >> 24 semitones per sample at 49096.545
+      s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -596,8 +595,7 @@ void initvoice(uint8_t voice_index) {
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
       s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
-//      s_pegrate[i] = f32_to_q31(PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]));
-      s_pegrate[i] = (5.f * powf(2.0f, voice->pr[i - s_peg_stage_start] * .058f) - 4.f) * 213.75f;
+      s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
