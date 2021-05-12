@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.6-0",
+        "version" : "1.6-1",
         "name" : "FM64P",
         "num_param" : 6,
         "params" : [
@@ -15,11 +15,10 @@
             ["Rat offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
             ["Algorithm", -39, 39, "%"],
-            ["Waveform C+M", -77, 77, "%"]
+            ["FB offset", -99, 100, "%"]
         ],
         "custom_data" : [
             ["Yamaha DX7-series voice banks", 64, 4096, 3],
-            ["Raw 16-bit PCM waveforms", 8256, 512, 8],
             ["custom_params", 12352, 2, 8, 256]
         ],
         "custom_params" : [
@@ -147,17 +146,7 @@
             ["Det scal Op3", -99, 100, "%"],
             ["Det scal Op4", -99, 100, "%"],
             ["Det scal Op5", -99, 100, "%"],
-            ["Det scal Op6", -99, 100, "%"],
-            ["Waveform C+M", -77, 77, "%"],
-            ["Waveform 1+2", -77, 77, "%"],
-            ["Waveform 3+4", -77, 77, "%"],
-            ["Waveform 5+6", -77, 77, "%"],
-            ["Waveform Op1", -7, 7, "%"],
-            ["Waveform Op2", -7, 7, "%"],
-            ["Waveform Op3", -7, 7, "%"],
-            ["Waveform Op4", -7, 7, "%"],
-            ["Waveform Op5", -7, 7, "%"],
-            ["Waveform Op6", -7, 7, "%"]
+            ["Det scal Op6", -99, 100, "%"]
         ]
     }
 }

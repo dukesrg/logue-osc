@@ -45,22 +45,26 @@
     CUSTOM_PARAM_ID(8),
     CUSTOM_PARAM_ID(6),
     CUSTOM_PARAM_ID(9),
-    CUSTOM_PARAM_ID(106),
+    CUSTOM_PARAM_ID(109),
 #else
     CUSTOM_PARAM_ID(2),
 #ifdef BANK_SELECT
     k_user_osc_param_id2,
 #endif
-    CUSTOM_PARAM_ID(114),
-    CUSTOM_PARAM_ID(69),
-    CUSTOM_PARAM_ID(16),
-    CUSTOM_PARAM_ID(14),
+    CUSTOM_PARAM_ID(117),
+    CUSTOM_PARAM_ID(72),
+    CUSTOM_PARAM_ID(19),
+    CUSTOM_PARAM_ID(17),
 #ifndef BANK_SELECT
-    CUSTOM_PARAM_ID(123),
+#ifdef WFBITS
+    CUSTOM_PARAM_ID(126),
+#else
+    CUSTOM_PARAM_ID(15),
+#endif
 #endif
 #endif
     CUSTOM_PARAM_ID(1),
-    CUSTOM_PARAM_ID(13)
+    CUSTOM_PARAM_ID(16)
   );
 #endif
 
