@@ -85,8 +85,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Operators count|4|6|6|6|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|4|3|3|2|2|3|4|3|
-|Waveform count|8|1|1|8|16|8|1|1|1|
-|Waveform bit depth|32|16|16|16|16|32|16|16|16|
+|Waveform count|8|1|1|8|8|16|1|1|1|
+|Waveform bit depth|32|16|16|16|16|16|32|16|16|
 |Waveform customization||||+|+|+||
 |Feedback supported|+|+|+|+|+|+|+|+|+|
 |Shape LFO target supported|+|+|+|+|+|+|+|+|+|
