@@ -23,17 +23,18 @@
 #define TWEAK_ALG //use reserved bits for extended algorithms count support
 #define TWEAK_WF //use reserved bits for extended waveforms count support
 
-#include "fm64.h"
-
-//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves ~396 bytes
-//#define SHAPE_LFO //map Shape LFO to parameters
+//#define FEEDBACK //disabling feedback helps to reduce performance issues on -logues, saves (~164-332 bytes)
+//#define SHAPE_LFO //map Shape LFO to parameters (~28-40 bytes)
 #define EG_SAMPLED //precalculate EG stages length in samples
-//#define PEG //pitch EG enable
+//#define PEG //pitch EG enable (~530-600 bytes)
+//#define PEG_RATE_LUT //PEG Rate from LUT close to DX7, instead of approximated function (~44-176 bytes)
 #define FINE_TUNE //16-bit precision for cents/detune
 //#define CUSTOM_PARAMS //customizable params
 //#define BANK_SELECT //dedicated param for bank select
-//#define KIT_MODE //key tracking to voice
+//#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
+
+#include "fm64.h"
 
 #ifdef CUSTOM_PARAMS
   #include "custom_param.h"
@@ -213,7 +214,7 @@
 #define DX7_DECAY_RATE_FACTOR -6.0966294280205275641423448928849e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
 //#define DX7_DECAY_RATE_FACTOR 23.9674129f
 //#define DX7_DECAY_RATE_FACTOR (24.f - EG_FREQ_CORRECT)
-#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
+//#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
 //#define DX7_HOLD_RATE_FACTOR 0.9674129f
 //#define DX7_HOLD_RATE_FACTOR (1.f - EG_FREQ_CORRECT)
 //#define RATE_SCALING_FACTOR .061421131f
@@ -231,9 +232,8 @@
 #define DX11_MAX_LEVEL 15
 
 #define FREQ_FACTOR .08860606f // (9.772 - 1)/99
-#define PEG_SCALE 245.76f // 48/50 * 256
-#define PEG_RATE_EXP_FACTOR .16f
-#define PEG_RATE_FACTOR 4.66187255859375e-7f
+#define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
+#define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
 #ifdef BANK_SELECT
 static uint32_t s_bank = -1;
@@ -244,6 +244,7 @@ static int8_t s_algorithm_offset = 0;
 #define FINE_TUNE_FACTOR 65536.f
 static uint8_t s_split_point[SPLIT_ZONES - 1] = {0};
 static int8_t s_zone_transpose[SPLIT_ZONES] = {0};
+static int8_t s_zone_key_shift[SPLIT_ZONES] = {0};
 static int8_t s_zone_transposed = 0;
 #ifndef KIT_MODE
 static uint8_t s_kit_voice = 0;
@@ -496,8 +497,8 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = (voice->pl[i] - PEG_CENTER) * PEG_SCALE;
-      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i]);
+      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
+      s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -593,8 +594,8 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = (voice->pl[i - s_peg_stage_start] - PEG_CENTER) * PEG_SCALE;
-      s_pegrate[i] = PEG_RATE_FACTOR * powf(2.f, PEG_RATE_EXP_FACTOR * voice->pr[i - s_peg_stage_start]);
+      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
+      s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
     for (uint32_t k = DX11_OPERATOR_COUNT; k--;) {
@@ -683,8 +684,12 @@ void initvoice(uint8_t voice_index) {
   }
 #ifdef PEG
   uint32_t samples = 0;
+  int32_t dl;
   for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT - 1; i++) {
-    samples += (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]) / s_pegrate[i];
+    dl = (s_peglevel[i] - s_peglevel[i != s_peg_stage_start ? i - 1 : PEG_STAGE_COUNT - 1]);
+    if (dl < 0)
+      s_pegrate[i] = -s_pegrate[i];
+    samples += dl / s_pegrate[i];
     s_peg_sample_count[i] = samples;
   }
   s_pegrate[PEG_STAGE_COUNT] = s_pegrate[PEG_STAGE_COUNT - 1];
@@ -794,16 +799,28 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
   param_t osc_out, modw0;
   phase_t opw0[OPERATOR_COUNT];
+#ifdef FINE_TUNE
+  uint32_t pitch = params->pitch << 16;
+#else
   uint32_t pitch = params->pitch;
+#endif
 #ifdef CUSTOM_PARAMS
 #ifndef KIT_MODE
   if (s_kit_voice)
 #endif
+#ifdef FINE_TUNE
+    pitch = KIT_CENTER << 24;
+#else
     pitch = KIT_CENTER << 8;
+#endif
 #endif
 //  int32_t pitch = params->pitch + s_transpose;
 #ifdef PEG
+#ifdef FINE_TUNE
   pitch += s_pegval;
+#else
+  pitch += s_pegval >> 16;
+#endif
 #endif
 //  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((pitch >> 8) + s_transpose, pitch & 0xFF));
   pitch_t basew0;
@@ -819,10 +836,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef FINE_TUNE
       uint32_t p;
 #ifdef CUSTOM_PARAMS
-      p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
+//      p = (pitch << 16) + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
+      p = pitch + (s_detune[i] + paramOffset(s_detune_offset, i) * 2.56f) * paramScale(s_detune_scale, i) * FINE_TUNE_FACTOR;
       uint8_t note = clipmini32(0, (p >> 24) + s_zone_transposed);
 #else
-      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
+//      p = (pitch << 16) + ((s_detune[i] * s_detune_scale) << 7);
+      p = pitch + ((s_detune[i] * s_detune_scale) << 7);
       uint8_t note = clipmini32(0, (p >> 24) + s_transpose);
 #endif
       basew0 = f32_to_pitch(clipmaxf(linintf((p & 0xFFFFFF) * 5.9604645e-8f, osc_notehzf(note), osc_notehzf(note + 1)), k_note_max_hz) * k_samplerate_recipf);
@@ -1061,18 +1080,18 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   int32_t depth = 0;
   uint32_t zone, voice;
   for (zone = 0; zone < (SPLIT_ZONES - 1) && note < s_split_point[zone]; zone++);
-  s_zone_transposed = s_zone_transpose[zone];
-  note += s_zone_transposed;
 #ifndef KIT_MODE
   voice = s_voice[zone];
+  s_zone_transposed = s_zone_transpose[zone] + s_zone_key_shift[zone];
   s_kit_voice = (voice == 100);
   if (s_kit_voice) {
 #endif
-    voice = note;
-    s_zone_transposed = 0;
+    voice = note + s_zone_key_shift[zone];
+    s_zone_transposed = s_zone_transpose[zone];
     note = KIT_CENTER;
 #ifndef KIT_MODE
   }
+  note += s_zone_transposed;
 #endif
   initvoice(voice);
 #else
@@ -1373,228 +1392,233 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case CUSTOM_PARAM_ID(10):
     case CUSTOM_PARAM_ID(11):
-      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(10), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+    case CUSTOM_PARAM_ID(12):
+      s_zone_key_shift[index - CUSTOM_PARAM_ID(10)] = value - 100;
+      break;
+    case CUSTOM_PARAM_ID(13):
+    case CUSTOM_PARAM_ID(14):
+      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(13), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
 #ifdef FEEDBACK
-    case CUSTOM_PARAM_ID(12):
+    case CUSTOM_PARAM_ID(15):
       s_feedback_offset = (value - 100) * .07f;
       setFeedback();
       break;
-    case CUSTOM_PARAM_ID(13):
+    case CUSTOM_PARAM_ID(16):
       s_feedback_scale = value * .01f;
       setFeedback();
       break;
 #endif
-    case CUSTOM_PARAM_ID(14):
+    case CUSTOM_PARAM_ID(17):
       s_algorithm_offset = value - 100;
       setAlgorithm();
       break;
-    case CUSTOM_PARAM_ID(15):
-    case CUSTOM_PARAM_ID(16):
-    case CUSTOM_PARAM_ID(17):
-#ifdef OP6
     case CUSTOM_PARAM_ID(18):
     case CUSTOM_PARAM_ID(19):
+    case CUSTOM_PARAM_ID(20):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(21):
+    case CUSTOM_PARAM_ID(22):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(20):
-    case CUSTOM_PARAM_ID(21):
-    case CUSTOM_PARAM_ID(22):
     case CUSTOM_PARAM_ID(23):
-      s_level_offset[CUSTOM_PARAM_ID(23) - index] = value - 100;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(24):
     case CUSTOM_PARAM_ID(25):
     case CUSTOM_PARAM_ID(26):
-#ifdef OP6
+      s_level_offset[CUSTOM_PARAM_ID(26) - index] = value - 100;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(27):
     case CUSTOM_PARAM_ID(28):
+    case CUSTOM_PARAM_ID(29):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(30):
+    case CUSTOM_PARAM_ID(31):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(29):
-    case CUSTOM_PARAM_ID(30):
-    case CUSTOM_PARAM_ID(31):
     case CUSTOM_PARAM_ID(32):
-      s_level_scale[CUSTOM_PARAM_ID(32) - index] = value;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(33):
     case CUSTOM_PARAM_ID(34):
     case CUSTOM_PARAM_ID(35):
-#ifdef OP6
+      s_level_scale[CUSTOM_PARAM_ID(35) - index] = value;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(36):
     case CUSTOM_PARAM_ID(37):
+    case CUSTOM_PARAM_ID(38):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(39):
+    case CUSTOM_PARAM_ID(40):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(38):
-    case CUSTOM_PARAM_ID(39):
-    case CUSTOM_PARAM_ID(40):
     case CUSTOM_PARAM_ID(41):
-      s_kls_offset[CUSTOM_PARAM_ID(41) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(42):
     case CUSTOM_PARAM_ID(43):
     case CUSTOM_PARAM_ID(44):
-#ifdef OP6
+      s_kls_offset[CUSTOM_PARAM_ID(44) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(45):
     case CUSTOM_PARAM_ID(46):
+    case CUSTOM_PARAM_ID(47):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(48):
+    case CUSTOM_PARAM_ID(49):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(47):
-    case CUSTOM_PARAM_ID(48):
-    case CUSTOM_PARAM_ID(49):
     case CUSTOM_PARAM_ID(50):
-      s_kls_scale[CUSTOM_PARAM_ID(50) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(51):
     case CUSTOM_PARAM_ID(52):
     case CUSTOM_PARAM_ID(53):
-#ifdef OP6
+      s_kls_scale[CUSTOM_PARAM_ID(53) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(54):
     case CUSTOM_PARAM_ID(55):
+    case CUSTOM_PARAM_ID(56):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(57):
+    case CUSTOM_PARAM_ID(58):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(56):
-    case CUSTOM_PARAM_ID(57):
-    case CUSTOM_PARAM_ID(58):
     case CUSTOM_PARAM_ID(59):
-      s_kvs_offset[CUSTOM_PARAM_ID(59) - index] = value - 100;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(60):
     case CUSTOM_PARAM_ID(61):
     case CUSTOM_PARAM_ID(62):
-#ifdef OP6
+      s_kvs_offset[CUSTOM_PARAM_ID(62) - index] = value - 100;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(63):
     case CUSTOM_PARAM_ID(64):
+    case CUSTOM_PARAM_ID(65):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(66):
+    case CUSTOM_PARAM_ID(67):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(65):
-    case CUSTOM_PARAM_ID(66):
-    case CUSTOM_PARAM_ID(67):
     case CUSTOM_PARAM_ID(68):
-      s_kvs_scale[CUSTOM_PARAM_ID(68) - index] = value;
-      setLevel();
-      break;
     case CUSTOM_PARAM_ID(69):
     case CUSTOM_PARAM_ID(70):
     case CUSTOM_PARAM_ID(71):
-#ifdef OP6
+      s_kvs_scale[CUSTOM_PARAM_ID(71) - index] = value;
+      setLevel();
+      break;
     case CUSTOM_PARAM_ID(72):
     case CUSTOM_PARAM_ID(73):
+    case CUSTOM_PARAM_ID(74):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(75):
+    case CUSTOM_PARAM_ID(76):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(74):
-    case CUSTOM_PARAM_ID(75):
-    case CUSTOM_PARAM_ID(76):
     case CUSTOM_PARAM_ID(77):
-      s_egrate_offset[CUSTOM_PARAM_ID(77) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(78):
     case CUSTOM_PARAM_ID(79):
     case CUSTOM_PARAM_ID(80):
-#ifdef OP6
+      s_egrate_offset[CUSTOM_PARAM_ID(80) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(81):
     case CUSTOM_PARAM_ID(82):
+    case CUSTOM_PARAM_ID(83):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(84):
+    case CUSTOM_PARAM_ID(85):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(83):
-    case CUSTOM_PARAM_ID(84):
-    case CUSTOM_PARAM_ID(85):
     case CUSTOM_PARAM_ID(86):
-      s_egrate_scale[CUSTOM_PARAM_ID(86) - index] = value;
-      break;
     case CUSTOM_PARAM_ID(87):
     case CUSTOM_PARAM_ID(88):
     case CUSTOM_PARAM_ID(89):
-#ifdef OP6
+      s_egrate_scale[CUSTOM_PARAM_ID(89) - index] = value;
+      break;
     case CUSTOM_PARAM_ID(90):
     case CUSTOM_PARAM_ID(91):
+    case CUSTOM_PARAM_ID(92):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(93):
+    case CUSTOM_PARAM_ID(94):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(92):
-    case CUSTOM_PARAM_ID(93):
-    case CUSTOM_PARAM_ID(94):
     case CUSTOM_PARAM_ID(95):
-      s_krs_offset[CUSTOM_PARAM_ID(95) - index] = value - 100;
-      break;
     case CUSTOM_PARAM_ID(96):
     case CUSTOM_PARAM_ID(97):
     case CUSTOM_PARAM_ID(98):
-#ifdef OP6
+      s_krs_offset[CUSTOM_PARAM_ID(98) - index] = value - 100;
+      break;
     case CUSTOM_PARAM_ID(99):
     case CUSTOM_PARAM_ID(100):
+    case CUSTOM_PARAM_ID(101):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(102):
+    case CUSTOM_PARAM_ID(103):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(101):
-    case CUSTOM_PARAM_ID(102):
-    case CUSTOM_PARAM_ID(103):
     case CUSTOM_PARAM_ID(104):
-      s_krs_scale[CUSTOM_PARAM_ID(104) - index] = uvalue;
-      break;
     case CUSTOM_PARAM_ID(105):
     case CUSTOM_PARAM_ID(106):
     case CUSTOM_PARAM_ID(107):
-#ifdef OP6
+      s_krs_scale[CUSTOM_PARAM_ID(107) - index] = uvalue;
+      break;
     case CUSTOM_PARAM_ID(108):
     case CUSTOM_PARAM_ID(109):
+    case CUSTOM_PARAM_ID(110):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(111):
+    case CUSTOM_PARAM_ID(112):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(110):
-    case CUSTOM_PARAM_ID(111):
-    case CUSTOM_PARAM_ID(112):
     case CUSTOM_PARAM_ID(113):
-      s_detune_offset[CUSTOM_PARAM_ID(113) - index] = value - 100;
-      break;
-#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(114):
     case CUSTOM_PARAM_ID(115):
     case CUSTOM_PARAM_ID(116):
-#ifdef OP6
+      s_detune_offset[CUSTOM_PARAM_ID(116) - index] = value - 100;
+      break;
+#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(117):
     case CUSTOM_PARAM_ID(118):
+    case CUSTOM_PARAM_ID(119):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(120):
+    case CUSTOM_PARAM_ID(121):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(119):
-    case CUSTOM_PARAM_ID(120):
-    case CUSTOM_PARAM_ID(121):
     case CUSTOM_PARAM_ID(122):
-      s_detune_scale[CUSTOM_PARAM_ID(122) - index] = value;
+    case CUSTOM_PARAM_ID(123):
+    case CUSTOM_PARAM_ID(124):
+    case CUSTOM_PARAM_ID(125):
+      s_detune_scale[CUSTOM_PARAM_ID(125) - index] = value;
       break;
 #endif
 #ifdef WFBITS
-    case CUSTOM_PARAM_ID(123):
-#ifdef OP6
-    case CUSTOM_PARAM_ID(124):
-#else
-      index++;
-#endif
-    case CUSTOM_PARAM_ID(125):
     case CUSTOM_PARAM_ID(126):
 #ifdef OP6
     case CUSTOM_PARAM_ID(127):
+#else
+      index++;
+#endif
     case CUSTOM_PARAM_ID(128):
+    case CUSTOM_PARAM_ID(129):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(130):
+    case CUSTOM_PARAM_ID(131):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(129):
-    case CUSTOM_PARAM_ID(130):
-    case CUSTOM_PARAM_ID(131):
     case CUSTOM_PARAM_ID(132):
-      s_waveform_offset[CUSTOM_PARAM_ID(132) - index] = value - 100;
+    case CUSTOM_PARAM_ID(133):
+    case CUSTOM_PARAM_ID(134):
+    case CUSTOM_PARAM_ID(135):
+      s_waveform_offset[CUSTOM_PARAM_ID(135) - index] = value - 100;
       setWaveform();
       break;
 #endif

@@ -7,7 +7,7 @@
         "dev_id" : 1701541188,
         "prg_id" : 0,
         "version" : "1.5-7",
-        "name" : "FM66",
+        "name" : "FM66P",
         "num_param" : 6,
         "params" : [
             ["Voice 1", 0, 100, ""],
@@ -18,9 +18,9 @@
             ["Waveform C+M", -77, 77, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 3],
-            ["Raw 16-bit PCM waveforms", 12352, 512, 8],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 2],
+            ["Raw 16-bit PCM waveforms", 8256, 512, 8],
+            ["custom_params", 12352, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],

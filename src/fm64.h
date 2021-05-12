@@ -146,6 +146,39 @@ uint8_t scale_level(uint8_t x) {
     return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
 }
 
+static const int8_t pitch_level_lut_low[] = {
+  -128, -116, -104, -95, -85, -76, -68, -61, -56, -52, -49, -46, -43, -41, -39, -37, -35,
+  38, 40, 43, 46, 49, 53, 58, 65, 73, 82, 92, 103, 115 //, 128
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+int32_t scale_pitch_level(uint8_t x) {
+  if (x < 17)
+    return pitch_level_lut_low[x];
+  if (x < 86)
+    return x - PEG_CENTER;
+  if (x < 99)
+    return pitch_level_lut_low[x - 69]; //86 - 17
+  return 128;
+}
+
+static const uint8_t pitch_rate_lut[] = {
+  1, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 16, 16, 17, 18, 18, 19,
+  20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 33, 34, 36, 37, 38, 39, 41, 42, 44, 46, 47, 49, 51, 53, 54, 56, 58,
+  60, 62, 64, 66, 68, 70, 72, 74, 76, 79, 82, 85, 88, 91, 94, 98, 102, 106, 110, 115, 120, 125, 130, 135, 141, 147,
+  153, 159, 165, 171, 178, 185, 193, 202, 211, 231, 243, 253, 255
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+#ifdef PEG_RATE_LUT
+uint8_t scale_pitch_rate(uint8_t x) {
+  return pitch_rate_lut[x];
+#else
+float scale_pitch_rate(uint8_t x) {
+  return 5.f * powf(2.0f, x * .058f) - 4.f;
+#endif
+}
+
 #ifdef OP4
 static const float dx11_ratio_lut[64] = {
   .5f, .71f, .78f, .87f, 1.f, 1.41f, 1.57f, 1.73f,
