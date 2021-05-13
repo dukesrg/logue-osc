@@ -18,9 +18,9 @@
             ["Waveform C+M", -77, 77, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 3],
-            ["Raw 16-bit PCM waveforms", 12352, 512, 8],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 4],
+            ["Raw 16-bit PCM waveforms", 16448, 512, 8],
+            ["custom_params", 20544, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
