@@ -34,6 +34,25 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 
+//#define FAST_POWF //native logue-sdk pow2f must be fixed, lost precesion (- ~6K bytes)
+//#define FASTER_POWF //not very precise (- ~6.3K bytes)
+//#define FASTMATH_POWF //external library, extra precise (- ~5.6K bytes)
+#if defined(FAST_POWF)
+  #define POWF(a,b) fastpowf(a,b)
+  #define POW2F(a) fastpow2f(a)
+#elif defined(FASTER_POWF)
+  #define POWF(a,b) fasterpowf(a,b)
+  #define POW2F(a) fasterpow2f(a)
+#elif defined(FASTERMATH_POWF)
+  extern "C" float fm_exp2f(float x);
+  extern "C" float fm_log2f(float x);
+  #define POWF(a,b) fm_exp2f((b)*fm_log2f(a))
+  #define POW2F(a) fm_exp2f(a)
+#else
+  #define POWF(a,b) powf(a,b)
+  #define POW2F(a) powf(2.f,a)
+#endif
+
 #include "fm64.h"
 
 #ifdef CUSTOM_PARAMS
@@ -448,7 +467,7 @@ void setWaveform() {
 #ifdef FEEDBACK
 void setFeedback() {
   float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
-  s_feedback = value <= 0.f ? ZERO : f32_to_param(powf(2.f, value * s_feedback_scale) * FEEDBACK_RECIPF);
+  s_feedback = value <= 0.f ? ZERO : f32_to_param(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
 }
 #endif
 #endif
@@ -1068,10 +1087,10 @@ param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_fact
 #ifdef CUSTOM_PARAMS
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
-  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
+  return f32_to_param(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 #else
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
-  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_offset)));
+  return f32_to_param(rate_factor * POW2F(rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_offset)));
 #endif
 //  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
 }
@@ -1152,7 +1171,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = 0.f;
     else
-      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
 #else
     if (dp < 0) {
        depth = s_left_depth[i];
@@ -1165,7 +1184,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_level_scaling[i] = ZERO;
     else
 //      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
-      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+      s_level_scaling[i] = f32_to_param(depth * (curve ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
 //    s_detune_val[i] = s_detune[i] * 6.f * powf(2.f, - params->pitch * 0.000108506944f); //2 * (48/4096) * 2^ (- note / 36) * detune
 #endif
   }
@@ -1236,11 +1255,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       switch (index) {
 #ifdef FEEDBACK
         case p_feedback:
-          s_feedback = value == 0 ? ZERO : f32_to_param(powf(2.f, value * 0.00684261974f) * FEEDBACK_RECIPF); // 0, 1/2...1/128 -> 1/4...1/256 (implied 1/2 ratio for LPF)
+          s_feedback = value == 0 ? ZERO : f32_to_param(POW2F(value * 0.00684261974f) * FEEDBACK_RECIPF); // 0, 1/2...1/128 -> 1/4...1/256 (implied 1/2 ratio for LPF)
           break;
 #endif
         case p_velocity:
-          s_velocity = f32_to_param((powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
+          s_velocity = f32_to_param((POWF(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
           for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
             s_oplevel[i] = param_sum(s_op_level[i], s_velocity * s_kvs[i], s_level_scaling[i]);
@@ -1374,7 +1393,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef CUSTOM_PARAMS
     case CUSTOM_PARAM_ID(1):
-      s_velocity = (powf(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
+      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
 //                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
       setLevel();
       break;
