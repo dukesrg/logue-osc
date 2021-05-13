@@ -6,20 +6,20 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.6-2",
+        "version" : "1.6-5",
         "name" : "FM64",
         "num_param" : 6,
         "params" : [
             ["Voice 1", 0, 31, ""],
-            ["Bank", 0, 3, ""],
+            ["Bank", 0, 4, ""],
             ["Det scal All", -99, 100, "%"],
             ["Rat offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
             ["Algorithm", -39, 39, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 4, 1],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 5, 1],
+            ["custom_params", 20544, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],

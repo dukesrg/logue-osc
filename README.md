@@ -77,23 +77,23 @@ For user-customizable oscillators, an online constructor is available at https:/
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|FMxx features|FM48|FM64|FM64P|FM66|FM66P|FM67|FM68|FM69|FM69P|
-|-|-|-|-|-|-|-|-|-|-|
-|Custom params||7|8|8|8|||8|8|
-|Assignable controllers|2|||||2|2|||
-|Algorithm count|40|40|40|40|40|40|40|40|40|
-|Operators count|4|6|6|6|6|6|6|6|6|
-|Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|DX7|DX7|
-|Voice bank count|4|4|3|3|2|2|3|4|3|
-|Waveform count|8|1|1|8|8|16|1|1|1|
-|Waveform bit depth|32|16|16|16|16|16|32|16|16|
-|Waveform customization||||+|+|+||
-|Feedback supported|+|+|+|+|+|+|+|+|+|
-|Shape LFO target supported|+|+|+|+|+|+|+|+|+|
-|Pitch EG supported|||+||+||||+|
-|Split zones|1|3|3|3|3|1|1|3|3|3|
-|Chromatic mode|+|+|+|+|+|+|+|||
-|Kit mode||+|+|+|+|||+|+|
+|FMxx features|FM48|FM64|FM66|FM67|FM68|FM69|
+|-|-|-|-|-|-|-|
+|Custom params||7|8|8||8|
+|Assignable controllers|2||||||
+|Algorithm count|40|40|40|40|40|40|
+|Operators count|4|6|6|6|6|6|
+|Voice bank type|DX21 / DX11|DX7|DX21 / DX11 / DX7|DX21 / DX11 / DX7|DX7|DX7|
+|Voice bank count|4|5|3|3|3|5|
+|Waveform count|8|1|8|16|8|1|
+|Waveform bit depth|32|16|16|16|32|16|
+|Waveform customization|||+|+|+||
+|Feedback supported|+|+|+|+|+|+|
+|Shape LFO target supported|+|+|+|+|+|+|
+|Pitch EG supported||+|+|+||+|
+|Split zones|1|3|3|3|1|3|
+|Chromatic mode|+|+|+|+|+||
+|Kit mode||+|+|+||+|
 
 |FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
 |-|-|-|

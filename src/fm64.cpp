@@ -34,7 +34,7 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 
-//#define FAST_POWF //native logue-sdk pow2f must be fixed, lost precesion (- ~6K bytes)
+#define FAST_POWF //native logue-sdk pow2f must be fixed, lost precesion (- ~6K bytes)
 //#define FASTER_POWF //not very precise (- ~6.3K bytes)
 //#define FASTMATH_POWF //external library, extra precise (- ~5.6K bytes)
 #if defined(FAST_POWF)
@@ -520,7 +520,7 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
+      s_peglevel[i] = scale_pitch_level(voice->pl[i - s_peg_stage_start]) * PEG_SCALE;
       s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
@@ -617,7 +617,7 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
+      s_peglevel[i] = scale_pitch_level(voice->pl[i - s_peg_stage_start]) * PEG_SCALE;
       s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
