@@ -121,9 +121,9 @@ For user-customizable oscillators, an online constructor is available at https:/
 |#|FMxx<br>Custom params|Range|Description|
 |-|-|-|-|
 |0|Velocity|0&hellip;100|Velocity control (maximum is 100/127 when using param and 127/127 with fractional 10-bit resolution when assigned Shape/Alt)|
-|1|Voice 1|1&hellip;101|Set zone 1 voice (single or right), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
-|2|Voice 2|1&hellip;101|Set zone 2 voice (left or middle), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
-|3|Voice 3|1&hellip;101|Set zone 3 voice (left), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|1|Voice 1|-96&hellip;96|Set zone 1 voice (single or right), 0 activates kit mode, negative values will wrap to the end of the maximum allowed voices (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|2|Voice 2|-96&hellip;96|Set zone 2 voice (left or middle), 0 activates kit mode, negative values will wrap to the end of the maximum allowed voices (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|3|Voice 3|-96&hellip;96|Set zone 3 voice (left), may be out of bounds, 0 activates kit mode, negative values will wrap to the end of the maximum allowed voices (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
 |4|Split Point1|1&hellip;101|Split point between zone 1 and 2|
 |5|Split Point2|1&hellip;101|Split point between zone 2 and 3|
 |6|Transpose 1|-99&hellip;100 (semitones)|Transpose for zone 1|

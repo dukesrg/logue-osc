@@ -78,7 +78,7 @@
 #ifdef WFBITS
     CUSTOM_PARAM_ID(126),
 #else
-    CUSTOM_PARAM_ID(15),
+    CUSTOM_PARAM_ID(20),
 #endif
 #endif
 #endif
@@ -271,7 +271,7 @@ static int8_t s_zone_voice_shift[SPLIT_ZONES] = {0};
 static int8_t s_zone_transposed = 0;
 #ifndef KIT_MODE
 static uint8_t s_kit_voice = 0;
-static uint8_t s_voice[SPLIT_ZONES] = {0};
+static int8_t s_voice[SPLIT_ZONES] = {0};
 #endif
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_kls_offset[OPERATOR_COUNT + 3] = {0};
@@ -1100,22 +1100,27 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   float rate_factor;
   int32_t dl, dp, note = params->pitch >> 8, curve = 0;
 #ifdef CUSTOM_PARAMS
-  int32_t depth = 0;
-  uint32_t zone, voice;
+  int32_t depth = 0, voice;
+  uint32_t zone;
   for (zone = 0; zone < (SPLIT_ZONES - 1) && note < s_split_point[zone]; zone++);
 #ifndef KIT_MODE
-  voice = s_voice[zone] + s_zone_voice_shift[zone];
-  s_zone_transposed = s_zone_transpose[zone];
-  s_kit_voice = (voice == 100);
+  voice = s_voice[zone];
+  s_kit_voice = (voice == 0);
   if (s_kit_voice) {
 #endif
     voice = note + s_zone_voice_shift[zone];
-    s_zone_transposed = s_zone_transpose[zone];
     note = KIT_CENTER;
 #ifndef KIT_MODE
+  } else {
+    if (voice > 0)
+      voice --;
+    voice += s_zone_voice_shift[zone];
+    if (voice < 0)
+      voice += BANK_COUNT * BANK_SIZE;
   }
-  note += s_zone_transposed;
 #endif
+  s_zone_transposed = s_zone_transpose[zone];
+  note += s_zone_transposed;
   initvoice(voice);
 #else
   float depth = 0.f;
@@ -1240,7 +1245,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   if (index > CUSTOM_PARAM_ID(1)) {
     if (tenbits)
       value >>= 3;
-    if (index > CUSTOM_PARAM_ID(6) && (tenbits || value == 0))
+    if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6)) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
     uvalue = value; //looks like optimizer is crazy: this saves over 100 bypes just by assigning to used valiable with sign conversion >%-O
   }
@@ -1401,7 +1406,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(2):
     case CUSTOM_PARAM_ID(3):
     case CUSTOM_PARAM_ID(4):
-      s_voice[index - CUSTOM_PARAM_ID(2)] = value;
+      s_voice[index - CUSTOM_PARAM_ID(2)] = value - 100;
       break;
 #endif
     case CUSTOM_PARAM_ID(5):
