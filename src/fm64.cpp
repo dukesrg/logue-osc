@@ -59,12 +59,12 @@
   #include "custom_param.h"
   CUSTOM_PARAM_INIT(
 #ifdef KIT_MODE
+    CUSTOM_PARAM_ID(7),
     CUSTOM_PARAM_ID(10),
     CUSTOM_PARAM_ID(5),
     CUSTOM_PARAM_ID(11),
     CUSTOM_PARAM_ID(6),
     CUSTOM_PARAM_ID(12),
-    CUSTOM_PARAM_ID(7),
 #else
     CUSTOM_PARAM_ID(2),
 #ifdef BANK_SELECT
@@ -267,7 +267,7 @@ static int8_t s_algorithm_offset = 0;
 #define FINE_TUNE_FACTOR 65536.f
 static uint8_t s_split_point[SPLIT_ZONES - 1] = {0};
 static int8_t s_zone_transpose[SPLIT_ZONES] = {0};
-static int8_t s_zone_key_shift[SPLIT_ZONES] = {0};
+static int8_t s_zone_voice_shift[SPLIT_ZONES] = {0};
 static int8_t s_zone_transposed = 0;
 #ifndef KIT_MODE
 static uint8_t s_kit_voice = 0;
@@ -1104,12 +1104,12 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   uint32_t zone, voice;
   for (zone = 0; zone < (SPLIT_ZONES - 1) && note < s_split_point[zone]; zone++);
 #ifndef KIT_MODE
-  voice = s_voice[zone];
-  s_zone_transposed = s_zone_transpose[zone] + s_zone_key_shift[zone];
+  voice = s_voice[zone] + s_zone_voice_shift[zone];
+  s_zone_transposed = s_zone_transpose[zone];
   s_kit_voice = (voice == 100);
   if (s_kit_voice) {
 #endif
-    voice = note + s_zone_key_shift[zone];
+    voice = note + s_zone_voice_shift[zone];
     s_zone_transposed = s_zone_transpose[zone];
     note = KIT_CENTER;
 #ifndef KIT_MODE
@@ -1416,7 +1416,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(10):
     case CUSTOM_PARAM_ID(11):
     case CUSTOM_PARAM_ID(12):
-      s_zone_key_shift[index - CUSTOM_PARAM_ID(10)] = value - 100;
+      s_zone_voice_shift[index - CUSTOM_PARAM_ID(10)] = value - 100;
       break;
     case CUSTOM_PARAM_ID(13):
     case CUSTOM_PARAM_ID(14):
