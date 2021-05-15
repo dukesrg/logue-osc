@@ -494,10 +494,13 @@ void setAlgorithm() {
 #endif
 }
 
-void initvoice(uint8_t voice_index) {
+void initvoice(int32_t voice_index) {
 #ifdef BANK_SELECT
   if (dx_voices[s_bank][voice_index].dx7.vnam[0]) {
 #else
+  voice_index %= BANK_COUNT * BANK_SIZE;
+  if (voice_index < 0)
+    voice_index += BANK_COUNT * BANK_SIZE;
   if (dx_voices[0][voice_index].dx7.vnam[0]) {
 #endif
 #ifdef OP6
@@ -1103,22 +1106,21 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   int32_t depth = 0, voice;
   uint32_t zone;
   for (zone = 0; zone < (SPLIT_ZONES - 1) && note < s_split_point[zone]; zone++);
+  s_zone_transposed = s_zone_transpose[zone];
 #ifndef KIT_MODE
   voice = s_voice[zone];
   s_kit_voice = (voice == 0);
+  if (voice > 0)
+    voice--;
   if (s_kit_voice) {
 #endif
     voice = note;
     note = KIT_CENTER;
 #ifndef KIT_MODE
-  } else if (voice > 0)
-    voice--;
+  }
 #endif
-  voice += s_zone_voice_shift[zone];
-  if (voice < 0)
-    voice += BANK_COUNT * BANK_SIZE;
-  s_zone_transposed = s_zone_transpose[zone];
   note += s_zone_transposed;
+  voice += s_zone_voice_shift[zone];
   initvoice(voice);
 #else
   float depth = 0.f;
