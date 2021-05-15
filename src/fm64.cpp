@@ -1108,17 +1108,15 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_kit_voice = (voice == 0);
   if (s_kit_voice) {
 #endif
-    voice = note + s_zone_voice_shift[zone];
+    voice = note;
     note = KIT_CENTER;
 #ifndef KIT_MODE
-  } else {
-    if (voice > 0)
-      voice --;
-    voice += s_zone_voice_shift[zone];
-    if (voice < 0)
-      voice += BANK_COUNT * BANK_SIZE;
-  }
+  } else if (voice > 0)
+    voice--;
 #endif
+  voice += s_zone_voice_shift[zone];
+  if (voice < 0)
+    voice += BANK_COUNT * BANK_SIZE;
   s_zone_transposed = s_zone_transpose[zone];
   note += s_zone_transposed;
   initvoice(voice);
