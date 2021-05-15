@@ -316,4 +316,4 @@ Custom data descriptors are themselves arrays, and should contain 3-5 values:
 ### Credits
 * [Sebo1971](https://github.com/Sebo1971) for comprehensive oscillators testing with prologue and in general
 * [aminixduser](https://github.com/aminixduser) for optimization ideas
-* [Gearslutz - The Korg Logue User Oscillator Programming Thread](https://www.gearslutz.com/board/electronic-music-instruments-and-electronic-music-production/1306032-korg-logue-user-oscillator-programming-thread.html) participants for inspirations
+* [Gearspace - The Korg Logue User Oscillator Programming Thread](https://gearspace.com/board/electronic-music-instruments-and-electronic-music-production/1306032-korg-logue-user-oscillator-programming-thread.html) participants for inspirations
