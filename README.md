@@ -77,23 +77,23 @@ For user-customizable oscillators, an online constructor is available at https:/
 |36&hellip;99|Custom waves|
 |100|White noise S&H|
 
-|FMxx features|FM48|FM64|FM64P|FM66|FM66P|FM67|FM68|FM69|FM69P|
-|-|-|-|-|-|-|-|-|-|-|
-|Custom params||7|8|8|8|||8|8|
-|Assignable controllers|2|||||2|2|||
-|Algorithm count|40|40|40|40|40|40|40|40|40|
-|Operators count|4|6|6|6|6|6|6|6|6|
-|Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|DX7|DX7|
-|Voice bank count|4|4|3|3|2|2|3|4|3|
-|Waveform count|8|1|1|8|8|16|1|1|1|
-|Waveform bit depth|32|16|16|16|16|16|32|16|16|
-|Waveform customization||||+|+|+||
-|Feedback supported|+|+|+|+|+|+|+|+|+|
-|Shape LFO target supported|+|+|+|+|+|+|+|+|+|
-|Pitch EG supported|||+||+||||+|
-|Split zones|1|3|3|3|3|1|1|3|3|3|
-|Chromatic mode|+|+|+|+|+|+|+|||
-|Kit mode||+|+|+|+|||+|+|
+|FMxx features|FM48|FM64|FM66|FM67|FM68|FM69|
+|-|-|-|-|-|-|-|
+|Custom params||7|8|8||8|
+|Assignable controllers|2||||||
+|Algorithm count|40|40|40|40|40|40|
+|Operators count|4|6|6|6|6|6|
+|Voice bank type|DX21 / DX11|DX7|DX21 / DX11 / DX7|DX21 / DX11 / DX7|DX7|DX7|
+|Voice bank count|4|5|4|3|3|5|
+|Waveform count|8|1|8|16|8|1|
+|Waveform bit depth|32|16|16|16|32|16|
+|Waveform customization|||+|+|+||
+|Feedback supported|+|+|+|+|+|+|
+|Shape LFO target supported|+|+|+|+|+|+|
+|Pitch EG supported||+|+|+||+|
+|Split zones|1|3|3|3|1|3|
+|Chromatic mode|+|+|+|+|+||
+|Kit mode||+|+|+||+|
 
 |FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
 |-|-|-|
@@ -121,17 +121,17 @@ For user-customizable oscillators, an online constructor is available at https:/
 |#|FMxx<br>Custom params|Range|Description|
 |-|-|-|-|
 |0|Velocity|0&hellip;100|Velocity control (maximum is 100/127 when using param and 127/127 with fractional 10-bit resolution when assigned Shape/Alt)|
-|1|Voice 1|1&hellip;101|Set zone 1 voice (single or right), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
-|2|Voice 2|1&hellip;101|Set zone 2 voice (left or middle), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
-|3|Voice 3|1&hellip;101|Set zone 3 voice (left), may be out of bounds, 101 activates kit mode (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|1|Voice 1|-96&hellip;96|Set zone 1 voice (single or right), 0 activates kit mode, negative values will wrap to the end of the maximum allowed voices (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|2|Voice 2|-96&hellip;96|Set zone 2 voice (left or middle), 0 activates kit mode, negative values will wrap to the end of the maximum allowed voices (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
+|3|Voice 3|-96&hellip;96|Set zone 3 voice (left), may be out of bounds, 0 activates kit mode, negative values will wrap to the end of the maximum allowed voices (Assigning to Shape/Alt allows to select up to 128 voices, not existing voices will be initialized with random values and can't be saved/restored as a preset)|
 |4|Split Point1|1&hellip;101|Split point between zone 1 and 2|
 |5|Split Point2|1&hellip;101|Split point between zone 2 and 3|
-|6|Transpose 1|-99&hellip;100 (semitones)|Transpose for zone 1 (always affects pitch)|
-|7|Transpose 2|-99&hellip;100 (semitones)|Transpose for zone 2 (always affects pitch)|
-|8|Transpose 3|-99&hellip;100 (semitones)|Transpose for zone 3 (always affects pitch)|
-|9|Key Shift 1|-99&hellip;100 (semitones)|Transpose for zone 1 (affects pitch in chrimatic mode and voice in kit mode)|
-|10|Key Shift 2|-99&hellip;100 (semitones)|Transpose for zone 2 (affects pitch in chrimatic mode and voice in kit mode)|
-|11|Key Shift 3|-99&hellip;100 (semitones)|Transpose for zone 3 (affects pitch in chrimatic mode and voice in kit mode)|
+|6|Transpose 1|-99&hellip;100 (semitones)|Transpose for zone 1|
+|7|Transpose 2|-99&hellip;100 (semitones)|Transpose for zone 2|
+|8|Transpose 3|-99&hellip;100 (semitones)|Transpose for zone 3|
+|9|Voice Shift1|-99&hellip;100|Voice shift for zone 1|
+|10|Voice Shift2|-99&hellip;100|Voice shift for zone 2|
+|11|Voice Shift3|-99&hellip;100|Voice shift for zone 3|
 |12|Shape Assign|-99&hellip;99|Assign param to Shape, default is Velocity (sign controls bipolar parameter value directon, higer 7 bits of the Shape value used as param value)|
 |13|Alt Assign|-99&hellip;99|Assign param to Alt, default is FB scale (sign controls bipolar parameter value directon, higer 7 bits of the Alt value used as param value)|
 |14|FB offset|-99&hellip;100 (-6.93&hellip;+7)|Feedback offset|
@@ -316,4 +316,4 @@ Custom data descriptors are themselves arrays, and should contain 3-5 values:
 ### Credits
 * [Sebo1971](https://github.com/Sebo1971) for comprehensive oscillators testing with prologue and in general
 * [aminixduser](https://github.com/aminixduser) for optimization ideas
-* [Gearslutz - The Korg Logue User Oscillator Programming Thread](https://www.gearslutz.com/board/electronic-music-instruments-and-electronic-music-production/1306032-korg-logue-user-oscillator-programming-thread.html) participants for inspirations
+* [Gearspace - The Korg Logue User Oscillator Programming Thread](https://gearspace.com/board/electronic-music-instruments-and-electronic-music-production/1306032-korg-logue-user-oscillator-programming-thread.html) participants for inspirations

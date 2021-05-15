@@ -34,6 +34,25 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 
+#define FAST_POWF //native logue-sdk pow2f must be fixed, lost precesion (- ~6K bytes)
+//#define FASTER_POWF //not very precise (- ~6.3K bytes)
+//#define FASTMATH_POWF //external library, extra precise (- ~5.6K bytes)
+#if defined(FAST_POWF)
+  #define POWF(a,b) fastpowf(a,b)
+  #define POW2F(a) fastpow2f(a)
+#elif defined(FASTER_POWF)
+  #define POWF(a,b) fasterpowf(a,b)
+  #define POW2F(a) fasterpow2f(a)
+#elif defined(FASTERMATH_POWF)
+  extern "C" float fm_exp2f(float x);
+  extern "C" float fm_log2f(float x);
+  #define POWF(a,b) fm_exp2f((b)*fm_log2f(a))
+  #define POW2F(a) fm_exp2f(a)
+#else
+  #define POWF(a,b) powf(a,b)
+  #define POW2F(a) powf(2.f,a)
+#endif
+
 #include "fm64.h"
 
 #ifdef CUSTOM_PARAMS
@@ -41,26 +60,30 @@
   CUSTOM_PARAM_INIT(
 #ifdef KIT_MODE
     CUSTOM_PARAM_ID(7),
+    CUSTOM_PARAM_ID(10),
     CUSTOM_PARAM_ID(5),
-    CUSTOM_PARAM_ID(8),
+    CUSTOM_PARAM_ID(11),
     CUSTOM_PARAM_ID(6),
-    CUSTOM_PARAM_ID(9),
-    CUSTOM_PARAM_ID(106),
+    CUSTOM_PARAM_ID(12),
 #else
     CUSTOM_PARAM_ID(2),
 #ifdef BANK_SELECT
     k_user_osc_param_id2,
 #endif
-    CUSTOM_PARAM_ID(114),
-    CUSTOM_PARAM_ID(69),
-    CUSTOM_PARAM_ID(16),
-    CUSTOM_PARAM_ID(14),
+    CUSTOM_PARAM_ID(117),
+    CUSTOM_PARAM_ID(72),
+    CUSTOM_PARAM_ID(19),
+    CUSTOM_PARAM_ID(17),
 #ifndef BANK_SELECT
-    CUSTOM_PARAM_ID(123),
+#ifdef WFBITS
+    CUSTOM_PARAM_ID(126),
+#else
+    CUSTOM_PARAM_ID(20),
+#endif
 #endif
 #endif
     CUSTOM_PARAM_ID(1),
-    CUSTOM_PARAM_ID(13)
+    CUSTOM_PARAM_ID(16)
   );
 #endif
 
@@ -244,11 +267,11 @@ static int8_t s_algorithm_offset = 0;
 #define FINE_TUNE_FACTOR 65536.f
 static uint8_t s_split_point[SPLIT_ZONES - 1] = {0};
 static int8_t s_zone_transpose[SPLIT_ZONES] = {0};
-static int8_t s_zone_key_shift[SPLIT_ZONES] = {0};
+static int8_t s_zone_voice_shift[SPLIT_ZONES] = {0};
 static int8_t s_zone_transposed = 0;
 #ifndef KIT_MODE
 static uint8_t s_kit_voice = 0;
-static uint8_t s_voice[SPLIT_ZONES] = {0};
+static int8_t s_voice[SPLIT_ZONES] = {0};
 #endif
 static int8_t s_level_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_kls_offset[OPERATOR_COUNT + 3] = {0};
@@ -444,7 +467,7 @@ void setWaveform() {
 #ifdef FEEDBACK
 void setFeedback() {
   float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
-  s_feedback = value <= 0.f ? ZERO : f32_to_param(powf(2.f, value * s_feedback_scale) * FEEDBACK_RECIPF);
+  s_feedback = value <= 0.f ? ZERO : f32_to_param(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
 }
 #endif
 #endif
@@ -497,7 +520,7 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
+      s_peglevel[i] = scale_pitch_level(voice->pl[i - s_peg_stage_start]) * PEG_SCALE;
       s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
@@ -594,7 +617,7 @@ void initvoice(uint8_t voice_index) {
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
-      s_peglevel[i] = scale_pitch_level(voice->pl[i]) * PEG_SCALE;
+      s_peglevel[i] = scale_pitch_level(voice->pl[i - s_peg_stage_start]) * PEG_SCALE;
       s_pegrate[i] = scale_pitch_rate(voice->pr[i - s_peg_stage_start]) * PEG_RATE_SCALE;
     }
 #endif
@@ -1064,10 +1087,10 @@ param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_fact
 #ifdef CUSTOM_PARAMS
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
-  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (rate + rscale)));
+  return f32_to_param(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 #else
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
-  return f32_to_param(rate_factor * powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_offset)));
+  return f32_to_param(rate_factor * POW2F(rate_exp_factor * (s_egrate[i][j] + rscale * s_egrate_scale + s_egrate_offset)));
 #endif
 //  return f32_to_param(powf(2.f, rate_exp_factor * (s_egrate[i][j] + rscale) - rate_factor));
 }
@@ -1077,22 +1100,27 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   float rate_factor;
   int32_t dl, dp, note = params->pitch >> 8, curve = 0;
 #ifdef CUSTOM_PARAMS
-  int32_t depth = 0;
-  uint32_t zone, voice;
+  int32_t depth = 0, voice;
+  uint32_t zone;
   for (zone = 0; zone < (SPLIT_ZONES - 1) && note < s_split_point[zone]; zone++);
 #ifndef KIT_MODE
   voice = s_voice[zone];
-  s_zone_transposed = s_zone_transpose[zone] + s_zone_key_shift[zone];
-  s_kit_voice = (voice == 100);
+  s_kit_voice = (voice == 0);
   if (s_kit_voice) {
 #endif
-    voice = note + s_zone_key_shift[zone];
-    s_zone_transposed = s_zone_transpose[zone];
+    voice = note + s_zone_voice_shift[zone];
     note = KIT_CENTER;
 #ifndef KIT_MODE
+  } else {
+    if (voice > 0)
+      voice --;
+    voice += s_zone_voice_shift[zone];
+    if (voice < 0)
+      voice += BANK_COUNT * BANK_SIZE;
   }
-  note += s_zone_transposed;
 #endif
+  s_zone_transposed = s_zone_transpose[zone];
+  note += s_zone_transposed;
   initvoice(voice);
 #else
   float depth = 0.f;
@@ -1148,7 +1176,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = 0.f;
     else
-      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
 #else
     if (dp < 0) {
        depth = s_left_depth[i];
@@ -1161,7 +1189,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_level_scaling[i] = ZERO;
     else
 //      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(M_E, (dp - 72) * .074074074f) : s_level_scale_factor * dp));
-      s_level_scaling[i] = f32_to_param(depth * (curve ? powf(2.f, 1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
+      s_level_scaling[i] = f32_to_param(depth * (curve ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp));
 //    s_detune_val[i] = s_detune[i] * 6.f * powf(2.f, - params->pitch * 0.000108506944f); //2 * (48/4096) * 2^ (- note / 36) * detune
 #endif
   }
@@ -1217,7 +1245,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   if (index > CUSTOM_PARAM_ID(1)) {
     if (tenbits)
       value >>= 3;
-    if (index > CUSTOM_PARAM_ID(6) && (tenbits || value == 0))
+    if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6)) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
     uvalue = value; //looks like optimizer is crazy: this saves over 100 bypes just by assigning to used valiable with sign conversion >%-O
   }
@@ -1232,11 +1260,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       switch (index) {
 #ifdef FEEDBACK
         case p_feedback:
-          s_feedback = value == 0 ? ZERO : f32_to_param(powf(2.f, value * 0.00684261974f) * FEEDBACK_RECIPF); // 0, 1/2...1/128 -> 1/4...1/256 (implied 1/2 ratio for LPF)
+          s_feedback = value == 0 ? ZERO : f32_to_param(POW2F(value * 0.00684261974f) * FEEDBACK_RECIPF); // 0, 1/2...1/128 -> 1/4...1/256 (implied 1/2 ratio for LPF)
           break;
 #endif
         case p_velocity:
-          s_velocity = f32_to_param((powf(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
+          s_velocity = f32_to_param((POWF(value * .124144672f, .3f) * 60.f - 239.f) * .00049212598f);
 //                                    10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
           for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
             s_oplevel[i] = param_sum(s_op_level[i], s_velocity * s_kvs[i], s_level_scaling[i]);
@@ -1370,7 +1398,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef CUSTOM_PARAMS
     case CUSTOM_PARAM_ID(1):
-      s_velocity = (powf(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
+      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
 //                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
       setLevel();
       break;
@@ -1378,7 +1406,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(2):
     case CUSTOM_PARAM_ID(3):
     case CUSTOM_PARAM_ID(4):
-      s_voice[index - CUSTOM_PARAM_ID(2)] = value;
+      s_voice[index - CUSTOM_PARAM_ID(2)] = value - 100;
       break;
 #endif
     case CUSTOM_PARAM_ID(5):
@@ -1393,7 +1421,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(10):
     case CUSTOM_PARAM_ID(11):
     case CUSTOM_PARAM_ID(12):
-      s_zone_key_shift[index - CUSTOM_PARAM_ID(10)] = value - 100;
+      s_zone_voice_shift[index - CUSTOM_PARAM_ID(10)] = value - 100;
       break;
     case CUSTOM_PARAM_ID(13):
     case CUSTOM_PARAM_ID(14):

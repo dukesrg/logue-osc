@@ -175,7 +175,7 @@ uint8_t scale_pitch_rate(uint8_t x) {
   return pitch_rate_lut[x];
 #else
 float scale_pitch_rate(uint8_t x) {
-  return 5.f * powf(2.0f, x * .058f) - 4.f;
+  return 5.f * POW2F(x * .058f) - 4.f;
 #endif
 }
 
