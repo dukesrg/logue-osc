@@ -550,7 +550,7 @@ void initvoice(int32_t voice_index) {
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
 //        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f))) * 256.f * 12.f;
       else
-        s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
+        s_oppitch[i] = f32_to_pitch((((voice->op[i].pc & 3) == 0 ? 1.f : (voice->op[i].pc & 3) == 1 ? 10.f : (voice->op[i].pc & 3) == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
 //        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR))) * 256.f * 12.f;
 
       s_kvs[i] = voice->op[i].ts;
