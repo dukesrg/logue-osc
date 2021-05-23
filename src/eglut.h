@@ -1,5 +1,5 @@
 /*
- * File: eglut.cpp
+ * File: eglut.h
  *
  * DX7/DX21/DX11-series EG LUT
  * 

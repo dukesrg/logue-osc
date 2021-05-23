@@ -109,7 +109,6 @@
     #include "waveforms.h"
     #define WFBITS 1
   #endif
-  #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
 //todo: check and fix osc_apiq
   #define USE_Q31_PHASE //a bit less CPU consuming, but looks like have a slight phase drift over time
   #ifdef USE_Q31_PHASE 
@@ -129,6 +128,25 @@
   #include "osc_apiq.h"
 #endif
 
+//  #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
+#if defined(EGLUT)
+  #include "eglut.h"
+  #define EG_LUT_SHR 20
+  #define EG_LUT_MUL 1023.f
+#elif defined(EGLUT11)
+  #include "eglut11.h"
+  #define EG_LUT_SHR 19
+  #define EG_LUT_MUL 2047.f
+#elif defined(EGLUT12)
+  #include "eglut12.h"
+  #define EG_LUT_SHR 18
+  #define EG_LUT_MUL 4095.f
+#else
+  static param_t eg_lut[1024];
+  #define EG_LUT_SHR 20
+  #define EG_LUT_MUL 1023.f
+#endif
+
 #ifdef USE_Q31
   typedef q31_t param_t;
   #define f32_to_param(a) f32_to_q31(a)
@@ -138,7 +156,7 @@
   #define param_add(a,b) q31add(a,b)
   #define param_sum(a,b,c) q31add(q31add(a,b),c)
   #define param_mul(a,b) q31mul(a,b)
-  #define param_eglut(a,b) eg_lut[smmul(a,b)>>20]
+  #define param_eglut(a,b) eg_lut[smmul(a,b)>>EG_LUT_SHR]
   #define param_feedback(a,b) smmul(a,b)
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
@@ -195,7 +213,7 @@
   #define param_add(a,b) ((a)+(b))
   #define param_sum(a,b,c) ((a)+(b)+(c))
   #define param_mul(a,b) ((a)*(b))
-  #define param_eglut(a,b) eg_lut[(int32_t)((a)*(b)*1023.f)]
+  #define param_eglut(a,b) eg_lut[(int32_t)((a)*(b)*EG_LUT_MUL)]
   #define param_feedback(a,b) ((a)*(b))
   #define osc_sin(a) osc_sinf(a)
   #define phase_to_param(a) (a)
@@ -423,12 +441,6 @@ enum {
 };
 static uint32_t s_state = 0;
 //static uint8_t s_active_rate = 0;
-
-#ifdef EGLUT
-  #include "eglut.h"
-#else
-static param_t eg_lut[1024];
-#endif
 
 #ifdef CUSTOM_PARAMS
 float paramScale(uint8_t *param, uint32_t opidx) {
@@ -737,7 +749,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
-#ifndef EGLUT
+#if !defined(EGLUT) && !defined(EGLUT11) && !defined(EGLUT12)
   for (int32_t i = 0; i < 1024; i++) {
     eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256) = 2^((x-127)/8)
   }
