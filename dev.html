@@ -257,7 +257,7 @@ function getInfo(osc, rowindex) {
       col = col.appendChild(document.createElement('input'));
       col.type = 'file';
       col.name = osc;
-      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : (osc == 'FM64' || osc == 'FM64P' || osc == 'FM69' ||osc == 'FM69P') ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
+      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : (osc == 'FM64' || osc == 'FM64EG' || osc == 'FM69' ||osc == 'FM69P') ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
       col.multiple = osc != 'Morpheus';
       col.addEventListener('change', function() { handleFiles(this); }, true);
       col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
@@ -384,7 +384,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM64" || osc === "FM64P") {
+      } else if (osc === "FM64" || osc === "FM64EG") {
         if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
@@ -746,7 +746,7 @@ function onLoad() {
   offset = new Array();
   count = new Array();
   maxsize = new Array();
-  ["FM48", "FM64", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
+  ["FM48", "FM64", "FM64EG", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
 }
 
 function setParam(param) {
