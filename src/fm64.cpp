@@ -248,11 +248,16 @@
 #define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
 //#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
 //#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
-#define DX7_ATTACK_RATE_FACTOR 4.8773035424164220513138759143079e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) = 1/(2^(21 - EG_FREQ_CORRECT)
+//#define DX7_ATTACK_RATE1_FACTOR 5.0261359e-7f // 1/(41.45*48000)
+//#define DX7_DECAY_RATE1_FACTOR -8.3768932e-8f // -1/(6*41.45*48000)
+#define DX7_ATTACK_RATE_FACTOR 3.3507573e-7f // 1/(1.5*41.45*48000)
+#define DX7_DECAY_RATE_FACTOR -5.5845955e-8f // -1/(1.5*6*41.45*48000)
+#define DX7_RATE1_FACTOR 1.5f
+//#define DX7_ATTACK_RATE_FACTOR 4.8773035424164220513138759143079e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) = 1/(2^(21 - EG_FREQ_CORRECT)
 //#define DX7_ATTACK_RATE_FACTOR 20.9674129f
 //#define DX7_ATTACK_RATE_FACTOR (21.f - EG_FREQ_CORRECT)
 // 2^24 samples @49k = 2^24 / 49k seconds = 2^24 * 48k / (48k * 49k) seconds = 2^24 * 48K / 49K samples @ 48K
-#define DX7_DECAY_RATE_FACTOR -6.0966294280205275641423448928849e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
+//#define DX7_DECAY_RATE_FACTOR -6.0966294280205275641423448928849e-8f // -1/(2^24 * DX7_TO_LOGUE_FREQ)
 //#define DX7_DECAY_RATE_FACTOR 23.9674129f
 //#define DX7_DECAY_RATE_FACTOR (24.f - EG_FREQ_CORRECT)
 //#define DX7_HOLD_RATE_FACTOR .51142234392928421688784987507221f // 1/(2^1 * DX7_TO_LOGUE_FREQ)
@@ -1102,6 +1107,8 @@ param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_fact
 #ifdef CUSTOM_PARAMS
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
+  if (i == 0)
+    rate_factor *= DX7_RATE1_FACTOR;
   return f32_to_param(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 #else
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
