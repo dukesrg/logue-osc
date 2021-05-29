@@ -1104,11 +1104,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 }
 
 param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
+  if (j == 0)
+    rate_factor *= DX7_RATE1_FACTOR;
 #ifdef CUSTOM_PARAMS
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
-  if (i == 0)
-    rate_factor *= DX7_RATE1_FACTOR;
   return f32_to_param(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 #else
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * s_op_rate_scale[i];
