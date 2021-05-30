@@ -156,7 +156,8 @@
   #define param_add(a,b) q31add(a,b)
   #define param_sum(a,b,c) q31add(q31add(a,b),c)
   #define param_mul(a,b) q31mul(a,b)
-  #define param_eglut(a,b) eg_lut[smmul(a,b)>>EG_LUT_SHR]
+//  #define param_eglut(a,b) eg_lut[smmul(a,b)>>EG_LUT_SHR]
+  #define param_eglut(a,b) eg_lut[((uint32_t)(a)+(uint32_t)(b))>>(EG_LUT_SHR + 2)]
   #define param_feedback(a,b) smmul(a,b)
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
