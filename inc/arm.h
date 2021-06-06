@@ -55,3 +55,19 @@ int32_t smulwt(int32_t op1, int32_t op2)
 #define tbb_pc(a) __asm__ volatile ("tbb [pc, %0]" : : "r" (a))
 #define tbh(a,b) __asm__ volatile ("tbh [%0, %1, lsl #1]" : : "r" (a), "r" (b))
 #define tbh_pc(a) __asm__ volatile ("tbh [pc, %0, lsl #1]" : : "r" (a))
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+int32_t usat_asr(int32_t op1, int32_t op2, int32_t op3)
+{
+  register int32_t result;
+  __asm__ volatile ("usat %0, %1, %2, asr %3" : "=r" (result) : "i" (op1), "r" (op2), "i" (op3));
+  return result;
+}
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+int32_t usat_lsl(int32_t op1, int32_t op2, int32_t op3)
+{
+  register int32_t result;
+  __asm__ volatile ("usat %0, %1, %2, lsl %3" : "=r" (result) : "i" (op1), "r" (op2), "i" (op3));
+  return result;
+}

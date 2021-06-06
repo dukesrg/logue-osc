@@ -157,7 +157,11 @@
   #define param_sum(a,b,c) q31add(q31add(a,b),c)
   #define param_mul(a,b) q31mul(a,b)
 //  #define param_eglut(a,b) eg_lut[smmul(a,b)>>EG_LUT_SHR]
-  #define param_eglut(a,b) eg_lut[((uint32_t)(a)+(uint32_t)(b))>>(EG_LUT_SHR + 2)]
+//  #define param_eglut(a,b) eg_lut[((uint32_t)(a)+(uint32_t)(b))>>(EG_LUT_SHR + 2)]
+//  #define param_eglut(a,b) eg_lut[(q31add(a,b) < 0 ? 0 : q31add(a,b))>>(EG_LUT_SHR + 1)]
+//  #define param_eglut(a,b) eg_lut[usat(q31add(a,b),31)>>(EG_LUT_SHR + 1)]
+//  #define param_eglut(a,b) __asm__ volatile ("usat %0, %1, %2, ASR %3" : "=r" (result) : "i" (31), "r" (q31add(a,b)), "i" (EG_LUT_SHR + 1));
+  #define param_eglut(a,b) eg_lut[usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1))]
   #define param_feedback(a,b) smmul(a,b)
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
@@ -462,11 +466,12 @@ void setLevel() {
     s_oplevel[i] = f32_to_param(
       scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF +
       s_level_scaling[i] +
-      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) -
-      0.008672f * 7.f
+      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)
+//      - 0.008672f * 7.f
     );
-    if (s_oplevel[i] < ZERO)
-      s_oplevel[i] = ZERO;
+//    if (s_oplevel[i] < ZERO)
+//      s_oplevel[i] = ZERO;
+    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7FFFFFFF);
   }
 }
 
