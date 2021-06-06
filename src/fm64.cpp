@@ -461,8 +461,9 @@ void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_oplevel[i] = f32_to_param(
       scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF +
-      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) +
-      s_level_scaling[i]
+      s_level_scaling[i] +
+      s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) -
+      0.008672f * 7.f
     );
     if (s_oplevel[i] < ZERO)
       s_oplevel[i] = ZERO;
