@@ -192,7 +192,8 @@
   #define ZERO 0
   #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
-  #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
+//  #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
+  #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB
   #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 /*
 #pragma GCC diagnostic push
@@ -229,7 +230,8 @@
   #define ZERO_PHASE 0.f
   #define FEEDBACK_RECIP .00390625f // 1/256
   #define FEEDBACK_RECIPF .001953125f // 1/512
-  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
+//  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
+  #define LEVEL_SCALE_FACTOR 0.0078125f // 1/128
   #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
 /*
   static param_t comp[] = {
@@ -278,7 +280,8 @@
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
 #define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
 #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1...G6
-#define LEVEL_SCALE_FACTORF 0.0078740157f // 1/127
+//#define LEVEL_SCALE_FACTORF 0.0078740157f // 1/127
+#define LEVEL_SCALE_FACTORF 0.0078125f // 1/128
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
 
@@ -472,6 +475,7 @@ void setLevel() {
 //    if (s_oplevel[i] < ZERO)
 //      s_oplevel[i] = ZERO;
     s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7FFFFFFF);
+//    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7F000000);
   }
 }
 
@@ -1424,8 +1428,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #endif
 #ifdef CUSTOM_PARAMS
     case CUSTOM_PARAM_ID(1):
-      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
+//      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
 //                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
+      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .00064881408f;
+//                                           10->7bit^         exp^curve^mult  ^zero thd  ^downscale 1/16 * linear 96 dB normalize 1/256 * dB step size 1/.3762874946
       setLevel();
       break;
 #ifndef KIT_MODE
