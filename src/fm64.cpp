@@ -474,8 +474,9 @@ void setLevel() {
     );
 //    if (s_oplevel[i] < ZERO)
 //      s_oplevel[i] = ZERO;
-    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7FFFFFFF);
+//    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7FFFFFFF);
 //    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7F000000);
+    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7E000001);
   }
 }
 
@@ -1063,6 +1064,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       if (s_algorithm[i] & ALG_OUT_MASK)
         osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
+
+//s_opval[i] += (s_opval[i] >> 1) + (s_opval[i] >> 2);
 
       if (
 #ifdef EG_SAMPLED
