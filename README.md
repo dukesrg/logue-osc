@@ -6,6 +6,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 ### Project structure
 
+* [.vscode/](.vscode/) : Visual Studio Code workspace configuration files. Optional, for additional info refer to [logue-sdk-vscode](https://github.com/dukesrg/logue-sdk-vscode) template documentation.
 * [lodue-sdk/](logue-sdk/) : My own logue-sdk fork with optimized Makefiles, and reduced project footprint.
 * [inc/arm.h](inc/arm.h) : Additional ARM opcodes.
 * [inc/custom_param.h](inc/custom_param.h) : Customizable parameters feature.
