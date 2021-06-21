@@ -193,8 +193,9 @@
   #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
   #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 //  #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
-  #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB
-  #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+  #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
+//  #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+  #define DEFAULT_VELOCITY 0
 /*
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnarrowing"
@@ -232,7 +233,8 @@
   #define FEEDBACK_RECIPF .001953125f // 1/512
 //  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
   #define LEVEL_SCALE_FACTOR 0.0078125f // 1/128
-  #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+//  #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
+  #define DEFAULT_VELOCITY -0.f
 /*
   static param_t comp[] = {
     1.f,
@@ -278,10 +280,12 @@
 #define DX11_RATE_SCALING_FACTOR .333333333f // 1/3
 
 //#define DX7_LEVEL_SCALE_FACTOR 0.0267740885f // 109.(6)/4096
-#define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
+//#define DX7_LEVEL_SCALE_FACTOR 0.0222222222f // 1/45
+#define DX7_LEVEL_SCALE_FACTOR 0.0200686664f
 #define DX11_LEVEL_SCALE_FACTOR 0.0149253731f // 1/(103-36) C1...G6
 //#define LEVEL_SCALE_FACTORF 0.0078740157f // 1/127
 #define LEVEL_SCALE_FACTORF 0.0078125f // 1/128
+#define LEVEL_SCALE_FACTOR_DB 0.0103810253f // 1/96dB
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
 
@@ -1209,7 +1213,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (dp == 0)
       s_level_scaling[i] = 0.f;
     else
-      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+//      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
+      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) *.015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB;
 #else
     if (dp < 0) {
        depth = s_left_depth[i];
@@ -1433,8 +1438,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(1):
 //      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .3f) * 60.f - 239.f) * .00049212598f;
 //                               10->7bit^   exp^curve^mult  ^zero thd ^level sens = 1/(127*16)
-      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .00064881408f;
-//                                           10->7bit^         exp^curve^mult  ^zero thd  ^downscale 1/16 * linear 96 dB normalize 1/256 * dB step size 1/.3762874946
+      s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .0625f * LEVEL_SCALE_FACTOR_DB;
+//                                           10->7bit^         exp^curve^mult  ^zero thd ^downscale 1/16 ^linear 96 dB normalize
       setLevel();
       break;
 #ifndef KIT_MODE
