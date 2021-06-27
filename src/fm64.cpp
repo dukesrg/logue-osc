@@ -161,7 +161,8 @@
 //  #define param_eglut(a,b) eg_lut[(q31add(a,b) < 0 ? 0 : q31add(a,b))>>(EG_LUT_SHR + 1)]
 //  #define param_eglut(a,b) eg_lut[usat(q31add(a,b),31)>>(EG_LUT_SHR + 1)]
 //  #define param_eglut(a,b) __asm__ volatile ("usat %0, %1, %2, ASR %3" : "=r" (result) : "i" (31), "r" (q31add(a,b)), "i" (EG_LUT_SHR + 1));
-  #define param_eglut(a,b) eg_lut[usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1))]
+//  #define param_eglut(a,b) (eg_lut[usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1))])
+  #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
   #define param_feedback(a,b) smmul(a,b)
   #ifdef USE_FASTSINQ
     #define osc_sin(a) osc_fastsinq(a)
@@ -382,7 +383,7 @@ static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 #endif
 
 #ifdef CUSTOM_PARAMS
-static float s_velocity = -0.000066780348f;
+static float s_velocity = 0.f;
 #else
 static param_t s_velocity = DEFAULT_VELOCITY;
 #endif
@@ -1214,7 +1215,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_level_scaling[i] = 0.f;
     else
 //      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTORF * ((curve & 0x01) ? POW2F(1.44269504f * (dp - 72) * .074074074f) : s_level_scale_factor * dp);
-      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) *.015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB;
+      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB;
 #else
     if (dp < 0) {
        depth = s_left_depth[i];
