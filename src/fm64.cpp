@@ -975,8 +975,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t f = frames; f--; y++) {
     osc_out = ZERO;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-      modw0 = phase_to_param(s_phase[i]);
-      s_phase[i] += opw0[i];
+      modw0 = 0;
+//      modw0 = phase_to_param(s_phase[i]);
+//      s_phase[i] += opw0[i];
 #ifndef USE_Q31_PHASE
       s_phase[i] -= (uint32_t)(s_phase[i]);
 #endif
@@ -1053,6 +1054,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         modw0 += s_feedback_opval[0] + s_feedback_opval[1];
 #endif
       }
+
+      modw0 = (modw0 << 1) + smmul(modw0, 0x16AB0D9F) + phase_to_param(s_phase[i]);
+//      modw0 += modw0 * .088547565f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
+      s_phase[i] += opw0[i];
 
 #ifdef WFBITS
 //#ifdef SHAPE_LFO
