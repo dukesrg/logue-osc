@@ -141,6 +141,9 @@
   #include "eglut12.h"
   #define EG_LUT_SHR 18
   #define EG_LUT_MUL 4095.f
+#elif defined(EGLUT13)
+  #include "eglut13.h"
+  #define EG_LUT_SHR 17
 #else
   static param_t eg_lut[1024];
   #define EG_LUT_SHR 20
@@ -777,7 +780,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 #ifdef USE_Q31
   osc_api_initq();
 #endif
-#if !defined(EGLUT) && !defined(EGLUT11) && !defined(EGLUT12)
+#if !defined(EGLUT) && !defined(EGLUT11) && !defined(EGLUT12) && !defined(EGLUT13)
   for (int32_t i = 0; i < 1024; i++) {
     eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256) = 2^((x-127)/8)
   }
@@ -1056,7 +1059,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
 
       modw0 = (modw0 << 1) + smmul(modw0, 0x16AB0D9F) + phase_to_param(s_phase[i]);
-//      modw0 += modw0 * .088547565f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
+//      modw0 = modw0 * 2.088547565f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
       s_phase[i] += opw0[i];
 
 #ifdef WFBITS
