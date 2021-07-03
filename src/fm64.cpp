@@ -480,17 +480,28 @@ int32_t paramOffset(int8_t *param, uint32_t opidx) {
 
 void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+/*
     s_oplevel[i] = f32_to_param(
       scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF +
       s_level_scaling[i] +
       s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)
 //      - 0.008672f * 7.f
     );
+
 //    if (s_oplevel[i] < ZERO)
 //      s_oplevel[i] = ZERO;
 //    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7FFFFFFF);
 //    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7F000000);
     s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7E000001);
+*/
+// saturate Out Level to 0dB offset of Q31
+    s_oplevel[i] = q31add(f32_to_param(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
+// saturate with KVS
+    s_oplevel[i] = q31add(s_oplevel[i], s_level_scaling[i]);
+// adjust 0dB level to fit positive Velocity * KVS and add them
+    s_oplevel[i] = q31add(q31sub(s_oplevel[i], 0x07000000), f32_to_param(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)));
+// make it non-negative and apply -96dB to further fit EG level
+    s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7F000000);
   }
 }
 
@@ -1058,8 +1069,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       }
 
-      modw0 = (modw0 << 1) + smmul(modw0, 0x16AB0D9F) + phase_to_param(s_phase[i]);
+//      modw0 = (modw0 << 1) + smmul(modw0, 0x16AB0D9F) + phase_to_param(s_phase[i]);
 //      modw0 = modw0 * 2.088547565f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
+      modw0 = modw0 + ((modw0 + smmul(modw0, 0x6A4AFA2A)) << 1) + phase_to_param(s_phase[i]);
+//      modw0 = modw0 * 3.830413123f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
       s_phase[i] += opw0[i];
 
 #ifdef WFBITS
