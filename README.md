@@ -85,16 +85,17 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Algorithm count|40|40|40|40|40|40|
 |Operators count|4|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
-|Voice bank count|4|5|4|3|3|5|
-|Waveform count|8|1|8|16|8|1|
-|Waveform bit depth|32|16|16|16|32|16|
-|Waveform customization|||+|+|+||
+|Voice bank count|4|5|4|3|2|5|
+|Waveform count|8|1|8|16|1|1|
+|Waveform bit depth|32|16|16|16|16|16|
+|Waveform customization|||+|+|||
+|AMP LUT depth x witch, bits|10x31|11x16|11x16|11x16|13x16|11x16|
 |Feedback supported|+|+|+|+|+|+|
 |Shape LFO target supported|+|+|+|+|+|+|
-|Pitch EG supported||+|+|+||+|
-|Split zones|1|3|3|3|1|3|
+|Pitch EG supported||+|+|+|+|+|
+|Split zones|1|3|3|3|3|3|
 |Chromatic mode|+|+|+|+|+||
-|Kit mode||+|+|+||+|
+|Kit mode||+|+|+|+|+|
 
 |FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
 |-|-|-|
