@@ -497,7 +497,7 @@ void setLevel() {
 // saturate Out Level to 0dB offset of Q31
     s_oplevel[i] = q31add(f32_to_param(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
 // saturate with KVS
-    s_oplevel[i] = q31add(s_oplevel[i], s_level_scaling[i]);
+    s_oplevel[i] = q31add(s_oplevel[i], f32_to_param(s_level_scaling[i]));
 // adjust 0dB level to fit positive Velocity * KVS and add them
     s_oplevel[i] = q31add(q31sub(s_oplevel[i], 0x07000000), f32_to_param(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)));
 // make it non-negative and apply -96dB to further fit EG level
