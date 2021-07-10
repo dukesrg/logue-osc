@@ -84,7 +84,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Assignable controllers|2||||||
 |Algorithm count|40|40|40|40|40|40|
 |Operators count|4|6|6|6|6|6|
-|Voice bank type|DX21 / DX11|DX7|DX21 / DX11 / DX7|DX21 / DX11 / DX7|DX7|DX7|
+|Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|5|4|3|3|5|
 |Waveform count|8|1|8|16|8|1|
 |Waveform bit depth|32|16|16|16|32|16|
