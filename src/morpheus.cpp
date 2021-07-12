@@ -12,7 +12,6 @@
 #include "simplelfo.hpp"
 #include "userosc.h"
 
-#define FORMAT_ULAW
 #define SAMPLE_COUNT 256
 #define WAVE_COUNT 64
 #define WAVE_COUNT_X 8
