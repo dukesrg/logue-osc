@@ -6,8 +6,8 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.0-1",
-        "name" : "Morpheus",
+        "version" : "1.2-0",
+        "name" : "Morpheus-A",
         "num_param" : 5,
         "params" : [
             ["Mode", 0, 1, ""],
@@ -17,7 +17,7 @@
             ["Interpolate", 0, 1, ""]
         ],
         "custom_data" : [
-          ["Raw wave, μ-law encoded", 64, 16384]
+          ["Raw wave, A-law encoded", 64, 16384]
         ]
     }
 }
