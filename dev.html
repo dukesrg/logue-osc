@@ -327,11 +327,11 @@ function pcm16toulaw(val) {
   }
 
   if (seg == 8)
-    return (0x7F ^ mask);
-  else {
+    val = 0x7F;
+  else
     val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
-    return (val ^ mask);
-  }
+
+  return (val ^ mask);
 }
 
 function pcm16toalaw(val) {
@@ -339,12 +339,11 @@ function pcm16toalaw(val) {
   var seg;
   var t = 0x7FFF;
 
-  if (val >= 0) {
-    mask = 0xD5;
-  } else {
+  if (val > t) {
+    val = 0x8000 - (val & 0x7FFF) - 8;
     mask = 0x55;
-    val = -val - 8;
-  }
+  } else
+    mask = 0xD5;
 
   for (seg = 8; seg > 0; seg--) {
     if (val > t)
@@ -352,15 +351,14 @@ function pcm16toalaw(val) {
     t = t >> 1;
   }
 
-  if (seg >= 8)
-    return (0x7F ^ mask);
-  else {
-    if (seg < 2)
-      val = (seg << 4) | ((val >> 4) & 0x0F);
-    else
-      val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
-    return (val ^ mask);
-  }
+  if (seg == 8)
+    val = 0x7F;
+  else if (seg < 2)
+    val = (seg << 4) | ((val >> 4) & 0x0F);
+  else
+    val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
+
+  return (val ^ mask);
 }
 
 function handleFiles(f) {
@@ -788,7 +786,7 @@ function handleFiles(f) {
                     }
                     var newarray = new Uint8Array(16384);
                     for (i = 0; i < newarray.length; i++)
-                      newarray[i] = array[44 + i] >= 0x80 ? (array[44 + i] - 0x80) : (array[44 + i] + 0x80);
+                      newarray[i] = (array[44 + i] + 0x80) & 0xFF;
                     data[0].push(newarray);
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                   }
