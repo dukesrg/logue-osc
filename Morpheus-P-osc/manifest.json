@@ -17,7 +17,7 @@
             ["Interpolate", 0, 1, ""]
         ],
         "custom_data" : [
-          ["Raw wave, 8-bit linear PCM encoded", 64, 16384]
+          ["Raw wave, signed 8-bit PCM", 64, 16384]
         ]
     }
 }
