@@ -695,7 +695,7 @@ function handleFiles(f) {
                       status.innerHTML += ", truncated to 16384 samples";
                     }
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                    data[0].push(array.slice(58, 16469))
+                    data[0].push(array.slice(58, 16442))
                   }
                   break;
                 default:
@@ -741,7 +741,7 @@ function handleFiles(f) {
                       status.innerHTML += ", truncated to 16384 samples";
                     }
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                    data[0].push(array.slice(58, 16469))
+                    data[0].push(array.slice(58, 16442))
                   }
                   break;
                 default:
@@ -778,7 +778,7 @@ function handleFiles(f) {
                   }
                   break;
                 case "1080": //PCM8
-                  var size = array[0x2E] + (array[0x2F] << 8) + (array[0x30] << 16) + (array[0x31] << 24);
+                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
                   if (size < 16384) {
                     status.innerHTML += "skipped (sample count too small)";
                   } else {
@@ -786,8 +786,11 @@ function handleFiles(f) {
                     if (size > 16384) {
                       status.innerHTML += ", truncated to 16384 samples";
                     }
+                    var newarray = new Uint8Array(16384);
+                    for (i = 0; i < newarray.length; i++)
+                      newarray[i] = array[44 + i] >= 0x80 ? (array[44 + i] - 0x80) : (array[44 + i] + 0x80);
+                    data[0].push(newarray);
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                    data[0].push(array.slice(58, 16469))
                   }
                   break;
                 default:
