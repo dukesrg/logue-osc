@@ -772,7 +772,7 @@ function handleFiles(f) {
                     }
                     var newarray = new Uint8Array(16384);
                     for (i = 0; i < newarray.length; i++)
-                      newarray[i] = (array[45 + i * 2] << 8);
+                      newarray[i] = array[45 + i * 2];
                     data[0].push(newarray);
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                   }
