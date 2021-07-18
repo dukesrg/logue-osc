@@ -1232,6 +1232,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
        curve = s_left_curve[i];
        if (curve >= 2)
          depth = - depth;
+       dp = - dp;
     } else if (dp > 0) {
        depth = s_right_depth[i] + paramOffset(s_kls_offset, i);
        curve = s_right_curve[i];
