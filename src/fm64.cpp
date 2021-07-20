@@ -1227,17 +1227,14 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     }
     dp = note - s_break_point[i];
 #ifdef CUSTOM_PARAMS
+    depth = paramOffset(s_kls_offset, i);
     if (dp < 0) {
-       depth = s_left_depth[i] + paramOffset(s_kls_offset, i);
+       depth += s_left_depth[i];
        curve = s_left_curve[i];
-//       if (curve >= 2)
-//         depth = - depth;
        dp = - dp;
     } else if (dp > 0) {
-       depth = s_right_depth[i] + paramOffset(s_kls_offset, i);
+       depth += s_right_depth[i];
        curve = s_right_curve[i];
-//       if (curve < 2)
-//         depth = - depth;
     }
     if (curve < 2)
       depth = - depth;
