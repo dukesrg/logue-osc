@@ -299,7 +299,7 @@
 #define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
 #define DX11_MAX_LEVEL 15
 
-#define FREQ_FACTOR .08860606f // (9.772 - 1)/99
+//#define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 #define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
 #define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
@@ -604,7 +604,8 @@ void initvoice(int32_t voice_index) {
         s_oppitch[i] = f32_to_pitch(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f)));
 //        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? .5f : voice->op[i].pc) * (1.f + voice->op[i].pf * .01f))) * 256.f * 12.f;
       else
-        s_oppitch[i] = f32_to_pitch((((voice->op[i].pc & 3) == 0 ? 1.f : (voice->op[i].pc & 3) == 1 ? 10.f : (voice->op[i].pc & 3) == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
+        s_oppitch[i] = f32_to_pitch(fastexpf(M_LN10 * ((voice->op[i].pc & 3) + voice->op[i].pf * .01f)) * k_samplerate_recipf);
+//        s_oppitch[i] = f32_to_pitch((((voice->op[i].pc & 3) == 0 ? 1.f : (voice->op[i].pc & 3) == 1 ? 10.f : (voice->op[i].pc & 3) == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR)) * k_samplerate_recipf);
 //        s_oppitch[i] = log2f(((voice->op[i].pc == 0 ? 1.f : voice->op[i].pc == 1 ? 10.f : voice->op[i].pc == 2 ? 100.f : 1000.f) * (1.f + voice->op[i].pf * FREQ_FACTOR))) * 256.f * 12.f;
 
       s_kvs[i] = voice->op[i].ts;
