@@ -14,7 +14,7 @@
             ["Det scal All", -99, 100, "%"],
             ["Rat offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
-            ["Algorithm", -39, 39, "%"],
+            ["Algorithm", -84, 84, "%"],
             ["Lvl offs Mod", -99, 99, "%"]
         ],
         "custom_data" : [
@@ -38,7 +38,7 @@
             ["Alt Assign", -99, 99, "%"],
             ["FB offset", -99, 100, "%"],
             ["FB scale", -99, 100, "%"],
-            ["Algorithm", -39, 39, "%"],
+            ["Algorithm", -84, 84, "%"],
             ["Lvl offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
             ["Lvl offs Mod", -99, 99, "%"],
