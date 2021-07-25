@@ -82,7 +82,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|
 |Custom params||7|8|8||8|
 |Assignable controllers|2||||||
-|Algorithm count|40|40|40|40|40|40|
+|Algorithm count|85|85|85|85|85|85|
 |Operators count|4|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|5|4|3|2|5|
@@ -138,133 +138,140 @@ For user-customizable oscillators, an online constructor is available at https:/
 |13|Alt Assign|-99&hellip;99|Assign param to Alt, default is FB scale (sign controls bipolar parameter value directon, higer 7 bits of the Alt value used as param value)|
 |14|FB offset|-99&hellip;100 ⁽³⁾|Feedback offset|
 |15|FB scale|-99&hellip;100 ⁽⁴⁾|Feedback multiplier|
-|16|Algorithm|-39&hellip;39|Algorithm offset|
-|17|Lvl offs All|-99&hellip;99|Level offset for all operators|
-|18|Lvl offs Car|-99&hellip;99|Level offset for carriers|
-|19|Lvl offs Mod|-99&hellip;99|Level offset for modulators|
-|20|Lvl offs Op1|-99&hellip;99|Level offset for operator 1|
-|21|Lvl offs Op2|-99&hellip;99|Level offset for operator 2|
-|22|Lvl offs Op3|-99&hellip;99|Level offset for operator 3|
-|23|Lvl offs Op4|-99&hellip;99|Level offset for operator 4|
-|24|Lvl offs Op5|-99&hellip;99|Level offset for operator 5|
-|25|Lvl offs Op6|-99&hellip;99|Level offset for operator 6|
-|26|Lvl scal All|-99&hellip;100 ⁽⁴⁾|Level multiplier for all operators|
-|27|Lvl scal Car|-99&hellip;100 ⁽⁴⁾|Level multiplier for carriers|
-|28|Lvl scal Mod|-99&hellip;100 ⁽⁴⁾|Level multiplier for modulators|
-|29|Lvl scal Op1|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 1|
-|30|Lvl scal Op2|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 2|
-|31|Lvl scal Op3|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 3|
-|32|Lvl scal Op4|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 4|
-|33|Lvl scal Op5|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 5|
-|34|Lvl scal Op6|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 6|
-|35|KLS offs All|-99&hellip;99|Keyboard level scaling offset for all operators|
-|36|KLS offset Car|-99&hellip;99|Keyboard level scaling offset for carriers|
-|37|KLS offset Mod|-99&hellip;99|Keyboard level scaling offset for modulators|
-|38|KLS offset Op1|-99&hellip;99|Keyboard level scaling offset for operators 1|
-|39|KLS offset Op2|-99&hellip;99|Keyboard level scaling offset for operators 2|
-|40|KLS offset Op3|-99&hellip;99|Keyboard level scaling offset for operators 3|
-|41|KLS offset Op4|-99&hellip;99|Keyboard level scaling offset for operators 4|
-|42|KLS offset Op5|-99&hellip;99|Keyboard level scaling offset for operators 5|
-|43|KLS offset Op6|-99&hellip;99|Keyboard level scaling offset for operators 6|
-|44|KLS scal All|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplier for all operators|
-|45|KLS scal Car|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplier carriers|
-|46|KLS scal Mod|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplier modulators|
-|47|KLS scal Op1|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 1|
-|48|KLS scal Op2|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 2|
-|49|KLS scal Op3|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 3|
-|50|KLS scal Op4|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 4|
-|51|KLS scal Op5|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 5|
-|52|KLS scal Op6|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 6|
-|53|KVS offs All|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset for all operators|
-|54|KVS offs Car|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset for carriers|
-|55|KVS offs Mod|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset for operators|
-|56|KVS offs Op1|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 1|
-|57|KVS offs Op2|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 2|
-|58|KVS offs Op3|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 3|
-|59|KVS offs Op4|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 4|
-|60|KVS offs Op5|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 5|
-|61|KVS offs Op6|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 6|
-|62|KVS scal All|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for all operators|
-|63|KVS scal Car|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for carriers|
-|64|KVS scal Mod|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for modulators|
-|65|KVS scal Op1|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 1|
-|66|KVS scal Op2|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 2|
-|67|KVS scal Op3|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 3|
-|68|KVS scal Op4|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 4|
-|69|KVS scal Op5|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 5|
-|70|KVS scal Op6|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 6|
-|71|Rat offs All|-99&hellip;99|EG rate offset for all operators|
-|72|Rat offs Car|-99&hellip;99|EG rate offset for carriers|
-|73|Rat offs Mod|-99&hellip;99|EG rate offset for modulators|
-|74|Rat offs Op1|-99&hellip;99|EG rate offset for operator 1|
-|75|Rat offs Op2|-99&hellip;99|EG rate offset for operator 2|
-|76|Rat offs Op3|-99&hellip;99|EG rate offset for operator 3|
-|77|Rat offs Op4|-99&hellip;99|EG rate offset for operator 4|
-|78|Rat offs Op5|-99&hellip;99|EG rate offset for operator 5|
-|79|Rat offs Op6|-99&hellip;99|EG rate offset for operator 6|
-|80|Rat scal All|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for all operators|
-|81|Rat scal Car|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for carriers|
-|82|Rat scal Mod|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for modulators|
-|83|Rat scal Op1|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 1|
-|84|Rat scal Op2|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 2|
-|85|Rat scal Op3|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 3|
-|86|Rat scal Op4|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 4|
-|87|Rat scal Op5|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 5|
-|88|Rat scal Op6|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 6|
-|89|KRS offs All|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for all operators|
-|90|KRS offs Car|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for carriers|
-|91|KRS offs Mod|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for modulators|
-|92|KRS offs Op1|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 1|
-|93|KRS offs Op2|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 2|
-|94|KRS offs Op3|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 3|
-|95|KRS offs Op4|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 4|
-|96|KRS offs Op5|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 5|
-|97|KRS offs Op6|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 6|
-|98|KRS scal All|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for all operators|
-|99|KRS scal Car|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for carriers|
-|100|KRS scal Mod|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for modulators|
-|101|KRS scal Op1|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 1|
-|102|KRS scal Op2|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 2|
-|103|KRS scal Op3|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 3|
-|104|KRS scal Op4|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 4|
-|105|KRS scal Op5|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 5|
-|106|KRS scal Op6|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 6|
-|107|Det offs All|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for all operators|
-|108|Det offs Car|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for carriers|
-|109|Det offs Mod|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for modulators|
-|110|Det offs Op1|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for operator 1|
-|111|Det offs Op2|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for operator 2|
-|112|Det offs Op3|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for operator 3|
-|113|Det offs Op4|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for operator 4|
-|114|Det offs Op5|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for operator 5|
-|115|Det offs Op6|-99&hellip;100 ⁽⁵⁾|Detune offset in cents for operator 6|
-|116|Det scal All|-99&hellip;100 ⁽⁴⁾|Detune multiplier for all operators|
-|117|Det scal Car|-99&hellip;100 ⁽⁴⁾|Detune multiplier for carriers|
-|118|Det scal Mod|-99&hellip;100 ⁽⁴⁾|Detune multiplier for modulators|
-|119|Det scal Op1|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 1|
-|120|Det scal Op2|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 2|
-|121|Det scal Op3|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 3|
-|122|Det scal Op4|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 4|
-|123|Det scal Op5|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 5|
-|124|Det scal Op6|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 6|
-|125|Waveform C+M|-77&hellip;77 ⁽⁶⁾|Waveform offset for carriers and modulators|
-|126|Waveform 1+2|-77&hellip;77 ⁽⁶⁾|Waveform offset for operators 1 and 2|
-|127|Waveform 3+4|-77&hellip;77 ⁽⁶⁾|Waveform offset for operators 3 and 4|
-|128|Waveform 5+6|-77&hellip;77 ⁽⁶⁾|Waveform offset for operators 5 and 6|
-|129|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
-|130|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
-|131|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
-|132|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
-|133|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
-|134|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
+|16|FB route|0&hellip;66|Feedback route|
+|17|Alg select|0&hellip;85|Algorithm select|
+|18|Alg offset|-39&hellip;39|Algorithm offset|
+|19|Lvl offs All|-99&hellip;99|Level offset for all operators|
+|20|Lvl offs Car|-99&hellip;99|Level offset for carriers|
+|21|Lvl offs Mod|-99&hellip;99|Level offset for modulators|
+|22|Lvl offs Op1|-99&hellip;99|Level offset for operator 1|
+|23|Lvl offs Op2|-99&hellip;99|Level offset for operator 2|
+|24|Lvl offs Op3|-99&hellip;99|Level offset for operator 3|
+|25|Lvl offs Op4|-99&hellip;99|Level offset for operator 4|
+|26|Lvl offs Op5|-99&hellip;99|Level offset for operator 5|
+|27|Lvl offs Op6|-99&hellip;99|Level offset for operator 6|
+|28|Lvl scal All|-99&hellip;100 ⁽⁴⁾|Level multiplier for all operators|
+|29|Lvl scal Car|-99&hellip;100 ⁽⁴⁾|Level multiplier for carriers|
+|30|Lvl scal Mod|-99&hellip;100 ⁽⁴⁾|Level multiplier for modulators|
+|31|Lvl scal Op1|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 1|
+|32|Lvl scal Op2|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 2|
+|33|Lvl scal Op3|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 3|
+|34|Lvl scal Op4|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 4|
+|35|Lvl scal Op5|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 5|
+|36|Lvl scal Op6|-99&hellip;100 ⁽⁴⁾|Level multiplier for operator 6|
+|37|KLS offs All|-99&hellip;99|Keyboard level scaling offset for all operators|
+|38|KLS offset Car|-99&hellip;99|Keyboard level scaling offset for carriers|
+|39|KLS offset Mod|-99&hellip;99|Keyboard level scaling offset for modulators|
+|40|KLS offset Op1|-99&hellip;99|Keyboard level scaling offset for operators 1|
+|41|KLS offset Op2|-99&hellip;99|Keyboard level scaling offset for operators 2|
+|42|KLS offset Op3|-99&hellip;99|Keyboard level scaling offset for operators 3|
+|43|KLS offset Op4|-99&hellip;99|Keyboard level scaling offset for operators 4|
+|44|KLS offset Op5|-99&hellip;99|Keyboard level scaling offset for operators 5|
+|45|KLS offset Op6|-99&hellip;99|Keyboard level scaling offset for operators 6|
+|46|KLS scal All|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplier for all operators|
+|47|KLS scal Car|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplier carriers|
+|48|KLS scal Mod|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplier modulators|
+|49|KLS scal Op1|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 1|
+|50|KLS scal Op2|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 2|
+|51|KLS scal Op3|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 3|
+|52|KLS scal Op4|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 4|
+|53|KLS scal Op5|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 5|
+|54|KLS scal Op6|-99&hellip;100 ⁽⁴⁾|Keyboard level scaling multiplierfor operator 6|
+|55|KVS offs All|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset for all operators|
+|56|KVS offs Car|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset for carriers|
+|57|KVS offs Mod|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset for operators|
+|58|KVS offs Op1|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 1|
+|59|KVS offs Op2|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 2|
+|60|KVS offs Op3|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 3|
+|61|KVS offs Op4|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 4|
+|62|KVS offs Op5|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 5|
+|63|KVS offs Op6|-99&hellip;100 ⁽³⁾|Key velocity sensitivity offset operator 6|
+|64|KVS scal All|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for all operators|
+|65|KVS scal Car|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for carriers|
+|66|KVS scal Mod|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for modulators|
+|67|KVS scal Op1|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 1|
+|68|KVS scal Op2|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 2|
+|69|KVS scal Op3|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 3|
+|70|KVS scal Op4|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 4|
+|71|KVS scal Op5|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 5|
+|72|KVS scal Op6|-99&hellip;100 ⁽⁴⁾|Key velocity sensitivity multiplier for operator 6|
+|73|Rat offs All|-99&hellip;99|EG rate offset for all operators|
+|74|Rat offs Car|-99&hellip;99|EG rate offset for carriers|
+|75|Rat offs Mod|-99&hellip;99|EG rate offset for modulators|
+|76|Rat offs Op1|-99&hellip;99|EG rate offset for operator 1|
+|77|Rat offs Op2|-99&hellip;99|EG rate offset for operator 2|
+|78|Rat offs Op3|-99&hellip;99|EG rate offset for operator 3|
+|79|Rat offs Op4|-99&hellip;99|EG rate offset for operator 4|
+|80|Rat offs Op5|-99&hellip;99|EG rate offset for operator 5|
+|81|Rat offs Op6|-99&hellip;99|EG rate offset for operator 6|
+|82|Rat scal All|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for all operators|
+|83|Rat scal Car|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for carriers|
+|84|Rat scal Mod|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for modulators|
+|85|Rat scal Op1|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 1|
+|86|Rat scal Op2|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 2|
+|87|Rat scal Op3|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 3|
+|88|Rat scal Op4|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 4|
+|89|Rat scal Op5|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 5|
+|90|Rat scal Op6|-99&hellip;100 ⁽⁴⁾|EG rate multiplier for operator 6|
+|91|KRS offs All|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for all operators|
+|92|KRS offs Car|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for carriers|
+|93|KRS offs Mod|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for modulators|
+|94|KRS offs Op1|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 1|
+|95|KRS offs Op2|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 2|
+|96|KRS offs Op3|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 3|
+|97|KRS offs Op4|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 4|
+|98|KRS offs Op5|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 5|
+|99|KRS offs Op6|-99&hellip;100 ⁽³⁾|Keyboard EG rate scaling offset for operator 6|
+|100|KRS scal All|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for all operators|
+|101|KRS scal Car|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for carriers|
+|102|KRS scal Mod|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for modulators|
+|103|KRS scal Op1|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 1|
+|104|KRS scal Op2|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 2|
+|105|KRS scal Op3|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 3|
+|106|KRS scal Op4|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 4|
+|107|KRS scal Op5|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 5|
+|108|KRS scal Op6|-99&hellip;100 ⁽⁴⁾|Keyboard EG rate multiplier for operator 6|
+|109|Det offs All|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for all operators|
+|110|Det offs Car|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for carriers|
+|111|Det offs Mod|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for modulators|
+|112|Det offs Op1|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for operator 1|
+|113|Det offs Op2|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for operator 2|
+|114|Det offs Op3|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for operator 3|
+|115|Det offs Op4|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for operator 4|
+|116|Det offs Op5|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for operator 5|
+|117|Det offs Op6|-99&hellip;100 ⁽⁷⁾|Detune offset in cents for operator 6|
+|118|Det scal All|-99&hellip;100 ⁽⁴⁾|Detune multiplier for all operators|
+|119|Det scal Car|-99&hellip;100 ⁽⁴⁾|Detune multiplier for carriers|
+|120|Det scal Mod|-99&hellip;100 ⁽⁴⁾|Detune multiplier for modulators|
+|121|Det scal Op1|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 1|
+|122|Det scal Op2|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 2|
+|123|Det scal Op3|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 3|
+|124|Det scal Op4|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 4|
+|125|Det scal Op5|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 5|
+|126|Det scal Op6|-99&hellip;100 ⁽⁴⁾|Detune multiplier for operator 6|
+|127|Waveform C+M|-77&hellip;77 ⁽⁸⁾|Waveform offset for carriers and modulators|
+|128|Waveform 1+2|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 1 and 2|
+|129|Waveform 3+4|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 3 and 4|
+|130|Waveform 5+6|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 5 and 6|
+|131|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
+|132|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
+|133|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
+|134|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
+|135|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
+|136|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
 
 ⁽¹⁾ : 0...100 with the step of 1 when assigned to the oscillator parameter, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0..127 with the step of 0.125 when assigned to the Shape or Alt (Shift + Shape) <br/>
 ⁽²⁾ : semitones / notes <br/>
 ⁽³⁾ : -6.93…+7 with the step of 0.07 <br/>
 ⁽⁴⁾ : x0.01…x2 multiplier with the step of 0.01<br/>
-⁽⁵⁾ : cents <br/>
-⁽⁶⁾ : higher digit - carriers and odd operators, <br/>
+⁽⁵⁾ : 0 - keep voice feedback route <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;higher digit - feedback source operator, 1…6 (0→1, 7...9→6) <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower digit - feedback destination operator, 1…6 (0→1, 7...9→6) <br/>
+⁽⁶⁾ : 0 - keep voice algorithm <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1...85 - set algorithm explicitly <br/>
+⁽⁷⁾ : cents <br/>
+⁽⁸⁾ : higher digit - carriers and odd operators, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower digit - modulators and even operators <br/>
 
 

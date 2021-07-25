@@ -58,13 +58,13 @@
 #endif
 
 #ifdef OPSIX
-  #define ALGORITHM_COUNT 32
-#else
   #ifdef SY77
     #define ALGORITHM_COUNT 85
   #else
     #define ALGORITHM_COUNT 40
   #endif
+#else
+  #define ALGORITHM_COUNT 32
 #endif
 
 #define param_val_to_q31(val) ((uint32_t)(val) * 0x00200802)
