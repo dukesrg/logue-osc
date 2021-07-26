@@ -206,19 +206,25 @@
   #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
 //  #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
   #define DEFAULT_VELOCITY 0
-/*
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnarrowing"
-  static param_t comp[] = {
-    0xFFFFFFFF, // oops not gonna work
+
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wnarrowing"
+  static param_t compensation[] = {
+/*    0,
     0x7FFFFFFF,
     0x55555555,
     0x3FFFFFFF,
     0x33333333,
     0x2AAAAAAA
-  };
-#pragma GCC diagnostic pop
 */
+    0x7FFFFFFF,
+    0x3FFFFFFF,
+    0x2AAAAAAA,
+    0x1FFFFFFF,
+    0x19999999,
+    0x15555555
+  };
+//#pragma GCC diagnostic pop
 #else
   typedef float param_t;
   typedef float phase_t;
@@ -442,7 +448,7 @@ static float s_release_rate_exp_factor;
 
 static float s_level_scale_factor;
 
-static param_t s_comp;
+static param_t s_comp[OPERATOR_COUNT];
 
 #ifdef FEEDBACK
 static uint8_t s_feedback_src;
@@ -567,7 +573,15 @@ void setAlgorithm() {
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
   }
-  s_comp = f32_to_param(1.f / comp);
+//  s_comp = f32_to_param(1.f / comp);
+//  comp = f32_to_param(1.f / comp);
+//  s_comp = compensation[comp];
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+    if (s_algorithm[i] & ALG_OUT_MASK)
+//      s_comp[i] = comp;
+      s_comp[i] = compensation[comp];
+    else
+      s_comp[i] = ZERO;
 #ifdef CUSTOM_PARAMS
   setLevel();
 #ifdef WFBITS
@@ -1107,7 +1121,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 //      modw0 = (modw0 << 1) + smmul(modw0, 0x16AB0D9F) + phase_to_param(s_phase[i]);
 //      modw0 = modw0 * 2.088547565f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
-      modw0 = modw0 + ((modw0 + smmul(modw0, 0x6A4AFA2A)) << 1) + phase_to_param(s_phase[i]);
+//      modw0 = modw0 + ((modw0 + smmul(modw0, 0x6A4AFA2A)) << 1) + phase_to_param(s_phase[i]);
+      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]);
 //      modw0 = modw0 * 3.830413123f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
       s_phase[i] += opw0[i];
 
@@ -1130,8 +1145,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //      s_opval[i] = param_mul(osc_sin(modw0), (eg_lut[1024 - 64 + (e & 0x3F)] >> (15 -  (e >> 6))));
 //#endif
 #endif
-      if (s_algorithm[i] & ALG_OUT_MASK)
-        osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
+//      if (s_algorithm[i] & ALG_OUT_MASK)
+//        osc_out = param_add(osc_out, s_comp == 0 ? s_opval[i] : smmul(s_opval[i], s_comp));
+//        osc_out = param_add(osc_out, smmul(s_opval[i], s_comp));
+//        osc_out += smmul(s_opval[i], s_comp) << 1;
+//        osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp));
+//        osc_out = param_add(osc_out, param_mul(s_opval[i], s_comp[i]));
+        osc_out += smmul(s_opval[i], s_comp[i]) << 1;
 
 //s_opval[i] += (s_opval[i] >> 1) + (s_opval[i] >> 2);
 
@@ -1179,8 +1199,10 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 #ifdef SHAPE_LFO
     *y = param_to_q31(param_add(osc_out, param_mul(osc_out, lfo)));
+//    *y = param_to_q31(param_add(osc_out << 1, param_mul(osc_out << 1, lfo)));
 #else
     *y = param_to_q31(osc_out);
+//    *y = param_to_q31(osc_out << 1);
 #endif
   }
 }
