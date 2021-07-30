@@ -1079,7 +1079,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ".byte 0x11\n" \
 ".byte 0x0C\n" \
 ".byte 0x07\n" \
-".byte 0x02\n" \
+".byte 0x03\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
 "addmi %0, %0, r1\n" \
