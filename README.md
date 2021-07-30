@@ -35,7 +35,6 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
 |Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
-|FMxx|Assignable controller 1|Assignable controller 2|Voice select 1&hellip;32|Bank select 1&hellip;4|Assignable controller 1 select 1&hellip;69/49|Assignable controller 2 select 1&hellip;69/49|Shape LFO target select 1&hellip;2|[Algorithm](https://cdn.korg.com/us/products/upload/5cc6b8eb8a815777c811bbb3fc293c34_pc.jpg) offset -39&hellip;+39%|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
@@ -80,45 +79,24 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |FMxx features|FM48|FM64|FM66|FM67|FM68|FM69|
 |-|-|-|-|-|-|-|
-|Custom params||7|8|8||8|
-|Assignable controllers|2||||||
 |Algorithm count|85|85|85|85|85|85|
 |Operators count|4|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|5|4|3|2|5|
 |Waveform count|8|1|8|16|1|1|
-|Waveform bit depth|32|16|16|16|16|16|
 |Waveform customization|||+|+|||
-|AMP LUT depth x witch, bits|10x31|11x16|11x16|11x16|13x16|11x16|
+|AMP LUT depth x witch, bits|11x16|11x16|11x16|11x16|13x16|11x16|
 |Feedback supported|+|+|+|+|+|+|
 |Shape LFO target supported|+|+|+|+|+|+|
-|Pitch EG supported||+|+|+|+|+|
-|Split zones|1|3|3|3|3|3|
+|Pitch EG supported|+|+|+|+|+|+|
+|Split zones|3|3|3|3|3|3|
 |Chromatic mode|+|+|+|+|+||
-|Kit mode||+|+|+|+|+|
+|Kit mode|+|+|+|+|+|+|
 
 |FMxx patch extensions|DX7 voices|DX21 / DX11 voices|
 |-|-|-|
 |Algorithm 1&hellip;128|upper bits at standard offset 0x6E|4 upper bits at offset 0x2F|
 |Waveform 1&hellip;16|4 upper bits at offsets 0x0B, 0x1C, 0x2D, 0x3E, 0x4F, 0x60|1 higher bit at standard offsets 0x4A, 0x4C, 0x4E, 0x50|
-
-|#|FMxx<br>Assignable controllers 1&2, LFO target|1x (Op.6/4)|2x (Op.5/3)|3x (Op.4/2)|4x (Op.3/1)|5x (Op.2/-)|6x (Op.1/-)|
-|-|-|-|-|-|-|-|-|
-|x0|N/A|Op. level|Op. level|Op. level|Op. level|Op. level / -|Op. level / -|
-|x1|Velocity|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale|Op. rate scale / -|Op. rate scale / -|
-|x2|Feedback|Waveform|Waveform|Waveform|Waveform|Waveform / -|Waveform / -|
-|x3|Detune Scale x0&hellip;x2|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents|Detune -50&hellip;+50 cents/ -|Detune -50&hellip;+50 cents/ -|
-|x4|Rate Shift -50&hellip;+50|-|-|-|-|-|-|
-|x5|Rate Scale 0x&hellip;2x|-|-|-|-|-|-|
-|x6|-|-|-|-|-|-|-|
-|x7|-|-|-|-|-|-|-|
-|x8|-|-|-|-|-|-|-|
-|x9|-|-|-|-|-|-|-|
-
-|#|FMxx Shape LFO target|
-|-|-|
-|1|Amp|
-|2|Feedback level|
 
 |#|FMxx<br>Custom params|Range|Description|
 |-|-|-|-|
