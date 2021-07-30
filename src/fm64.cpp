@@ -71,156 +71,91 @@
     CUSTOM_PARAM_ID(16)
   );
 
-#define USE_Q31
-#ifdef USE_Q31 //use fixed-point math to reduce CPU consumption
-  #if defined(WF16x2)
-    #include "waveforms16x2.h"
-    #define WFBITS 4
-  #elif defined(WF32)
-    #include "waveforms32.h"
-    #define WFBITS 3
-  #elif defined(WF16)
-    #include "waveforms16.h"
-    #define WFBITS 3
-  #elif defined(WF8)
-    #define OSC_SIN_Q15_LUT
-    #include "waveforms.h"
-    #define WAVE_COUNT 8
-    #define WFBITS 3
-  #elif defined(WF4)
-    #define OSC_SIN_Q15_LUT
-    #include "waveforms.h"
-    #define WAVE_COUNT 4
-    #define WFBITS 2
-  #elif defined(WF2)
-    #define OSC_SIN_Q15_LUT
-    #include "waveforms.h"
-    #define WAVE_COUNT 2
-    #define WFBITS 1
-  #endif
-  #if !defined(WFBITS)
-    #if defined(WFSIN32)
-      #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-    #elif defined(WFSIN16)
-      #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
-    #endif
-    #define OSC_SIN_Q
-  #endif
-  #include "osc_apiq.h"
+#if defined(WF16x2)
+  #include "waveforms16x2.h"
+  #define WFBITS 4
+#elif defined(WF32)
+  #include "waveforms32.h"
+  #define WFBITS 3
+#elif defined(WF16)
+  #include "waveforms16.h"
+  #define WFBITS 3
+#elif defined(WF8)
+  #define OSC_SIN_Q15_LUT
+  #include "waveforms.h"
+  #define WAVE_COUNT 8
+  #define WFBITS 3
+#elif defined(WF4)
+  #define OSC_SIN_Q15_LUT
+  #include "waveforms.h"
+  #define WAVE_COUNT 4
+  #define WFBITS 2
+#elif defined(WF2)
+  #define OSC_SIN_Q15_LUT
+  #include "waveforms.h"
+  #define WAVE_COUNT 2
+  #define WFBITS 1
 #endif
+#if !defined(WFBITS)
+  #if defined(WFSIN32)
+    #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+  #elif defined(WFSIN16)
+    #define OSC_SIN_Q15_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
+  #endif
+  #define OSC_SIN_Q
+#endif
+#include "osc_apiq.h"
 
 //  #define EGLUT //use precalculated EG LUT, saves ~140 bytes of code
+#define USE_Q31
 #if defined(EGLUT)
   #include "eglut.h"
   #define EG_LUT_SHR 20
-  #define EG_LUT_MUL 1023.f
 #elif defined(EGLUT11)
   #include "eglut11.h"
   #define EG_LUT_SHR 19
-  #define EG_LUT_MUL 2047.f
 #elif defined(EGLUT12)
   #include "eglut12.h"
   #define EG_LUT_SHR 18
-  #define EG_LUT_MUL 4095.f
 #elif defined(EGLUT13)
   #include "eglut13.h"
   #define EG_LUT_SHR 17
-#else
-  static param_t eg_lut[1024];
-  #define EG_LUT_SHR 20
-  #define EG_LUT_MUL 1023.f
 #endif
 
-#ifdef USE_Q31
-  typedef q31_t param_t;
-  #define f32_to_param(a) f32_to_q31(a)
-  #define q31_to_param(a) (a)
-  #define param_to_f32(a) q31_to_f32(a)
-  #define param_to_q31(a) (a)
-  #define param_add(a,b) q31add(a,b)
-  #define param_sum(a,b,c) q31add(q31add(a,b),c)
-  #define param_mul(a,b) q31mul(a,b)
-//  #define param_eglut(a,b) eg_lut[smmul(a,b)>>EG_LUT_SHR]
-//  #define param_eglut(a,b) eg_lut[((uint32_t)(a)+(uint32_t)(b))>>(EG_LUT_SHR + 2)]
-//  #define param_eglut(a,b) eg_lut[(q31add(a,b) < 0 ? 0 : q31add(a,b))>>(EG_LUT_SHR + 1)]
-//  #define param_eglut(a,b) eg_lut[usat(q31add(a,b),31)>>(EG_LUT_SHR + 1)]
-//  #define param_eglut(a,b) __asm__ volatile ("usat %0, %1, %2, ASR %3" : "=r" (result) : "i" (31), "r" (q31add(a,b)), "i" (EG_LUT_SHR + 1));
-//  #define param_eglut(a,b) (eg_lut[usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1))])
-  #if defined(EGLUTX15)
-    #define param_eglut(a,b) (ldrsh_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 1) << 16)
-  #elif defined(EGLUTX16)
-    #define param_eglut(a,b) (ldrh_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 1) << 15)
-  #else
-    #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
-  #endif
-  #define param_feedback(a,b) smmul(a,b)
-  #define osc_sin(a) osc_sinq(a)
-  typedef q31_t phase_t;
-  #define phase_to_param(a) (a)
-  #define ZERO_PHASE 0
-  #ifdef USE_Q31_PITCH
-    typedef q31_t pitch_t;
-    #define f32_to_pitch(a) f32_to_q31(a)
-    #define pitch_to_phase(a) (a)
-    #define pitch_mul(a,b) q31mul(a,b)
-  #else
-    typedef float_t pitch_t;
-    #define f32_to_pitch(a) (a)
-    #define pitch_to_phase(a) f32_to_q31(a)
-    #define pitch_mul(a,b) ((a)*(b))
-  #endif
-  #define ZERO 0
-  #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
-  #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
-//  #define LEVEL_SCALE_FACTOR 0x1020408 // 1/127
-  #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
-//  #define DEFAULT_VELOCITY 0xFFFDCFCE // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-  #define DEFAULT_VELOCITY 0
-  static param_t compensation[] = {
-    0x7FFFFFFF,
-    0x3FFFFFFF,
-    0x2AAAAAAA,
-    0x1FFFFFFF,
-    0x19999999,
-    0x15555555
-  };
+#if defined(EGLUTX15)
+  #define param_eglut(a,b) (ldrsh_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 1) << 16)
+#elif defined(EGLUTX16)
+  #define param_eglut(a,b) (ldrh_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 1) << 15)
 #else
-  typedef float param_t;
-  typedef float phase_t;
-  typedef float pitch_t;
-  #define f32_to_param(a) (a)
-  #define q31_to_param(a) q31_to_f32(a)
-  #define param_to_f32(a) (a)
-  #define param_to_q31(a) f32_to_q31(a)
-  #define param_add(a,b) ((a)+(b))
-  #define param_sum(a,b,c) ((a)+(b)+(c))
-  #define param_mul(a,b) ((a)*(b))
-  #define param_eglut(a,b) eg_lut[(int32_t)((a)*(b)*EG_LUT_MUL)]
-  #define param_feedback(a,b) ((a)*(b))
-  #define osc_sin(a) osc_sinf(a)
-  #define phase_to_param(a) (a)
-  #define f32_to_pitch(a) (a)
-  #define pitch_to_phase(a) (a)
-  #define pitch_mul(a,b) ((a)*(b))
-  #define ZERO 0.f
-  #define ZERO_PHASE 0.f
-  #define FEEDBACK_RECIP .00390625f // 1/256
-  #define FEEDBACK_RECIPF .001953125f // 1/512
-//  #define LEVEL_SCALE_FACTOR 0.0078740157f // 1/127
-  #define LEVEL_SCALE_FACTOR 0.0078125f // 1/128
-//  #define DEFAULT_VELOCITY -0.000066780348f // ((100 ^ 0.3) * 60 - 239) / (127 * 16)
-  #define DEFAULT_VELOCITY -0.f
-/*
-  static param_t comp[] = {
-    1.f,
-    .5f,
-    .333333333f,
-    .25f,
-    .2f,
-    .166666666f
-  };
-*/
+  #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
 #endif
+#define osc_sin(a) osc_sinq(a)
+typedef q31_t phase_t;
+#define phase_to_param(a) (a)
+#define ZERO_PHASE 0
+#ifdef USE_Q31_PITCH
+  typedef q31_t pitch_t;
+  #define f32_to_pitch(a) f32_to_q31(a)
+  #define pitch_to_phase(a) (a)
+  #define pitch_mul(a,b) q31mul(a,b)
+#else
+  typedef float_t pitch_t;
+  #define f32_to_pitch(a) (a)
+  #define pitch_to_phase(a) f32_to_q31(a)
+  #define pitch_mul(a,b) ((a)*(b))
+#endif
+#define ZERO 0
+#define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+#define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+#define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
+static q31_t compensation[] = {
+  0x7FFFFFFF,
+  0x3FFFFFFF,
+  0x2AAAAAAA,
+  0x1FFFFFFF,
+  0x19999999,
+  0x15555555
+};
 
 //#define DX7_SAMPLING_FREQ 49096.545017211284821233588006932f // 1/20.368032usec
 //#define DX7_TO_LOGUE_FREQ 0.977665536f // 48000/49096.545
@@ -328,7 +263,7 @@ static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 
 static float s_velocity = 0.f;
-static param_t s_feedback;
+static q31_t s_feedback;
 
 static int8_t s_op_level[OPERATOR_COUNT];
 static float s_op_rate_scale[OPERATOR_COUNT];
@@ -337,12 +272,12 @@ static uint8_t s_op_waveform[OPERATOR_COUNT];
 static uint32_t s_waveform[OPERATOR_COUNT];
 #endif
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
+static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 static float s_egsrate_recip[OPERATOR_COUNT][2];
-static param_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
-static param_t s_egval[OPERATOR_COUNT];
-static param_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
-static param_t s_oplevel[OPERATOR_COUNT];
+static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
+static q31_t s_egval[OPERATOR_COUNT];
+static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
+static q31_t s_oplevel[OPERATOR_COUNT];
 static float s_level_scaling[OPERATOR_COUNT];
 
 static float s_attack_rate_exp_factor;
@@ -350,12 +285,12 @@ static float s_release_rate_exp_factor;
 
 static float s_level_scale_factor;
 
-static param_t s_comp[OPERATOR_COUNT];
+static q31_t s_comp[OPERATOR_COUNT];
 
 static uint8_t s_feedback_src;
 static uint8_t s_feedback_src_alg;
 static uint8_t s_feedback_dst_alg;
-static param_t s_feedback_opval[2];
+static q31_t s_feedback_opval[2];
 
 #ifdef PEG
 static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
@@ -368,7 +303,7 @@ static uint8_t s_peg_stage_start;
 #endif 
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
-static phase_t s_phase[OPERATOR_COUNT];
+static q31_t s_phase[OPERATOR_COUNT];
 
 enum {
   state_running = 0,
@@ -388,11 +323,11 @@ int32_t paramOffset(int8_t *param, uint32_t opidx) {
 void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 // saturate Out Level to 0dB offset of Q31
-    s_oplevel[i] = q31add(f32_to_param(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
+    s_oplevel[i] = q31add(f32_to_q31(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
 // saturate with KVS
-    s_oplevel[i] = q31add(s_oplevel[i], f32_to_param(s_level_scaling[i]));
+    s_oplevel[i] = q31add(s_oplevel[i], f32_to_q31(s_level_scaling[i]));
 // adjust 0dB level to fit positive Velocity * KVS and add them
-    s_oplevel[i] = q31add(q31sub(s_oplevel[i], 0x07000000), f32_to_param(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)));
+    s_oplevel[i] = q31add(q31sub(s_oplevel[i], 0x07000000), f32_to_q31(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)));
 // make it non-negative and apply -96dB to further fit EG level
     s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7F000000);
   }
@@ -413,7 +348,7 @@ void setWaveform() {
 
 void setFeedback() {
   float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
-  s_feedback = value <= 0.f ? ZERO : f32_to_param(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
+  s_feedback = value <= 0.f ? ZERO : f32_to_q31(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
 }
 
 void setFeedbackRoute() {
@@ -559,7 +494,7 @@ void initvoice(int32_t voice_index) {
 //todo: check dx11 rates
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
         s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TX81Z
-        s_eglevel[i][j] = f32_to_param(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
+        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
 
 //todo: Fine freq ratio
@@ -632,14 +567,7 @@ void initvoice(int32_t voice_index) {
 
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
-#ifdef USE_Q31
-  osc_api_initq();
-#endif
-#if !defined(EGLUT) && !defined(EGLUT11) && !defined(EGLUT12) && !defined(EGLUT13)
-  for (int32_t i = 0; i < 1024; i++) {
-    eg_lut[i] = f32_to_param(dbampf((i - 1024) * 0.09375f)); //10^(0.05*(x-127)*32*6/256) = 2^((x-127)/8)
-  }
-#endif
+
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -698,8 +626,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_state &= ~(state_noteoff | state_noteon);
   }
   }
-  param_t osc_out, modw0;
-  phase_t opw0[OPERATOR_COUNT];
+  q31_t osc_out, modw0;
+  q31_t opw0[OPERATOR_COUNT];
 #ifdef FINE_TUNE
   uint32_t pitch = params->pitch << 16;
 #else
@@ -723,9 +651,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 //  pitch_t basew0 = f32_to_pitch(osc_w0f_for_note((pitch >> 8) + s_transpose, pitch & 0xFF));
   pitch_t basew0;
-#ifdef SHAPE_LFO
-  param_t lfo = 0;
-#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (s_pitchfreq[i]) {
 #ifdef FINE_TUNE
@@ -747,10 +672,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     opw0[i] = f32_to_q31(osc_w0f_for_note(p >> 8, p & 0xFF));
 */
   }
-
-#ifdef SHAPE_LFO
-    lfo = q31_to_param(params->shape_lfo);
-#endif
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
@@ -831,7 +752,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_phase[i] += opw0[i];
 
 #ifdef WFBITS
-      s_opval[i] = param_mul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i]));
+      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #else
       s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #endif
@@ -839,7 +760,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
 
       if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
-        s_egval[i] = param_add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+        s_egval[i] = q31add(s_egval[i], s_egsrate[i][s_egstage[i]]);
       } else {
         s_egval[i] = s_eglevel[i][s_egstage[i]];
         if (s_egstage[i] < EG_STAGE_COUNT - 2)
@@ -847,7 +768,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
     }
     s_opval[OPERATOR_COUNT] = s_feedback_opval[0];
-    s_feedback_opval[0] = param_feedback(s_opval[s_feedback_src], s_feedback);
+    s_feedback_opval[0] = smmul(s_opval[s_feedback_src], s_feedback);
     s_opval[OPERATOR_COUNT] += s_feedback_opval[0];
 #ifdef PEG
     if (
@@ -862,19 +783,19 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
     s_sample_num++;
 #ifdef SHAPE_LFO
-    *y = param_to_q31(param_add(osc_out, smmul(osc_out, lfo) << 1));
+    *y = q31add(osc_out, smmul(osc_out, params->shape_lfo) << 1);
 #else
-    *y = param_to_q31(osc_out);
+    *y = osc_out;
 #endif
   }
 }
 
-param_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
+q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
   if (j == 0)
     rate_factor *= DX7_RATE1_FACTOR;
   float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
   float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
-  return f32_to_param(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
+  return f32_to_q31(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 }
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
