@@ -1043,6 +1043,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifndef USE_Q31_PHASE
       s_phase[i] -= (uint32_t)(s_phase[i]);
 #endif
+/*
         __asm__ volatile ( \
 "lsls r1, %2, #25\n" \
 "itt mi\n" \
@@ -1052,8 +1053,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (24) \
 : "r1" \
         );
+*/
 //      if (s_algorithm[i] & ALG_MOD_MASK) {
-      if (s_algorithm[i] & (ALG_MOD_MASK - 1)) {
+//      if (s_algorithm[i] & (ALG_MOD_MASK - 1)) {
 #ifndef MOD_ASM
 #ifdef OP6
         if (s_algorithm[i] & ALG_MOD2_MASK) modw0 += s_opval[4];
@@ -1065,14 +1067,19 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #else
 #ifdef OP6
         __asm__ volatile ( \
-"tbb [pc, %1]\n" \
-".byte 0x1C\n" \
-".byte 0x17\n" \
-".byte 0x12\n" \
-".byte 0x0D\n" \
-".byte 0x08\n" \
-".byte 0x03\n" \
+"lsls r1, %2, #25\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %9]\n" \
+"addmi %0, %0, r1\n" \
 "lsls r1, %2, #27\n" \
+"beq.n end%=\n"\
+"tbb [pc, %1]\n" \
+".byte 0x1B\n" \
+".byte 0x16\n" \
+".byte 0x11\n" \
+".byte 0x0C\n" \
+".byte 0x07\n" \
+".byte 0x02\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
 "addmi %0, %0, r1\n" \
@@ -1092,8 +1099,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%3, %8]\n" \
 "addmi %0, %0, r1\n" \
+"end%=:\n" \
 : "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0), "i" (24) \
 : "r1" \
         );
 #else
@@ -1133,7 +1141,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //        modw0 += s_feedback_opval[1];
 
 #endif
-      }
+//      }
 //      modw0 = (modw0 << 1) + smmul(modw0, 0x16AB0D9F) + phase_to_param(s_phase[i]);
 //      modw0 = modw0 * 2.088547565f + phase_to_param(s_phase[i]); // modw0 *= 2 ^ (17/16)
 //      modw0 = modw0 + ((modw0 + smmul(modw0, 0x6A4AFA2A)) << 1) + phase_to_param(s_phase[i]);
@@ -1155,8 +1163,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 //#ifdef SHAPE_LFO
 //      s_opval[i] = param_mul(osc_sin(modw0), eg_lut[param_mul(s_egval[i], oplevel[i]) >> 21]);
 //#else
-      s_opval[i] = param_mul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i]));
-//      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+//      s_opval[i] = param_mul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i]));
+      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 //      q31_t e = smmul(s_egval[i],s_oplevel[i]) >> 20;
 //      s_opval[i] = param_mul(osc_sin(modw0), (eg_lut[1024 - 64 + (e & 0x3F)] >> (15 -  (e >> 6))));
 //#endif
@@ -1217,7 +1225,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_sample_num++;
 #endif
 #ifdef SHAPE_LFO
-    *y = param_to_q31(param_add(osc_out, param_mul(osc_out, lfo)));
+//    *y = param_to_q31(param_add(osc_out, param_mul(osc_out, lfo)));
+    *y = param_to_q31(param_add(osc_out, smmul(osc_out, lfo) << 1));
 #else
     *y = param_to_q31(osc_out);
 #endif
