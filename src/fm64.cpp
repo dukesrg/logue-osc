@@ -275,7 +275,7 @@ static float s_egsrate_recip[OPERATOR_COUNT][2];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[OPERATOR_COUNT];
 static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
-//static q31_t s_oplevel[OPERATOR_COUNT];
+static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_outlevel[OPERATOR_COUNT];
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_velocitylevel[OPERATOR_COUNT];
@@ -558,6 +558,7 @@ void initvoice(int32_t voice_index) {
     s_egstage[i] = EG_STAGE_COUNT - 1;
     s_egval[i] = 0;
     s_opval[i] = 0;
+    s_oplevel[i] = 0x80000000;
   }
 #ifdef PEG
   uint32_t samples = 0;
@@ -585,7 +586,6 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
-  q31_t oplevel[OPERATOR_COUNT];
   if (s_state) {
   if (s_state == state_noteon) {
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -601,7 +601,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 //      setLevel();
 // make it non-negative and apply -96dB to further fit EG level
-      oplevel[i] = q31sub((usat_lsl(31, q31add(s_level_scaling[i], s_velocitylevel[i]), 0)), 0x7F000000);
+      s_oplevel[i] = q31sub((usat_lsl(31, q31add(s_level_scaling[i], s_velocitylevel[i]), 0)), 0x7F000000);
     }
     s_sample_num = 0;
 #ifdef PEG
@@ -768,9 +768,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_phase[i] += opw0[i];
 
 #ifdef WFBITS
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], oplevel[i])) << 1;
+      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #else
-      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], oplevel[i])) << 1;
+      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #endif
 
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
