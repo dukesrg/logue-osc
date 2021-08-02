@@ -132,7 +132,6 @@
 #define osc_sin(a) osc_sinq(a)
 typedef q31_t phase_t;
 #define phase_to_param(a) (a)
-#define ZERO_PHASE 0
 #ifdef USE_Q31_PITCH
   typedef q31_t pitch_t;
   #define f32_to_pitch(a) f32_to_q31(a)
@@ -144,7 +143,6 @@ typedef q31_t phase_t;
   #define pitch_to_phase(a) f32_to_q31(a)
   #define pitch_mul(a,b) ((a)*(b))
 #endif
-#define ZERO 0
 #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
@@ -277,8 +275,10 @@ static float s_egsrate_recip[OPERATOR_COUNT][2];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[OPERATOR_COUNT];
 static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
-static q31_t s_oplevel[OPERATOR_COUNT];
-static float s_level_scaling[OPERATOR_COUNT];
+//static q31_t s_oplevel[OPERATOR_COUNT];
+static q31_t s_outlevel[OPERATOR_COUNT];
+static q31_t s_level_scaling[OPERATOR_COUNT];
+static q31_t s_velocitylevel[OPERATOR_COUNT];
 
 static float s_attack_rate_exp_factor;
 static float s_release_rate_exp_factor;
@@ -320,19 +320,31 @@ int32_t paramOffset(int8_t *param, uint32_t opidx) {
   return param[opidx] + param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] + param[OPERATOR_COUNT + 2];
 }
 
+void setOutLevel() {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+// saturate Out Level to 0dB offset of Q31
+    s_outlevel[i] = q31add(f32_to_q31(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
+}
+
+void setVelocityLevel() {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+// Velocity * KVS
+    s_velocitylevel[i] = f32_to_q31(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i));
+}
+/*
 void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 // saturate Out Level to 0dB offset of Q31
     s_oplevel[i] = q31add(f32_to_q31(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
-// saturate with KVS
-    s_oplevel[i] = q31add(s_oplevel[i], f32_to_q31(s_level_scaling[i]));
+// saturate with KLS
+    s_oplevel[i] = q31add(s_oplevel[i], s_level_scaling[i]);
 // adjust 0dB level to fit positive Velocity * KVS and add them
     s_oplevel[i] = q31add(q31sub(s_oplevel[i], 0x07000000), f32_to_q31(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i)));
 // make it non-negative and apply -96dB to further fit EG level
     s_oplevel[i] = q31sub((usat_lsl(31, s_oplevel[i], 0)), 0x7F000000);
   }
 }
-
+*/
 #ifdef WFBITS
 void setWaveform() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
@@ -348,7 +360,7 @@ void setWaveform() {
 
 void setFeedback() {
   float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
-  s_feedback = value <= 0.f ? ZERO : f32_to_q31(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
+  s_feedback = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
 }
 
 void setFeedbackRoute() {
@@ -386,8 +398,7 @@ void setAlgorithm() {
     if (s_algorithm[i] & ALG_OUT_MASK)
       s_comp[i] = compensation[comp];
     else
-      s_comp[i] = ZERO;
-  setLevel();
+      s_comp[i] = 0;
 #ifdef WFBITS
   setWaveform();
 #endif
@@ -423,7 +434,7 @@ void initvoice(int32_t voice_index) {
 #endif
 #endif
 
-      s_phase[i] = ZERO_PHASE;
+      s_phase[i] = 0;
 
 //todo: check dx7 D1/D2/R rates
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
@@ -489,7 +500,7 @@ void initvoice(int32_t voice_index) {
       s_op_waveform[i] = voice->opadd[i].osw & ((1 << WFBITS) - 1);
 #endif
 
-      s_phase[i] = ZERO_PHASE;
+      s_phase[i] = 0;
 
 //todo: check dx11 rates
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
@@ -521,30 +532,32 @@ void initvoice(int32_t voice_index) {
     s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
     s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
 #ifdef OP6
-    s_op_level[4] = ZERO;
-    s_op_level[5] = ZERO;
+    s_op_level[4] = 0;
+    s_op_level[5] = 0;
     s_kvs[4] = 0;
     s_kvs[5] = 0;
     for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
       s_egrate[4][j] = 0;
       s_egrate[5][j] = 0;
-      s_eglevel[4][j] = ZERO;
-      s_eglevel[5][j] = ZERO;
+      s_eglevel[4][j] = 0;
+      s_eglevel[5][j] = 0;
     }
 #endif
 #endif
   }
-  s_feedback_opval[0] = ZERO;
-  s_feedback_opval[1] = ZERO;
-  s_opval[OPERATOR_COUNT] = ZERO;
+  s_feedback_opval[0] = 0;
+  s_feedback_opval[1] = 0;
+  s_opval[OPERATOR_COUNT] = 0;
   setAlgorithm();
+  setOutLevel();
+  setVelocityLevel();
   setFeedback();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
-    s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
+    s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
     s_egstage[i] = EG_STAGE_COUNT - 1;
-    s_egval[i] = ZERO;
-    s_opval[i] = ZERO;
+    s_egval[i] = 0;
+    s_opval[i] = 0;
   }
 #ifdef PEG
   uint32_t samples = 0;
@@ -572,6 +585,7 @@ void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused))
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
+  q31_t oplevel[OPERATOR_COUNT];
   if (s_state) {
   if (s_state == state_noteon) {
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -581,11 +595,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
       s_egstage[i] = 0;
       if (s_opi)
-        s_phase[i] = ZERO_PHASE;
+        s_phase[i] = 0;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
-      s_opval[i] = ZERO;
+      s_opval[i] = 0;
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
-      setLevel();
+//      setLevel();
+// make it non-negative and apply -96dB to further fit EG level
+      oplevel[i] = q31sub((usat_lsl(31, q31add(s_level_scaling[i], s_velocitylevel[i]), 0)), 0x7F000000);
     }
     s_sample_num = 0;
 #ifdef PEG
@@ -607,7 +623,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           samples += dl * s_egsrate_recip[i][1];
         }
       } else {
-        s_egsrate[i][EG_STAGE_COUNT - 1] = ZERO;
+        s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
       }
       s_sample_count[i][EG_STAGE_COUNT - 1] = samples;
       s_egstage[i] = EG_STAGE_COUNT - 1;
@@ -675,7 +691,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-    osc_out = ZERO;
+    osc_out = 0;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = 0;
 #ifdef OP6
@@ -752,9 +768,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_phase[i] += opw0[i];
 
 #ifdef WFBITS
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], oplevel[i])) << 1;
 #else
-      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], oplevel[i])) << 1;
 #endif
 
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
@@ -835,7 +851,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
         s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, note);
         samples += dl / s_egsrate[i][j + EG_STAGE_COUNT];
       } else {
-        s_egsrate[i][j + EG_STAGE_COUNT] = ZERO;
+        s_egsrate[i][j + EG_STAGE_COUNT] = 0;
       }
       s_sample_count[i][j + EG_STAGE_COUNT] = samples;
     }
@@ -851,10 +867,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     }
     if (curve < 2)
       depth = - depth;
-    if (dp == 0)
-      s_level_scaling[i] = 0.f;
-    else
-      s_level_scaling[i] = clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB;
+    if (dp != 0)
+// saturate Out level with KLS and adjust 0dB level to fit positive Velocity
+      s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
   }
   s_zone_transposed += s_transpose;
   s_state = state_noteon;
@@ -892,7 +907,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(1):
       s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .0625f * LEVEL_SCALE_FACTOR_DB;
 //                                           10->7bit^         exp^curve^mult  ^zero thd ^downscale 1/16 ^linear 96 dB normalize
-      setLevel();
+      setVelocityLevel();
       break;
 #ifndef KIT_MODE
     case CUSTOM_PARAM_ID(2):
@@ -953,7 +968,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(27):
     case CUSTOM_PARAM_ID(28):
       s_level_offset[CUSTOM_PARAM_ID(28) - index] = value - 100;
-      setLevel();
+      setOutLevel();
       break;
     case CUSTOM_PARAM_ID(29):
     case CUSTOM_PARAM_ID(30):
@@ -969,7 +984,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(36):
     case CUSTOM_PARAM_ID(37):
       s_level_scale[CUSTOM_PARAM_ID(37) - index] = value;
-      setLevel();
+      setOutLevel();
       break;
     case CUSTOM_PARAM_ID(38):
     case CUSTOM_PARAM_ID(39):
@@ -1015,7 +1030,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(63):
     case CUSTOM_PARAM_ID(64):
       s_kvs_offset[CUSTOM_PARAM_ID(64) - index] = value - 100;
-      setLevel();
+      setVelocityLevel();
       break;
     case CUSTOM_PARAM_ID(65):
     case CUSTOM_PARAM_ID(66):
@@ -1031,7 +1046,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(72):
     case CUSTOM_PARAM_ID(73):
       s_kvs_scale[CUSTOM_PARAM_ID(73) - index] = value;
-      setLevel();
+      setVelocityLevel();
       break;
     case CUSTOM_PARAM_ID(74):
     case CUSTOM_PARAM_ID(75):
