@@ -320,6 +320,12 @@ int32_t paramOffset(int8_t *param, uint32_t opidx) {
   return param[opidx] + param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] + param[OPERATOR_COUNT + 2];
 }
 
+static inline __attribute__((optimize("Ofast"), always_inline))
+void setOpLevel(uint32_t opidx) {
+// make it non-negative and apply -96dB to further fit EG level
+    s_oplevel[opidx] = q31sub((usat_lsl(31, q31add(s_level_scaling[opidx], s_velocitylevel[opidx]), 0)), 0x7F000000);
+}
+
 void setOutLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
 // saturate Out Level to 0dB offset of Q31
@@ -327,10 +333,13 @@ void setOutLevel() {
 }
 
 void setVelocityLevel() {
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 // Velocity * KVS
     s_velocitylevel[i] = f32_to_q31(s_velocity * clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i));
+    setOpLevel(i);
+  }
 }
+
 /*
 void setLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -549,16 +558,15 @@ void initvoice(int32_t voice_index) {
   s_feedback_opval[1] = 0;
   s_opval[OPERATOR_COUNT] = 0;
   setAlgorithm();
+  setFeedback();
   setOutLevel();
   setVelocityLevel();
-  setFeedback();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
     s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
     s_egstage[i] = EG_STAGE_COUNT - 1;
     s_egval[i] = 0;
     s_opval[i] = 0;
-    s_oplevel[i] = 0x80000000;
   }
 #ifdef PEG
   uint32_t samples = 0;
@@ -601,7 +609,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 //      setLevel();
 // make it non-negative and apply -96dB to further fit EG level
-      s_oplevel[i] = q31sub((usat_lsl(31, q31add(s_level_scaling[i], s_velocitylevel[i]), 0)), 0x7F000000);
+//      s_oplevel[i] = q31sub((usat_lsl(31, q31add(s_level_scaling[i], s_velocitylevel[i]), 0)), 0x7F000000);
     }
     s_sample_num = 0;
 #ifdef PEG
@@ -867,9 +875,9 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     }
     if (curve < 2)
       depth = - depth;
-    if (dp != 0)
 // saturate Out level with KLS and adjust 0dB level to fit positive Velocity
-      s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
+    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], dp == 0 ? 0 : f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
+    setOpLevel(i);
   }
   s_zone_transposed += s_transpose;
   s_state = state_noteon;
@@ -907,7 +915,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(1):
       s_velocity = (POWF(value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .0625f * LEVEL_SCALE_FACTOR_DB;
 //                                           10->7bit^         exp^curve^mult  ^zero thd ^downscale 1/16 ^linear 96 dB normalize
-      setVelocityLevel();
+      goto setvelocitylevel;
       break;
 #ifndef KIT_MODE
     case CUSTOM_PARAM_ID(2):
@@ -936,10 +944,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case CUSTOM_PARAM_ID(15):
       s_feedback_offset = (value - 100) * .07f;
-      setFeedback();
+      goto setfeedback;
       break;
     case CUSTOM_PARAM_ID(16):
       s_feedback_scale = value * .01f;
+setfeedback:
       setFeedback();
       break;
     case CUSTOM_PARAM_ID(17):
@@ -948,10 +957,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case CUSTOM_PARAM_ID(18):
       s_algorithm_select = value;
-      setAlgorithm();
+      goto setalgorithm;
       break;
     case CUSTOM_PARAM_ID(19):
       s_algorithm_offset = value - 100;
+setalgorithm:
       setAlgorithm();
       break;
     case CUSTOM_PARAM_ID(20):
@@ -968,7 +978,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(27):
     case CUSTOM_PARAM_ID(28):
       s_level_offset[CUSTOM_PARAM_ID(28) - index] = value - 100;
-      setOutLevel();
+      goto setoutlevel;
       break;
     case CUSTOM_PARAM_ID(29):
     case CUSTOM_PARAM_ID(30):
@@ -984,6 +994,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(36):
     case CUSTOM_PARAM_ID(37):
       s_level_scale[CUSTOM_PARAM_ID(37) - index] = value;
+setoutlevel:
       setOutLevel();
       break;
     case CUSTOM_PARAM_ID(38):
@@ -1030,7 +1041,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(63):
     case CUSTOM_PARAM_ID(64):
       s_kvs_offset[CUSTOM_PARAM_ID(64) - index] = value - 100;
-      setVelocityLevel();
+      goto setvelocitylevel;
       break;
     case CUSTOM_PARAM_ID(65):
     case CUSTOM_PARAM_ID(66):
@@ -1046,6 +1057,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(72):
     case CUSTOM_PARAM_ID(73):
       s_kvs_scale[CUSTOM_PARAM_ID(73) - index] = value;
+setvelocitylevel:
       setVelocityLevel();
       break;
     case CUSTOM_PARAM_ID(74):
