@@ -876,7 +876,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (curve < 2)
       depth = - depth;
 // saturate Out level with KLS and adjust 0dB level to fit positive Velocity
-    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], dp == 0 ? 0 : f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
+    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
     setOpLevel(i);
   }
   s_zone_transposed += s_transpose;
