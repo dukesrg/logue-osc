@@ -277,7 +277,16 @@ static q31_t s_egval[OPERATOR_COUNT];
 static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
 static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_outlevel[OPERATOR_COUNT];
-//static float s_klslevel[OPERATOR_COUNT];
+#ifdef OP6
+static float s_klslevel[OPERATOR_COUNT] = {.0103810253f, .0103810253f, .0103810253f, .0103810253f, .0103810253f, .0103810253f};
+static float s_krslevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+#else
+static float s_klslevel[OPERATOR_COUNT] = {.0103810253f, .0103810253f, .0103810253f, .0103810253f};
+static float s_krslevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
+static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
+#endif
+static uint32_t s_klsoffset[OPERATOR_COUNT] = {0};
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_kvslevel[OPERATOR_COUNT];
 static q31_t s_velocitylevel[OPERATOR_COUNT];
@@ -333,21 +342,17 @@ void setOutLevel() {
 // saturate Out Level to 0dB offset of Q31
     s_outlevel[i] = q31add(f32_to_q31(scale_level(clipminmaxi32(0, s_op_level[i] + paramOffset(s_level_offset, i), 99)) * paramScale(s_level_scale, i) * LEVEL_SCALE_FACTORF), 0x00FFFFFF);
 }
-/*
-void setKlsLevel() {
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-    s_klslevel[i] = LEVEL_SCALE_FACTOR_DB * paramScale(s_kls_scale, i);
-}
-*/
+
 void setKvsLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-    s_kvslevel[i] = f32_to_q31(clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i));
+    s_kvslevel[i] = f32_to_q31(clipminmaxf(0.f, s_kvs[i] + paramOffset(s_kvs_offset, i) * 0.07f, 7.f) * paramScale(s_kvs_scale, i) * .015625f);
 }
 
+static inline __attribute__((optimize("Ofast"), always_inline))
 void setVelocityLevel() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 // Velocity * KVS
-    s_velocitylevel[i] = smmul(s_velocity, s_kvslevel[i]) << 1;
+    s_velocitylevel[i] = smmul(s_velocity, s_kvslevel[i]) << 7;
     setOpLevel(i);
   }
 }
@@ -572,7 +577,6 @@ void initvoice(int32_t voice_index) {
   setAlgorithm();
   setFeedback();
   setOutLevel();
-//  setKlsLevel();
   setKvsLevel();
   setVelocityLevel();
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
@@ -832,8 +836,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
   if (j == 0)
     rate_factor *= DX7_RATE1_FACTOR;
-  float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * paramScale(s_krs_scale, i);
-  float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * paramScale(s_egrate_scale, i);
+  float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * s_krslevel[i];
+  float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * s_egratelevel[i];
   return f32_to_q31(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 }
 
@@ -879,7 +883,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
       s_sample_count[i][j + EG_STAGE_COUNT] = samples;
     }
     dp = note - s_break_point[i];
-    depth = paramOffset(s_kls_offset, i);
+//    depth = paramOffset(s_kls_offset, i);
+    depth = s_klsoffset[i];
     if (dp < 0) {
        depth += s_left_depth[i];
        curve = s_left_curve[i];
@@ -891,8 +896,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
     if (curve < 2)
       depth = - depth;
 // saturate Out level with KLS and adjust 0dB level to fit positive Velocity
-    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
-//    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * s_klslevel[i] * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)))), 0x07000000);
+//    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * paramScale(s_kls_scale, i) * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)) * LEVEL_SCALE_FACTOR_DB)), 0x07000000);
+    s_level_scaling[i] = q31sub(q31add(s_outlevel[i], f32_to_q31(clipminmaxf(-99, depth, 99) * s_klslevel[i] * ((curve & 0x01) ? ((POW2F(dp * .083333333f) - 1.f) * .015625f) : (s_level_scale_factor * dp)))), 0x07000000);
 //    setOpLevel(i);
   }
   s_zone_transposed += s_transpose;
@@ -1027,6 +1032,8 @@ setoutlevel:
     case CUSTOM_PARAM_ID(45):
     case CUSTOM_PARAM_ID(46):
       s_kls_offset[CUSTOM_PARAM_ID(46) - index] = value - 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_klsoffset[i] = paramOffset(s_kls_offset, i);
       break;
     case CUSTOM_PARAM_ID(47):
     case CUSTOM_PARAM_ID(48):
@@ -1042,7 +1049,8 @@ setoutlevel:
     case CUSTOM_PARAM_ID(54):
     case CUSTOM_PARAM_ID(55):
       s_kls_scale[CUSTOM_PARAM_ID(55) - index] = value;
-//      setKlsLevel();
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_klslevel[i] = paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTOR_DB;
       break;
     case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
@@ -1106,6 +1114,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(90):
     case CUSTOM_PARAM_ID(91):
       s_egrate_scale[CUSTOM_PARAM_ID(91) - index] = value;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_egratelevel[i] = paramScale(s_egrate_scale, i);
       break;
     case CUSTOM_PARAM_ID(92):
     case CUSTOM_PARAM_ID(93):
@@ -1136,6 +1146,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(108):
     case CUSTOM_PARAM_ID(109):
       s_krs_scale[CUSTOM_PARAM_ID(109) - index] = uvalue;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_krslevel[i] = paramScale(s_krs_scale, i);
       break;
     case CUSTOM_PARAM_ID(110):
     case CUSTOM_PARAM_ID(111):
