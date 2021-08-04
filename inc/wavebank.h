@@ -91,7 +91,9 @@
   #define WAVE_COUNT_Y 8
 #endif
 
-#if SAMPLE_COUNT == 1024
+#if SAMPLE_COUNT == 2048
+  #define SAMPLE_COUNT_EXP 11
+#elif SAMPLE_COUNT == 1024
   #define SAMPLE_COUNT_EXP 10
 #elif SAMPLE_COUNT == 512
   #define SAMPLE_COUNT_EXP 9
