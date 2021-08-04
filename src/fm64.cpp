@@ -278,15 +278,17 @@ static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
 static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_outlevel[OPERATOR_COUNT];
 #ifdef OP6
-static float s_klslevel[OPERATOR_COUNT] = {.0103810253f, .0103810253f, .0103810253f, .0103810253f, .0103810253f, .0103810253f};
-static float s_krslevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
+static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
 #else
-static float s_klslevel[OPERATOR_COUNT] = {.0103810253f, .0103810253f, .0103810253f, .0103810253f};
-static float s_krslevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
+static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
+static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
 #endif
 static uint32_t s_klsoffset[OPERATOR_COUNT] = {0};
+static uint32_t s_egrateoffset[OPERATOR_COUNT] = {0};
+static float s_krsoffset[OPERATOR_COUNT] = {0.f};
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_kvslevel[OPERATOR_COUNT];
 static q31_t s_velocitylevel[OPERATOR_COUNT];
@@ -411,9 +413,9 @@ void setAlgorithm() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
     if (s_algorithm[i] & ALG_FBK_MASK) {
-      s_feedback_src_alg = s_algorithm[i] & (ALG_MOD_MASK - 1);
+      s_feedback_src_alg = s_algorithm[i] & (ALG_FBK_MASK - 1);
       s_feedback_dst_alg = i;
-      s_algorithm[i] &= ~(ALG_MOD_MASK - 1);
+      s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
       setFeedbackRoute();
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
@@ -723,7 +725,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = 0;
 #ifdef OP6
         __asm__ volatile ( \
-"lsls r1, %2, #25\n" \
+"lsls r1, %2, #26\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
 "addmi %0, %0, r1\n" \
@@ -762,7 +764,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         );
 #else
       __asm__ volatile ( \
-"lsls r1, %2, #25\n" \
+"lsls r1, %2, #26\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%3, %4]\n" \
 "addmi %0, %0, r1\n" \
@@ -836,8 +838,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
   if (j == 0)
     rate_factor *= DX7_RATE1_FACTOR;
-  float rscale = (note - NOTE_A_1) * RATE_SCALING_FACTOR * clipminmaxf(0.f, s_op_rate_scale[i] + paramOffset(s_krs_offset, i) * .07f, 7.f) * s_krslevel[i];
-  float rate = clipminmaxi32(0, s_egrate[i][j] + paramOffset(s_egrate_offset, i), 99) * s_egratelevel[i];
+  float rscale = (note - NOTE_A_1) * clipminmaxf(0.f, s_op_rate_scale[i] + s_krsoffset[i], 7.f) * s_krslevel[i];
+  float rate = clipminmaxi32(0, s_egrate[i][j] + s_egrateoffset[i], 99) * s_egratelevel[i];
   return f32_to_q31(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
 }
 
@@ -1099,6 +1101,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(81):
     case CUSTOM_PARAM_ID(82):
       s_egrate_offset[CUSTOM_PARAM_ID(82) - index] = value - 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_egrateoffset[i] = paramOffset(s_egrate_offset, i);
       break;
     case CUSTOM_PARAM_ID(83):
     case CUSTOM_PARAM_ID(84):
@@ -1131,6 +1135,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(99):
     case CUSTOM_PARAM_ID(100):
       s_krs_offset[CUSTOM_PARAM_ID(100) - index] = value - 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_krsoffset[i] = paramOffset(s_krs_offset, i) * .07f;
       break;
     case CUSTOM_PARAM_ID(101):
     case CUSTOM_PARAM_ID(102):
@@ -1147,7 +1153,7 @@ setkvslevel:
     case CUSTOM_PARAM_ID(109):
       s_krs_scale[CUSTOM_PARAM_ID(109) - index] = uvalue;
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_krslevel[i] = paramScale(s_krs_scale, i);
+        s_krslevel[i] = paramScale(s_krs_scale, i) * RATE_SCALING_FACTOR;
       break;
     case CUSTOM_PARAM_ID(110):
     case CUSTOM_PARAM_ID(111):
