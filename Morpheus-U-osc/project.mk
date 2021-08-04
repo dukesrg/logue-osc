@@ -4,7 +4,7 @@
 
 include $(PLATFORMDIR)/osc.mk
 
-PROJECT = Morpheus
+PROJECT = Morpheus-U
 
 UCSRC =
 
@@ -12,7 +12,7 @@ UCXXSRC = ../src/morpheus.cpp
 
 UINCDIR = $(PROJECTDIR)/../inc
 
-UDEFS =
+UDEFS = -DFORMAT_ULAW
 
 ULIBS =
 
