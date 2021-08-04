@@ -138,7 +138,7 @@ var maxsize;
 function inject(osc) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
-  fetch(osc.name + "-osc." + platform)
+  fetch("" + osc.name + "-osc." + platform)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
         return Promise.resolve(response.blob());
@@ -209,7 +209,7 @@ function inject(osc) {
 
 function getInfo(osc, rowindex) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
-  fetch(osc + "-osc." + platform)
+  fetch("" + osc + "-osc." + platform)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
         return Promise.resolve(response.blob());
@@ -257,8 +257,8 @@ function getInfo(osc, rowindex) {
       col = col.appendChild(document.createElement('input'));
       col.type = 'file';
       col.name = osc;
-      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : (osc == 'FM64' || osc == 'FM64P' || osc == 'FM69' ||osc == 'FM69P') ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
-      col.multiple = osc != 'Morpheus';
+      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus-U' ? '.wav' : osc == 'Morpheus-A' ? '.wav' : osc == 'Morpheus-P' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : (osc == 'FM64' || osc == 'FM64EG' || osc == 'FM69' ||osc == 'FM69P') ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
+      col.multiple = (osc != 'Morpheus-U' && osc != 'Morpheus-A' && osc != 'Morpheus-P');
       col.addEventListener('change', function() { handleFiles(this); }, true);
       col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
       col.type = 'text';
@@ -327,11 +327,38 @@ function pcm16toulaw(val) {
   }
 
   if (seg == 8)
-    return (0x7F ^ mask);
-  else {
+    val = 0x7F;
+  else
     val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
-    return (val ^ mask);
+
+  return (val ^ mask);
+}
+
+function pcm16toalaw(val) {
+  var mask;
+  var seg;
+  var t = 0x7FFF;
+
+  if (val > t) {
+    val = 0x8000 - (val & 0x7FFF) - 8;
+    mask = 0x55;
+  } else
+    mask = 0xD5;
+
+  for (seg = 8; seg > 0; seg--) {
+    if (val > t)
+      break;
+    t = t >> 1;
   }
+
+  if (seg == 8)
+    val = 0x7F;
+  else if (seg < 2)
+    val = (seg << 4) | ((val >> 4) & 0x0F);
+  else
+    val = (seg << 4) | ((val >> (seg + 3)) & 0x0F);
+
+  return (val ^ mask);
 }
 
 function handleFiles(f) {
@@ -384,7 +411,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM64" || osc === "FM64P") {
+      } else if (osc === "FM64" || osc === "FM64EG") {
         if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
@@ -633,7 +660,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "Morpheus") {
+      } else if (osc === "Morpheus-U") {
         if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
           if (data[0].length >= count[osc][0]) {
             status.innerHTML += "skipped (maximum wave file limit reached)";
@@ -666,7 +693,102 @@ function handleFiles(f) {
                       status.innerHTML += ", truncated to 16384 samples";
                     }
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                    data[0].push(array.slice(58, 16469))
+                    data[0].push(array.slice(58, 16442))
+                  }
+                  break;
+                default:
+                  status.innerHTML += "skipped (format not supported)";
+              }
+            } else {
+              status.innerHTML += "skipped (channel count not supported)";
+            }
+          }
+        } else {
+          status.innerHTML += "skipped unsupported file format";
+        }
+      } else if (osc === "Morpheus-A") {
+        if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
+          if (data[0].length >= count[osc][0]) {
+            status.innerHTML += "skipped (maximum wave file limit reached)";
+          } else {
+            if (array.slice(22, 24).join("") === "10") {
+              switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
+                case "10160": //16-bit PCM
+                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                  if (size < 32768) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                    status.innerHTML += "added transcoded from 16-bit PCM to A-law";
+                    if (size > 32768) {
+                      status.innerHTML += ", truncated to 16384 samples";
+                    }
+                    var newarray = new Uint8Array(16384);
+                    for (i = 0; i < newarray.length; i++)
+                      newarray[i] = pcm16toalaw(array[44 + i * 2] + (array[45 + i * 2] << 8));
+                    data[0].push(newarray);
+                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  }
+                  break;
+                case "6080": //A-Law
+                  var size = array[0x2E] + (array[0x2F] << 8) + (array[0x30] << 16) + (array[0x31] << 24);
+                  if (size < 16384) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                    status.innerHTML += "added A-law compressed file";
+                    if (size > 16384) {
+                      status.innerHTML += ", truncated to 16384 samples";
+                    }
+                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                    data[0].push(array.slice(58, 16442))
+                  }
+                  break;
+                default:
+                  status.innerHTML += "skipped (format not supported)";
+              }
+            } else {
+              status.innerHTML += "skipped (channel count not supported)";
+            }
+          }
+        } else {
+          status.innerHTML += "skipped unsupported file format";
+        }
+      } else if (osc === "Morpheus-P") {
+        if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
+          if (data[0].length >= count[osc][0]) {
+            status.innerHTML += "skipped (maximum wave file limit reached)";
+          } else {
+            if (array.slice(22, 24).join("") === "10") {
+              switch(array.slice(20, 22).join("") + array.slice(34, 36).join("")) {
+                case "10160": //16-bit PCM
+                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                  if (size < 32768) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                    status.innerHTML += "added transcoded from 16-bit PCM to 8-bit linear PCM";
+                    if (size > 32768) {
+                      status.innerHTML += ", truncated to 16384 samples";
+                    }
+                    var newarray = new Uint8Array(16384);
+                    for (i = 0; i < newarray.length; i++)
+                      newarray[i] = array[45 + i * 2];
+                    data[0].push(newarray);
+                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  }
+                  break;
+                case "1080": //PCM8
+                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
+                  if (size < 16384) {
+                    status.innerHTML += "skipped (sample count too small)";
+                  } else {
+                    status.innerHTML += "added 8-bit linear PCM file";
+                    if (size > 16384) {
+                      status.innerHTML += ", truncated to 16384 samples";
+                    }
+                    var newarray = new Uint8Array(16384);
+                    for (i = 0; i < newarray.length; i++)
+                      newarray[i] = (array[44 + i] + 0x80) & 0xFF;
+                    data[0].push(newarray);
+                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                   }
                   break;
                 default:
@@ -746,7 +868,7 @@ function onLoad() {
   offset = new Array();
   count = new Array();
   maxsize = new Array();
-  ["FM48", "FM64", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
+  ["FM48", "FM64", "FM66", "FM67", "FM68", "FM69", "Morpheus-U", "Morpheus-A", "Morpheus-P", "Anthologue"].map((e, i) => getInfo(e, i));
 }
 
 function setParam(param) {
@@ -805,7 +927,6 @@ USER OSCILLATORS
 </div>
 <table class="list" rules="rows" cellpadding="6" border="2" width="100%">
 <tr><th width="40px"/><th width="100px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">SHAPE</th><th width="100px">ALT</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="100px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
