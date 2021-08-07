@@ -36,6 +36,7 @@
 #define KIT_CENTER 60
 
 #define ALG_OUT_MASK 0x80
+#define ALG_FBK2_MASK 0x40
 #define ALG_FBK_MASK 0x20
 #define ALG_MOD2_MASK 0x10 //-
 #define ALG_MOD3_MASK 0x08 //1 (4op)

@@ -30,6 +30,13 @@
 #define FINE_TUNE //16-bit precision for cents/detune
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
+//#define FEEDBACK2 //second feedback
+
+#ifdef FEEDBACK2
+  #define FEEDBACK_COUNT 2
+#else
+  #define FEEDBACK_COUNT 1
+#endif
 
 #define FAST_POWF //native logue-sdk pow2f must be fixed, lost precesion (- ~6K bytes)
 //#define FASTER_POWF //not very precise (- ~6.3K bytes)
@@ -274,7 +281,7 @@ static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 static float s_egsrate_recip[OPERATOR_COUNT][2];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[OPERATOR_COUNT];
-static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
+static q31_t s_opval[OPERATOR_COUNT + FEEDBACK_COUNT * 2];
 static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_outlevel[OPERATOR_COUNT];
 #ifdef OP6
@@ -303,7 +310,6 @@ static q31_t s_comp[OPERATOR_COUNT];
 static uint8_t s_feedback_src;
 static uint8_t s_feedback_src_alg;
 static uint8_t s_feedback_dst_alg;
-static q31_t s_feedback_opval[2];
 
 #ifdef PEG
 static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
@@ -573,9 +579,10 @@ void initvoice(int32_t voice_index) {
 #endif
 #endif
   }
-  s_feedback_opval[0] = 0;
-  s_feedback_opval[1] = 0;
-  s_opval[OPERATOR_COUNT] = 0;
+  for (uint32_t i = 0; i < FEEDBACK_COUNT; i++) {
+    s_opval[OPERATOR_COUNT + i] = 0;
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + i] = 0;
+  }
   setAlgorithm();
   setFeedback();
   setOutLevel();
@@ -723,6 +730,17 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     osc_out = 0;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       modw0 = 0;
+#ifdef FEEDBACK2
+      __asm__ volatile ( \
+"lsls r1, %2, #25\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%3, %4]\n" \
+"addmi %0, %0, r1\n" \
+: "+r" (modw0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (28) \
+: "r1" \
+        );
+#endif
 #ifdef OP6
         __asm__ volatile ( \
 "lsls r1, %2, #26\n" \
@@ -812,9 +830,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
-    s_opval[OPERATOR_COUNT] = s_feedback_opval[0];
-    s_feedback_opval[0] = smmul(s_opval[s_feedback_src], s_feedback);
-    s_opval[OPERATOR_COUNT] += s_feedback_opval[0];
+    s_opval[OPERATOR_COUNT] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT] = smmul(s_opval[s_feedback_src], s_feedback);
+    s_opval[OPERATOR_COUNT] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
+#ifdef FEEDBACK2
+    s_opval[OPERATOR_COUNT + 1] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1];
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1] = smmul(s_opval[s_feedback_src], s_feedback);
+    s_opval[OPERATOR_COUNT + 1] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1];
+#endif
 #ifdef PEG
     if (
       s_sample_num < s_peg_sample_count[s_pegstage]
