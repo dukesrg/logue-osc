@@ -241,10 +241,14 @@ static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 10
 static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 #endif
-static float s_feedback_offset = 0.f;
-static float s_feedback_scale = 1.f;
-static uint8_t s_feedback_route = 0;
-static uint8_t s_feedback_level;
+static float s_feedback_offset[FEEDBACK_COUNT] = {0.f};
+#ifdef FEEDBACK2
+static float s_feedback_scale[FEEDBACK_COUNT] = {1.f, 1.f};
+#else
+static float s_feedback_scale[FEEDBACK_COUNT] = {1.f};
+#endif
+static uint8_t s_feedback_route[FEEDBACK_COUNT] = {0};
+static uint8_t s_feedback_level[FEEDBACK_COUNT];
 #ifdef WFBITS
 #ifdef OP6
 static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
@@ -268,7 +272,7 @@ static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 
 static q31_t s_velocity = 0;
-static q31_t s_feedback;
+static q31_t s_feedback[FEEDBACK_COUNT];
 
 static int8_t s_op_level[OPERATOR_COUNT];
 static float s_op_rate_scale[OPERATOR_COUNT];
@@ -307,9 +311,9 @@ static float s_level_scale_factor;
 
 static q31_t s_comp[OPERATOR_COUNT];
 
-static uint8_t s_feedback_src;
-static uint8_t s_feedback_src_alg;
-static uint8_t s_feedback_dst_alg;
+static uint8_t s_feedback_src[FEEDBACK_COUNT];
+static uint8_t s_feedback_src_alg[FEEDBACK_COUNT];
+static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT];
 
 #ifdef PEG
 static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
@@ -392,25 +396,25 @@ void setWaveform() {
 }
 #endif
 
-void setFeedback() {
-  float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
-  s_feedback = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
+void setFeedback(int32_t idx) {
+  float value = clipmaxf(s_feedback_level[idx] + s_feedback_offset[idx], 7.f);
+  s_feedback[idx] = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
 }
 
-void setFeedbackRoute() {
+void setFeedbackRoute(int32_t idx) {
   uint32_t dst;
-  if (s_feedback_route == 0) {
-    s_feedback_src = s_feedback_src_alg;
-    dst = s_feedback_dst_alg;
+  if (s_feedback_route[idx] == 0) {
+    s_feedback_src[idx] = s_feedback_src_alg[idx];
+    dst = s_feedback_dst_alg[idx];
   } else {
-    s_feedback_src = 6 - clipminmaxi32(1, s_feedback_route / 10, 6);
-    dst = 6 - clipminmaxi32(1, s_feedback_route % 10, 6);
+    s_feedback_src[idx] = 6 - clipminmaxi32(1, s_feedback_route[idx] / 10, 6);
+    dst = 6 - clipminmaxi32(1, s_feedback_route[idx] % 10, 6);
   }
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     if (i == dst)
-      s_algorithm[i] |= ALG_FBK_MASK;
+      s_algorithm[idx] |= ALG_FBK_MASK << idx;
     else
-      s_algorithm[i] &= ~ALG_FBK_MASK;
+      s_algorithm[idx] &= ~ALG_FBK_MASK << idx;
   }
 }
 
@@ -418,11 +422,14 @@ void setAlgorithm() {
   int32_t comp = 0;
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
-    if (s_algorithm[i] & ALG_FBK_MASK) {
-      s_feedback_src_alg = s_algorithm[i] & (ALG_FBK_MASK - 1);
-      s_feedback_dst_alg = i;
-      s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
-      setFeedbackRoute();
+    for (uint32_t fbidx = 0; fbidx < FEEDBACK_COUNT; fbidx++) {
+      s_feedback_dst_alg[fbidx] = OPERATOR_COUNT;
+      if (s_algorithm[i] & (ALG_FBK_MASK << fbidx)) {
+        s_feedback_src_alg[fbidx] = s_algorithm[i] & (ALG_FBK_MASK - 1);
+        s_feedback_dst_alg[fbidx] = i;
+        s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
+      }
+      setFeedbackRoute(fbidx);
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
@@ -449,7 +456,7 @@ void initvoice(int32_t voice_index) {
     s_algorithm_idx = voice->als;
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 
-    s_feedback_level = voice->fbl;
+    s_feedback_level[0] = voice->fbl;
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
@@ -513,7 +520,7 @@ void initvoice(int32_t voice_index) {
 #endif
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
-    s_feedback_level = voice->fbl;
+    s_feedback_level[0] = voice->fbl;
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
@@ -579,15 +586,15 @@ void initvoice(int32_t voice_index) {
 #endif
 #endif
   }
-  for (uint32_t i = 0; i < FEEDBACK_COUNT; i++) {
-    s_opval[OPERATOR_COUNT + i] = 0;
-    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + i] = 0;
-  }
   setAlgorithm();
-  setFeedback();
   setOutLevel();
   setKvsLevel();
   setVelocityLevel();
+  for (uint32_t i = 0; i < FEEDBACK_COUNT; i++) {
+    s_opval[OPERATOR_COUNT + i] = 0;
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + i] = 0;
+    setFeedback(i);
+  }
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
     s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
@@ -831,11 +838,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       }
     }
     s_opval[OPERATOR_COUNT] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
-    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT] = smmul(s_opval[s_feedback_src], s_feedback);
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT] = smmul(s_opval[s_feedback_src[0]], s_feedback[0]);
     s_opval[OPERATOR_COUNT] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
 #ifdef FEEDBACK2
     s_opval[OPERATOR_COUNT + 1] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1];
-    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1] = smmul(s_opval[s_feedback_src], s_feedback);
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1] = smmul(s_opval[s_feedback_src[1]], s_feedback[1]);
     s_opval[OPERATOR_COUNT + 1] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1];
 #endif
 #ifdef PEG
@@ -989,18 +996,33 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(13), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
     case CUSTOM_PARAM_ID(15):
-      s_feedback_offset = (value - 100) * .07f;
+      s_feedback_offset[0] = (value - 100) * .07f;
       goto setfeedback;
       break;
     case CUSTOM_PARAM_ID(16):
-      s_feedback_scale = value * .01f;
+      s_feedback_scale[0] = value * .01f;
 setfeedback:
-      setFeedback();
+      setFeedback(0);
       break;
     case CUSTOM_PARAM_ID(17):
-      s_feedback_route = value;
-      setFeedbackRoute();
+      s_feedback_route[0] = value;
+      setFeedbackRoute(0);
       break;
+#ifdef FEEDBACK2
+    case CUSTOM_PARAM_ID(138):
+      s_feedback_offset[1] = (value - 100) * .07f;
+      goto setfeedback2;
+      break;
+    case CUSTOM_PARAM_ID(139):
+      s_feedback_scale[1] = value * .01f;
+setfeedback2:
+      setFeedback(1);
+      break;
+    case CUSTOM_PARAM_ID(140):
+      s_feedback_route[1] = value;
+      setFeedbackRoute(1);
+      break;
+#endif
     case CUSTOM_PARAM_ID(18):
       s_algorithm_select = value;
       goto setalgorithm;
