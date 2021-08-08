@@ -31,6 +31,10 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define FEEDBACK2 //second feedback
+#define MOD16 //16-bit mod matrix processing
+#ifdef MOD16
+  #define FEEDBACK2 //second feedback is mandatory and 'free' for 16-bit mod matrix
+#endif
 
 #ifdef FEEDBACK2
   #define FEEDBACK_COUNT 2
@@ -208,6 +212,10 @@ static q31_t compensation[] = {
 #define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
 #define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
+#ifdef MOD16
+uint32_t s_modmatrix[OPERATOR_COUNT * ((OPERATOR_COUNT + FEEDBACK_COUNT) << 1)];
+#endif
+
 static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
 static uint8_t s_algorithm_select = 0;
@@ -285,7 +293,11 @@ static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 static float s_egsrate_recip[OPERATOR_COUNT][2];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[OPERATOR_COUNT];
+#ifdef MOD16
+static uint32_t s_opval[(OPERATOR_COUNT + FEEDBACK_COUNT * 2) << 1];
+#else
 static q31_t s_opval[OPERATOR_COUNT + FEEDBACK_COUNT * 2];
+#endif
 static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_outlevel[OPERATOR_COUNT];
 #ifdef OP6
@@ -590,18 +602,29 @@ void initvoice(int32_t voice_index) {
   setOutLevel();
   setKvsLevel();
   setVelocityLevel();
+
+#ifdef MOD16
+  for (uint32_t i = 0; i < (OPERATOR_COUNT + FEEDBACK_COUNT * 2) << 1; i++)
+    s_opval[i] = 0;
+  setFeedback(0);
+  setFeedback(1);
+#else
   for (uint32_t i = 0; i < FEEDBACK_COUNT; i++) {
     s_opval[OPERATOR_COUNT + i] = 0;
     s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + i] = 0;
     setFeedback(i);
   }
+#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
     s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
     s_egstage[i] = EG_STAGE_COUNT - 1;
     s_egval[i] = 0;
+#ifndef MOD16
     s_opval[i] = 0;
+#endif
   }
+
 #ifdef PEG
   uint32_t samples = 0;
   int32_t dl;
@@ -736,6 +759,46 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   for (uint32_t f = frames; f--; y++) {
     osc_out = 0;
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifdef MOD16
+#ifdef OP6
+      __asm__ volatile ( \
+"add %3, %3, %1, LSL #4\n" \
+"ldr.w r1, [%2, %4]\n" \
+"ldr.w r2, [%3, %4]\n" \
+"smuad %0, r1, r2\n" \
+"ldr.w r1, [%2, %5]\n" \
+"ldr.w r2, [%3, %5]\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2, %6]\n" \
+"ldr.w r2, [%3, %6]\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2, %7]\n" \
+"ldr.w r2, [%3, %7]\n" \
+"smlad %0, r1, r2, %0\n" \
+: "=r" (modw0) \
+: "r" (i), "r" (s_opval), "r" (s_modmatrix), "i" (0), "i" (4), "i" (8), "i" (12) \
+: "r1", "r2" \
+        );
+#else
+      __asm__ volatile ( \
+"add %3, %3, %1, LSL #2\n" \
+"add %3, %3, %1, LSL #3\n" \
+"ldr.w r1, [%2, %4]\n" \
+"ldr.w r2, [%3, %4]\n" \
+"smuad %0, r1, r2\n" \
+"ldr.w r1, [%2, %5]\n" \
+"ldr.w r2, [%3, %5]\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2, %6]\n" \
+"ldr.w r2, [%3, %6]\n" \
+"smlad %0, r1, r2, %0\n" \
+: "=r" (modw0) \
+: "r" (i), "r" (s_opval), "r" (s_modmatrix), "i" (0), "i" (4), "i" (8) \
+: "r1", "r2" \
+        );
+#endif
+
+#else
       modw0 = 0;
 #ifdef FEEDBACK2
       __asm__ volatile ( \
@@ -817,7 +880,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r1" \
         );
 #endif
-
+#endif
       modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
       s_phase[i] += opw0[i];
 
