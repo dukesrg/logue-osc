@@ -445,6 +445,68 @@ void setAlgorithm() {
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
+#ifdef MOD16
+#ifdef OP6
+    __asm__ volatile ( \
+"add %2, %2, %0, lsl #4\n" \
+"mov r1, %3\n" \
+"lsls r2, %1, #27\n" \
+"ite mi\n" \
+"mvnmi r2, %4\n" \
+"movpl r2, %3\n" \
+"pkhbt r1, r1, r2, lsl #16\n" \
+"str r1, [%2, %5]\n" \
+"lsls r1, %1, #28\n" \
+"ite mi\n" \
+"mvnmi r1, %4\n" \
+"movpl r1, %3\n" \
+"lsls r2, %1, #29\n" \
+"ite mi\n" \
+"mvnmi r2, %4\n" \
+"movpl r2, %3\n" \
+"pkhbt r1, r1, r2, lsl #16\n" \
+"str r1, [%2, %6]\n" \
+"lsls r1, %1, #30\n" \
+"ite mi\n" \
+"mvnmi r1, %4\n" \
+"movpl r1, %3\n" \
+"lsls r2, %1, #31\n" \
+"ite mi\n" \
+"mvnmi r2, %4\n" \
+"movpl r2, %3\n" \
+"pkhbt r1, r1, r2, lsl #16\n" \
+"str r1, [%2, %7]\n" \
+: \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_modmatrix), "i" (0), "i" (0x80008000), "i" (4), "i" (8), "i" (12) \
+: "r1", "r2" \
+    );
+#else
+    __asm__ volatile ( \
+"add %2, %2, %0, lsl #2\n" \
+"add %2, %2, %0, lsl #3\n" \
+"mov r1, %3\n" \
+"lsls r2, %1, #29\n" \
+"ite mi\n" \
+"mvnmi r2, %4\n" \
+"movpl r2, %3\n" \
+"pkhbt r1, r1, r2, lsl #16\n" \
+"str r1, [%2, %5]\n" \
+"lsls r1, %1, #30\n" \
+"ite mi\n" \
+"mvnmi r1, %4\n" \
+"movpl r1, %3\n" \
+"lsls r2, %1, #31\n" \
+"ite mi\n" \
+"mvnmi r2, %4\n" \
+"movpl r2, %3\n" \
+"pkhbt r1, r1, r2, lsl #16\n" \
+"str r1, [%2, %6]\n" \
+: \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_modmatrix), "i" (0), "i" (0x80008000), "i" (4), "i" (8) \
+: "r1", "r2" \
+    );
+#endif
+#endif
   }
 //  s_comp = compensation[comp];
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
