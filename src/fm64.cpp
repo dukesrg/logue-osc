@@ -31,7 +31,8 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define FEEDBACK2 //second feedback
-//#define MOD16 //16-bit mod matrix processing
+#define MOD16 //16-bit mod matrix processing
+
 #ifdef MOD16
   #define FEEDBACK2 //second feedback is mandatory and 'free' for 16-bit mod matrix
 #endif
@@ -777,10 +778,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
-#ifndef MOD16
+//#ifndef MOD16
     osc_out = 0;
-#endif
+//#endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+      modw0 = 0;
 #ifdef MOD16
 #ifdef OP6
       __asm__ volatile ( \
@@ -797,9 +799,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldr r0, [%2, #12]\n" \
 "ldr r1, [%3, #12]\n" \
 "smlad %0, r0, r1, %0\n" \
-: "=r" (modw0) \
+: "+r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "r0", "r1" \
+: "memory", "r0", "r1" \
         );
 #else
       __asm__ volatile ( \
@@ -814,13 +816,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldr r0, [%2, #8]\n" \
 "ldr r1, [%3, #8]\n" \
 "smlad %0, r0, r1, %0\n" \
-: "=r" (modw0) \
+: "+r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "r0", "r1" \
+: "memory", "r0", "r1" \
         );
 #endif
 #else
-      modw0 = 0;
 #ifdef FEEDBACK2
       __asm__ volatile ( \
 "lsls r1, %2, #25\n" \
@@ -958,9 +959,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "str r0, [%1, #16]\n" \
 "sadd16 r0, r0, r2\n" \
 "str r0, [%1, #12]\n" \
-: "=r" (osc_out) \
+: "+r" (osc_out) \
 : "r" (s_opval), "r" (s_comp), "r" (s_feedback_src), "r" (s_feedback) \
-: "r0", "r1", "r2" \
+: "memory", "r0", "r1", "r2" \
         );
 #else
       __asm__ volatile ( \
@@ -985,9 +986,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "str r0, [%1, #12]\n" \
 "sadd16 r0, r0, r2\n" \
 "str r0, [%1, #8]\n" \
-: "=r" (osc_out) \
+: "+r" (osc_out) \
 : "r" (s_opval), "r" (s_comp), "r" (s_feedback_src), "r" (s_feedback) \
-: "r0", "r1", "r2" \
+: "memory", "r0", "r1", "r2" \
         );
 #endif
 #else
