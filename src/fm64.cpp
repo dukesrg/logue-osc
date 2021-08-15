@@ -332,12 +332,12 @@ static float s_release_rate_exp_factor;
 static float s_level_scale_factor;
 
 #ifdef MOD16
-static q15_t s_comp[OPERATOR_COUNT + FEEDBACK_COUNT];
+static q15_t s_comp[OPERATOR_COUNT];
 #else
 static q31_t s_comp[OPERATOR_COUNT];
-static q31_t s_feedback[FEEDBACK_COUNT];
 #endif
 
+static q31_t s_feedback[FEEDBACK_COUNT];
 static uint8_t s_feedback_src[FEEDBACK_COUNT];
 static uint8_t s_feedback_src_alg[FEEDBACK_COUNT];
 static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT];
@@ -425,11 +425,7 @@ void setWaveform() {
 
 void setFeedback(int32_t idx) {
   float value = clipmaxf(s_feedback_level[idx] + s_feedback_offset[idx], 7.f);
-#ifdef MOD16
-  s_comp[OPERATOR_COUNT + idx] = value <= 0.f ? 0 : f32_to_q15(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
-#else
   s_feedback[idx] = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
-#endif
 }
 
 void setFeedbackRoute(int32_t idx) {
@@ -472,129 +468,19 @@ void setAlgorithm() {
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
 #ifdef MOD16
-
-#ifdef OP6
-    __asm__ volatile ( \
-"add %2, %2, %0, lsl #4\n" \
-"eor r0, r0\n" \
-"strh r0, [%2, #0]\n" \
-"mvn r1, #0x8000\n" \
-"teq r0, %1, lsl #31\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #2]\n" \
-"strhmi r1, [%2, #2]\n" \
-"teq r0, %1, lsl #30\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #4]\n" \
-"strhmi r1, [%2, #4]\n" \
-"teq r0, %1, lsl #29\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #6]\n" \
-"strhmi r1, [%2, #6]\n" \
-"teq r0, %1, lsl #28\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #8]\n" \
-"strhmi r1, [%2, #8]\n" \
-"teq r0, %1, lsl #27\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #10]\n" \
-"strhmi r1, [%2, #10]\n" \
-: \
-: "r" (i), "r" (s_algorithm[i]), "r" (s_modmatrix) \
-: "r0", "r1" \
-    );
-#else
-    __asm__ volatile ( \
-"add %2, %2, %0, lsl #2\n" \
-"add %2, %2, %0, lsl #3\n" \
-"eor r0, r0\n" \
-"strh r0, [%2, #0]\n" \
-"mvn r1, #0x8000\n" \
-"teq r0, %1, lsl #31\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #2]\n" \
-"strhmi r1, [%2, #2]\n" \
-"teq r0, %1, lsl #30\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #4]\n" \
-"strhmi r1, [%2, #4]\n" \
-"teq r0, %1, lsl #29\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #6]\n" \
-"strhmi r1, [%2, #6]\n" \
-: \
-: "r" (i), "r" (s_algorithm[i]), "r" (s_modmatrix) \
-: "r0", "r1" \
-    );
-#endif
+    for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
+      if (s_algorithm[i] & (1 << j))
+        s_modmatrix[i][j] = 0x7FFF;
+      else
+        s_modmatrix[i][j] = 0;
+    }
 #endif
   }
-#ifdef MOD16
-#ifdef OP6
-  __asm__ volatile ( \
-"ldr r1, [%0, #0]\n" \
-"eor r0, r0\n" \
-"teq r0, r1, lsl #24\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #0]\n" \
-"strhmi %1, [%2, #0]\n" \
-"teq r0, r1, lsl #16\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #2]\n" \
-"strhmi %1, [%2, #2]\n" \
-"teq r0, r1, lsl #8\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #4]\n" \
-"strhmi %1, [%2, #4]\n" \
-"teq r0, r1, lsl #0\n" \
-"ldrh r1, [%0, #4]\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #6]\n" \
-"strhmi %1, [%2, #6]\n" \
-"teq r0, r1, lsl #24\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #8]\n" \
-"strhmi %1, [%2, #8]\n" \
-"teq r0, r1, lsl #16\n" \
-"ite pl\n" \
-"strhpl r1, [%2, #10]\n" \
-"strhmi %1, [%2, #10]\n" \
-: \
-: "r" (s_algorithm), "r" (compensation[comp]), "r" (s_comp) \
-: "r0", "r1" \
-  );
-#else
-  __asm__ volatile ( \
-"ldr r1, [%0, #0]\n" \
-"eor r0, r0\n" \
-"teq r0, r1, lsl #24\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #0]\n" \
-"strhmi %1, [%2, #0]\n" \
-"teq r0, r1, lsl #16\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #2]\n" \
-"strhmi %1, [%2, #2]\n" \
-"teq r0, r1, lsl #8\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #4]\n" \
-"strhmi %1, [%2, #4]\n" \
-"teq r0, r1, lsl #0\n" \
-"ite pl\n" \
-"strhpl r0, [%2, #6]\n" \
-"strhmi %1, [%2, #6]\n" \
-: \
-: "r" (s_algorithm), "r" (compensation[comp]), "r" (s_comp) \
-: "r0", "r1" \
-  );
-#endif
-#else
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
     if (s_algorithm[i] & ALG_OUT_MASK)
       s_comp[i] = compensation[comp];
     else
       s_comp[i] = 0;
-#endif
 #ifdef WFBITS
   setWaveform();
 #endif
@@ -1040,12 +926,18 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
       s_phase[i] += opw0[i];
 
+#ifdef MOD16
+#ifdef WFBITS
+      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+#else
+      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+#endif
+#else
 #ifdef WFBITS
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #else
       s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #endif
-#ifndef MOD16
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
 #endif
       if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
@@ -1070,20 +962,22 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "smlad %0, r0, r1, %0\n" \
 "lsl %0, %0, #1\n" \
 
-"ldr r3, [%2, #12]\n //fbk 1&2 values" \
-"ldrb r2, [%3, #0]\n //fbk 1 src op" \
-"ldrh r0, [%1, r2, lsl #1]\n //fbk 1 src op out" \
-"ldrh r2, [%1, #16]\n //old fbk 1" \
-"smlabb r0, r0, r3, r2\n //new fbk 1 = old fbk 1 + fbk 1 src op out * fbk 1 value" \
-"ldrb r2, [%3, #1]\n //fbk 2 src op" \
-"ldrh r1, [%1, r2, lsl #1]\n //fbk 2 src op out" \
-"ldrh r2, [%1, #18]\n //old fbk 2" \
-"smlabt r1, r1, r3, r2\n //new fbk 2 = old fbk 2 + fbk 2 src op out * fbk 2 value" \
-"pkhtb r0, r1, r0, asr #16\n //pack fbk 1&2 values" \
-"str r0, [%1, #12]\n //store fbk 1&2 values" \
+"ldrb r2, [%3, #0]\n" \
+"ldrh r0, [%1, r2, lsl #1]\n" \
+"ldr r2, [%4, #0]\n" \
+"smulwb r0, r2, r0\n" \
+"ldrb r2, [%3, #1]\n" \
+"ldrh r1, [%1, r2, lsl #1]\n" \
+"ldr r2, [%4, #4]\n" \
+"smulwb r1, r2, r1\n" \
+"ldr r2, [%1, #16]\n" \
+"pkhtb r0, r1, r0, asr #16\n" \
+"str r0, [%1, #16]\n" \
+"sadd16 r0, r0, r2\n" \
+"str r0, [%1, #12]\n" \
 : "=r" (osc_out) \
-: "r" (s_opval), "r" (s_comp), "r" (s_feedback_src) \
-: "r0", "r1", "r2", "r3" \
+: "r" (s_opval), "r" (s_comp), "r" (s_feedback_src), "r" (s_feedback) \
+: "r0", "r1", "r2" \
         );
 #else
       __asm__ volatile ( \
@@ -1095,20 +989,22 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "smlad %0, r0, r1, %0\n" \
 "lsl %0, %0, #1\n" \
 
-"ldr r3, [%2, #8]\n //fbk 1&2 values" \
-"ldrb r2, [%3, #0]\n //fbk 1 src op" \
-"ldrh r0, [%1, r2, lsl #1]\n //fbk 1 src op out" \
-"ldrh r2, [%1, #16]\n //old fbk 1" \
-"smlabb r0, r0, r3, r2\n //new fbk 1 = old fbk 1 + fbk 1 src op out * fbk 1 value" \
-"ldrb r2, [%3, #4]\n //fbk 2 src op" \
-"ldrh r1, [%1, r2, lsl #1]\n //fbk 2 src op out" \
-"ldrh r2, [%1, #18]\n //old fbk 2" \
-"smlabt r1, r1, r3, r2\n //new fbk 2 = old fbk 2 + fbk 2 src op out * fbk 2 value" \
-"pkhtb r0, r1, r0, asr #16\n //pack fbk 1&2 values" \
-"str r0, [%1, #12]\n //store fbk 1&2 values" \
+"ldrb r2, [%3, #0]\n" \
+"ldrh r0, [%1, r2, lsl #1]\n" \
+"ldr r2, [%4, #0]\n" \
+"smulwb r0, r2, r0\n" \
+"ldrb r2, [%3, #1]\n" \
+"ldrh r1, [%1, r2, lsl #1]\n" \
+"ldr r2, [%4, #4]\n" \
+"smulwb r1, r2, r1\n" \
+"ldr r2, [%1, #12]\n" \
+"pkhtb r0, r1, r0, asr #16\n" \
+"str r0, [%1, #12]\n" \
+"sadd16 r0, r0, r2\n" \
+"str r0, [%1, #8]\n" \
 : "=r" (osc_out) \
-: "r" (s_opval), "r" (s_comp), "r" (s_feedback_src) \
-: "r0", "r1", "r2", "r3" \
+: "r" (s_opval), "r" (s_comp), "r" (s_feedback_src), "r" (s_feedback) \
+: "r0", "r1", "r2" \
         );
 #endif
 #else
