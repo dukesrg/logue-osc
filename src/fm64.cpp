@@ -445,7 +445,7 @@ void setFeedbackRoute(int32_t idx) {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef MOD16
     if (i == dst)
-      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7FFF;
+      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7A92;
     else
       s_modmatrix[i][OPERATOR_COUNT + idx] = 0;
 #else
@@ -474,7 +474,7 @@ void setAlgorithm() {
 #ifdef MOD16
     for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
       if (s_algorithm[i] & (1 << j))
-        s_modmatrix[i][j] = 0x7FFF;
+        s_modmatrix[i][j] = 0x7A92;
       else
         s_modmatrix[i][j] = 0;
     }
@@ -789,19 +789,19 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "add %3, %3, %1, lsl #4\n" \
 "ldr r0, [%2, #0]\n" \
 "ldr r1, [%3, #0]\n" \
-"smuad %0, r0, r1\n" \
+"smlald %0, r2, r0, r1\n" \
 "ldr r0, [%2, #4]\n" \
 "ldr r1, [%3, #4]\n" \
-"smlad %0, r0, r1, %0\n" \
+"smlald %0, r2, r0, r1\n" \
 "ldr r0, [%2, #8]\n" \
 "ldr r1, [%3, #8]\n" \
-"smlad %0, r0, r1, %0\n" \
+"smlald %0, r2, r0, r1\n" \
 "ldr r0, [%2, #12]\n" \
 "ldr r1, [%3, #12]\n" \
-"smlad %0, r0, r1, %0\n" \
+"smlald %0, r2, r0, r1\n" \
 : "+r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "memory", "r0", "r1" \
+: "memory", "r0", "r1", "r2" \
         );
 #else
       __asm__ volatile ( \
@@ -904,7 +904,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #endif
 #endif
 #ifdef MOD16
-      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 4) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+//      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 4) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+//      modw0 = (modw0 << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+      modw0 = (modw0 << 2) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
 #else
       modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
 #endif
@@ -944,7 +946,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldr r0, [%1, #8]\n" \
 "ldr r1, [%2, #8]\n" \
 "smlad %0, r0, r1, %0\n" \
-"lsl %0, %0, #1\n" \
+"// lsl %0, %0, #1\n" \
 
 "ldrb r2, [%3, #0]\n" \
 "ldrh r0, [%1, r2, lsl #1]\n" \
