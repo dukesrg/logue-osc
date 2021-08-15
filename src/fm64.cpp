@@ -213,7 +213,7 @@ static q31_t compensation[] = {
 #define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
 #ifdef MOD16
-uint32_t s_modmatrix[OPERATOR_COUNT * ((OPERATOR_COUNT + FEEDBACK_COUNT) << 1)];
+uint32_t s_modmatrix[OPERATOR_COUNT * ((OPERATOR_COUNT + FEEDBACK_COUNT) >> 1)];
 #endif
 
 static uint8_t s_algorithm_idx;
@@ -294,7 +294,7 @@ static float s_egsrate_recip[OPERATOR_COUNT][2];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[OPERATOR_COUNT];
 #ifdef MOD16
-static uint32_t s_opval[(OPERATOR_COUNT + FEEDBACK_COUNT * 2) << 1];
+static uint32_t s_opval[(OPERATOR_COUNT + FEEDBACK_COUNT * 2) >> 1];
 #else
 static q31_t s_opval[OPERATOR_COUNT + FEEDBACK_COUNT * 2];
 #endif
@@ -449,60 +449,60 @@ void setAlgorithm() {
 #ifdef OP6
     __asm__ volatile ( \
 "add %2, %2, %0, lsl #4\n" \
-"mov r1, %3\n" \
+"mov r1, #0\n" \
 "lsls r2, %1, #27\n" \
 "ite mi\n" \
-"mvnmi r2, %4\n" \
-"movpl r2, %3\n" \
+"mvnmi r2, #0x80008000\n" \
+"movpl r2, #0\n" \
 "pkhbt r1, r1, r2, lsl #16\n" \
-"str r1, [%2, %5]\n" \
+"str r1, [%2], #4\n" \
 "lsls r1, %1, #28\n" \
 "ite mi\n" \
-"mvnmi r1, %4\n" \
-"movpl r1, %3\n" \
+"mvnmi r1, #0x80008000\n" \
+"movpl r1, #0\n" \
 "lsls r2, %1, #29\n" \
 "ite mi\n" \
-"mvnmi r2, %4\n" \
-"movpl r2, %3\n" \
+"mvnmi r2, #0x80008000\n" \
+"movpl r2, #0\n" \
 "pkhbt r1, r1, r2, lsl #16\n" \
-"str r1, [%2, %6]\n" \
+"str r1, [%2], #4\n" \
 "lsls r1, %1, #30\n" \
 "ite mi\n" \
-"mvnmi r1, %4\n" \
-"movpl r1, %3\n" \
+"mvnmi r1, #0x80008000\n" \
+"movpl r1, #0\n" \
 "lsls r2, %1, #31\n" \
 "ite mi\n" \
-"mvnmi r2, %4\n" \
-"movpl r2, %3\n" \
+"mvnmi r2, #0x80008000\n" \
+"movpl r2, #0\n" \
 "pkhbt r1, r1, r2, lsl #16\n" \
-"str r1, [%2, %7]\n" \
+"str r1, [%2], #4\n" \
 : \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_modmatrix), "i" (0), "i" (0x80008000), "i" (4), "i" (8), "i" (12) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_modmatrix) \
 : "r1", "r2" \
     );
 #else
     __asm__ volatile ( \
 "add %2, %2, %0, lsl #2\n" \
 "add %2, %2, %0, lsl #3\n" \
-"mov r1, %3\n" \
+"mov r1, #0\n" \
 "lsls r2, %1, #29\n" \
 "ite mi\n" \
-"mvnmi r2, %4\n" \
-"movpl r2, %3\n" \
+"mvnmi r2, #0x80008000\n" \
+"movpl r2, #0\n" \
 "pkhbt r1, r1, r2, lsl #16\n" \
-"str r1, [%2, %5]\n" \
+"str r1, [%2], #4\n" \
 "lsls r1, %1, #30\n" \
 "ite mi\n" \
-"mvnmi r1, %4\n" \
-"movpl r1, %3\n" \
+"mvnmi r1, #0x80008000\n" \
+"movpl r1, #0\n" \
 "lsls r2, %1, #31\n" \
 "ite mi\n" \
-"mvnmi r2, %4\n" \
-"movpl r2, %3\n" \
+"mvnmi r2, #0x80008000\n" \
+"movpl r2, #0\n" \
 "pkhbt r1, r1, r2, lsl #16\n" \
-"str r1, [%2, %6]\n" \
+"str r1, [%2], #4\n" \
 : \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_modmatrix), "i" (0), "i" (0x80008000), "i" (4), "i" (8) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_modmatrix) \
 : "r1", "r2" \
     );
 #endif
@@ -666,7 +666,7 @@ void initvoice(int32_t voice_index) {
   setVelocityLevel();
 
 #ifdef MOD16
-  for (uint32_t i = 0; i < (OPERATOR_COUNT + FEEDBACK_COUNT * 2) << 1; i++)
+  for (uint32_t i = 0; i < (OPERATOR_COUNT + FEEDBACK_COUNT * 2) >> 1; i++)
     s_opval[i] = 0;
   setFeedback(0);
   setFeedback(1);
@@ -715,6 +715,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 {
   if (s_state) {
   if (s_state == state_noteon) {
+#ifdef MOD16
+    for (uint32_t i = 0; i < OPERATOR_COUNT >> 1; i++) {
+      s_opval[i] = 0;
+    }
+#endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
         s_egsrate[i][j] = s_egsrate[i][j + EG_STAGE_COUNT];
@@ -724,7 +729,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       if (s_opi)
         s_phase[i] = 0;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
+#ifndef MOD16
       s_opval[i] = 0;
+#endif
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 //      setLevel();
 // make it non-negative and apply -96dB to further fit EG level
@@ -819,43 +826,45 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
   q31_t * __restrict y = (q31_t *)yn;
   for (uint32_t f = frames; f--; y++) {
+#ifndef MOD16
     osc_out = 0;
+#endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef MOD16
 #ifdef OP6
       __asm__ volatile ( \
-"add %3, %3, %1, LSL #4\n" \
-"ldr.w r1, [%2, %4]\n" \
-"ldr.w r2, [%3, %4]\n" \
+"add %3, %3, %1, lsl #4\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smuad %0, r1, r2\n" \
-"ldr.w r1, [%2, %5]\n" \
-"ldr.w r2, [%3, %5]\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smlad %0, r1, r2, %0\n" \
-"ldr.w r1, [%2, %6]\n" \
-"ldr.w r2, [%3, %6]\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smlad %0, r1, r2, %0\n" \
-"ldr.w r1, [%2, %7]\n" \
-"ldr.w r2, [%3, %7]\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smlad %0, r1, r2, %0\n" \
 : "=r" (modw0) \
-: "r" (i), "r" (s_opval), "r" (s_modmatrix), "i" (0), "i" (4), "i" (8), "i" (12) \
+: "r" (i), "r" (s_opval), "r" (s_modmatrix) \
 : "r1", "r2" \
         );
 #else
       __asm__ volatile ( \
-"add %3, %3, %1, LSL #2\n" \
-"add %3, %3, %1, LSL #3\n" \
-"ldr.w r1, [%2, %4]\n" \
-"ldr.w r2, [%3, %4]\n" \
+"add %3, %3, %1, lsl #2\n" \
+"add %3, %3, %1, lsl #3\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smuad %0, r1, r2\n" \
-"ldr.w r1, [%2, %5]\n" \
-"ldr.w r2, [%3, %5]\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smlad %0, r1, r2, %0\n" \
-"ldr.w r1, [%2, %6]\n" \
-"ldr.w r2, [%3, %6]\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
 "smlad %0, r1, r2, %0\n" \
 : "=r" (modw0) \
-: "r" (i), "r" (s_opval), "r" (s_modmatrix), "i" (0), "i" (4), "i" (8) \
+: "r" (i), "r" (s_opval), "r" (s_modmatrix) \
 : "r1", "r2" \
         );
 #endif
@@ -943,7 +952,11 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         );
 #endif
 #endif
+#ifdef MOD16
+      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 4) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+#else
       modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+#end
       s_phase[i] += opw0[i];
 
 #ifdef WFBITS
@@ -951,9 +964,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #else
       s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #endif
-
+#ifndef MOD16
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
-
+#endif
       if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
         s_egval[i] = q31add(s_egval[i], s_egsrate[i][s_egstage[i]]);
       } else {
@@ -962,6 +975,47 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
+#ifdef MOD16
+#ifdef OP6
+      __asm__ volatile ( \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smuad %0, r1, r2\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smlad %0, r1, r2, %0\n" \
+"lsl %0, #1\n" \
+: "=r" (osc_out) \
+: "r" (i), "r" (s_opval), "r" (s_comp) \
+: "r1", "r2" \
+        );
+#else
+      __asm__ volatile ( \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smuad %0, r1, r2\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smlad %0, r1, r2, %0\n" \
+"ldr.w r1, [%2], #4\n" \
+"ldr.w r2, [%3], #4\n" \
+"smlad %0, r1, r2, %0\n" \
+"lsl %0, #1\n" \
+: "=r" (osc_out) \
+: "r" (i), "r" (s_opval), "r" (s_comp) \
+: "r1", "r2" \
+        );
+#endif
+#endif
     s_opval[OPERATOR_COUNT] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
     s_opval[OPERATOR_COUNT + FEEDBACK_COUNT] = smmul(s_opval[s_feedback_src[0]], s_feedback[0]);
     s_opval[OPERATOR_COUNT] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
