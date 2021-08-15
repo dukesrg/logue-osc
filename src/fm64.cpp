@@ -31,7 +31,7 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define FEEDBACK2 //second feedback
-#define MOD16 //16-bit mod matrix processing
+//#define MOD16 //16-bit mod matrix processing
 #ifdef MOD16
   #define FEEDBACK2 //second feedback is mandatory and 'free' for 16-bit mod matrix
 #endif
@@ -340,7 +340,11 @@ static q31_t s_comp[OPERATOR_COUNT];
 static q31_t s_feedback[FEEDBACK_COUNT];
 static uint8_t s_feedback_src[FEEDBACK_COUNT];
 static uint8_t s_feedback_src_alg[FEEDBACK_COUNT];
-static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT];
+#ifdef FEEDBACK2
+static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT] = {OPERATOR_COUNT, OPERATOR_COUNT};
+#else
+static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT] = {OPERATOR_COUNT};
+#endif
 
 #ifdef PEG
 static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
@@ -434,8 +438,8 @@ void setFeedbackRoute(int32_t idx) {
     s_feedback_src[idx] = s_feedback_src_alg[idx];
     dst = s_feedback_dst_alg[idx];
   } else {
-    s_feedback_src[idx] = 6 - clipminmaxi32(1, s_feedback_route[idx] / 10, 6);
-    dst = 6 - clipminmaxi32(1, s_feedback_route[idx] % 10, 6);
+    s_feedback_src[idx] = OPERATOR_COUNT - clipminmaxi32(1, s_feedback_route[idx] / 10, OPERATOR_COUNT);
+    dst = OPERATOR_COUNT - clipminmaxi32(1, s_feedback_route[idx] % 10, OPERATOR_COUNT);
   }
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef MOD16
@@ -457,7 +461,6 @@ void setAlgorithm() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
     for (uint32_t fbidx = 0; fbidx < FEEDBACK_COUNT; fbidx++) {
-      s_feedback_dst_alg[fbidx] = OPERATOR_COUNT;
       if (s_algorithm[i] & (ALG_FBK_MASK << fbidx)) {
         s_feedback_src_alg[fbidx] = s_algorithm[i] & (ALG_FBK_MASK - 1);
         s_feedback_dst_alg[fbidx] = i;
@@ -631,27 +634,15 @@ void initvoice(int32_t voice_index) {
   setOutLevel();
   setKvsLevel();
   setVelocityLevel();
-
-#ifdef MOD16
-  for (uint32_t i = 0; i < (OPERATOR_COUNT + FEEDBACK_COUNT * 2) >> 1; i++)
-    s_opval[i] = 0;
-  setFeedback(0);
-  setFeedback(1);
-#else
-  for (uint32_t i = 0; i < FEEDBACK_COUNT; i++) {
-    s_opval[OPERATOR_COUNT + i] = 0;
-    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + i] = 0;
+  for (uint32_t i = 0; i < FEEDBACK_COUNT; i++)
     setFeedback(i);
-  }
-#endif
+  for (uint32_t i = 0; i < OPERATOR_COUNT + FEEDBACK_COUNT * 2; i++)
+    s_opval[i] = 0;
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
     s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
     s_egstage[i] = EG_STAGE_COUNT - 1;
     s_egval[i] = 0;
-#ifndef MOD16
-    s_opval[i] = 0;
-#endif
   }
 
 #ifdef PEG
@@ -682,11 +673,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 {
   if (s_state) {
   if (s_state == state_noteon) {
-#ifdef MOD16
-    for (uint32_t i = 0; i < OPERATOR_COUNT >> 1; i++) {
-      s_opval[i] = 0;
-    }
-#endif
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
         s_egsrate[i][j] = s_egsrate[i][j + EG_STAGE_COUNT];
@@ -696,9 +682,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       if (s_opi)
         s_phase[i] = 0;
 //todo: to reset or not to reset - that is the question (stick with the operator phase init)
-#ifndef MOD16
       s_opval[i] = 0;
-#endif
       s_egval[i] = s_eglevel[i][EG_STAGE_COUNT - 1];
 //      setLevel();
 // make it non-negative and apply -96dB to further fit EG level
@@ -815,7 +799,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "smlad %0, r0, r1, %0\n" \
 : "=r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "r0", "r0" \
+: "r0", "r1" \
         );
 #else
       __asm__ volatile ( \
@@ -835,7 +819,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r0", "r1" \
         );
 #endif
-
 #else
       modw0 = 0;
 #ifdef FEEDBACK2
