@@ -31,7 +31,7 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define FEEDBACK2 //second feedback
-#define MOD16 //16-bit mod matrix processing
+//#define MOD16 //16-bit mod matrix processing
 
 #ifdef MOD16
   #define FEEDBACK2 //second feedback is mandatory and 'free' for 16-bit mod matrix
@@ -268,7 +268,7 @@ static float s_feedback_scale[FEEDBACK_COUNT] = {1.f, 1.f};
 static float s_feedback_scale[FEEDBACK_COUNT] = {1.f};
 #endif
 static uint8_t s_feedback_route[FEEDBACK_COUNT] = {0};
-static uint8_t s_feedback_level[FEEDBACK_COUNT];
+static uint8_t s_feedback_level[FEEDBACK_COUNT] = {0};
 #ifdef WFBITS
 #ifdef OP6
 static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
@@ -320,8 +320,8 @@ static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FA
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
 #endif
-static uint32_t s_klsoffset[OPERATOR_COUNT] = {0};
-static uint32_t s_egrateoffset[OPERATOR_COUNT] = {0};
+static int16_t s_klsoffset[OPERATOR_COUNT] = {0};
+static int16_t s_egrateoffset[OPERATOR_COUNT] = {0};
 static float s_krsoffset[OPERATOR_COUNT] = {0.f};
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_kvslevel[OPERATOR_COUNT];
@@ -428,12 +428,12 @@ void setWaveform() {
 }
 #endif
 
-void setFeedback(int32_t idx) {
+void setFeedback(uint32_t idx) {
   float value = clipmaxf(s_feedback_level[idx] + s_feedback_offset[idx], 7.f);
   s_feedback[idx] = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
 }
 
-void setFeedbackRoute(int32_t idx) {
+void setFeedbackRoute(uint32_t idx) {
   uint32_t dst;
   if (s_feedback_route[idx] == 0) {
     s_feedback_src[idx] = s_feedback_src_alg[idx];
@@ -482,7 +482,7 @@ void setAlgorithm() {
   }
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
     if (s_algorithm[i] & ALG_OUT_MASK)
-      s_comp[i] = compensation[comp];
+      s_comp[i] = compensation[comp - 1];
     else
       s_comp[i] = 0;
 #ifdef WFBITS
@@ -490,6 +490,7 @@ void setAlgorithm() {
 #endif
 }
 
+static inline __attribute__((optimize("Ofast"), always_inline))
 void initvoice(int32_t voice_index) {
   voice_index %= BANK_COUNT * BANK_SIZE;
   if (voice_index < 0)
@@ -946,7 +947,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldr r0, [%1, #8]\n" \
 "ldr r1, [%2, #8]\n" \
 "smlad %0, r0, r1, %0\n" \
-"// lsl %0, %0, #1\n" \
+"lsl %0, %0, #1\n" \
 
 "ldrb r2, [%3, #0]\n" \
 "ldrh r0, [%1, r2, lsl #1]\n" \
