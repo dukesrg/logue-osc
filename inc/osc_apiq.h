@@ -130,6 +130,17 @@ q31_t osc_sinq(q31_t x) {
   const q31_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
   return (x0p < k_wt_sine_size)?y0:-y0;
 }
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q15_t osc_sinq(q15_t x) {
+  x &= 0x7FFF;
+  uint16_t x0p = x >> (15 - k_wt_sine_size_exp - 1);
+  const uint16_t x0 = x0p & k_wt_sine_mask;
+  const uint16_t x1 = (x0 + 1) & k_wt_sine_mask;
+  const q15_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFF;
+  const q15_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  return (x0p < k_wt_sine_size)?y0:-y0;
+}
 #endif
 
 #ifdef OSC_SAW_Q

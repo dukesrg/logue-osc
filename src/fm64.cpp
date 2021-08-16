@@ -31,7 +31,7 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define FEEDBACK2 //second feedback
-//#define MOD16 //16-bit mod matrix processing
+#define MOD16 //16-bit mod matrix processing
 
 #ifdef MOD16
   #define FEEDBACK2 //second feedback is mandatory and 'free' for 16-bit mod matrix
@@ -917,7 +917,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #else
-      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+//      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+      s_opval[i] = smmul(osc_sin((q15_t)(modw0 >> 16)), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #endif
 #else
 #ifdef WFBITS

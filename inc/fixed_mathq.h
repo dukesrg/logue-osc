@@ -37,6 +37,11 @@ q31_t linintq(const q31_t fr, const q15_t x0, const q15_t x1) {
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))
+q15_t linintq(const q15_t fr, const q15_t x0, const q15_t x1) {
+  return x0 + ((fr * (x1 - x0)) >> 15);
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t clipmaxq(const q31_t x, const q31_t m)
 {
   return (((x)>=m)?m:(x));
