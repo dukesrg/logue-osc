@@ -257,7 +257,7 @@ function getInfo(osc, rowindex) {
       col = col.appendChild(document.createElement('input'));
       col.type = 'file';
       col.name = osc;
-      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus-U' ? '.wav' : osc == 'Morpheus-A' ? '.wav' : osc == 'Morpheus-P' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : (osc == 'FM64' || osc == 'FM64EG' || osc == 'FM69' ||osc == 'FM69P') ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
+      col.accept = osc == 'Anthologue' ? '.prog_bin' : osc == 'Morpheus-U' ? '.wav' : osc == 'Morpheus-A' ? '.wav' : osc == 'Morpheus-P' ? '.wav' : osc == 'FM48' ? '.syx,.dx7,.32' : (osc == 'FM64' || osc == 'FM68' || osc == 'FM69') ? '.syx,.dx7,.32' : '.syx,.dx7,.32,.wav';
       col.multiple = (osc != 'Morpheus-U' && osc != 'Morpheus-A' && osc != 'Morpheus-P');
       col.addEventListener('change', function() { handleFiles(this); }, true);
       col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
@@ -385,7 +385,7 @@ function handleFiles(f) {
         if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
-           if (data[0].length >= count[osc][0]) {
+          if (data[0].length >= count[osc][0]) {
             status.innerHTML += "skipped (maximum voice bank limit reached)";
           } else {
             if (array.length == 4096) {
@@ -411,7 +411,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM64" || osc === "FM64EG") {
+      } else if (osc === "FM64" || osc === "FM68" || osc === "FM69") {
         if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
@@ -444,10 +444,10 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM66" || osc === "FM66P" || osc === "FM67" || osc === "FM68" || osc === "FM69" || osc === "FM69P") {
+      } else if (osc === "FM66" || osc === "FM67") {
         if (array.length > 4104 || array.length < 4096) {
           if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
-            if (typeof data[1] !== 'undefined' && data[1].length >= count[osc][1]) {
+            if (typeof data[0] !== 'undefined' && data[0].length >= count[osc][0]) {
               status.innerHTML += "skipped (maximum wave file limit reached)";
             } else {
               if (array.slice(22, 24).join("") === "10") {
@@ -457,9 +457,9 @@ function handleFiles(f) {
                     if (size < 4096) {
                       status.innerHTML += "skipped (sample count too small)";
                     } else {
-                      data[1] = new Array();
+                      data[0] = new Array();
                       var newarray;
-                      if (osc === "FM66" || osc === "FM66P") {
+                      if (osc === "FM66") {
                         status.innerHTML += "added from 16-bit PCM";
                         if (size > 4096) {
                           status.innerHTML += ", truncated to 2048 samples";
@@ -492,7 +492,7 @@ function handleFiles(f) {
                           newarray[i * 4 + 3] = array[44 + i * 2 + 1];
                         }
                       }
-                      data[1].push(newarray);
+                      data[0].push(newarray);
                       name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                     }
                     break;
@@ -501,9 +501,9 @@ function handleFiles(f) {
                     if (size < 6144) {
                       status.innerHTML += "skipped (sample count too small)";
                     } else {
-                      data[1] = new Array();
+                      data[0] = new Array();
                       var newarray;
-                      if (osc === "FM66" || osc === "FM66P") {
+                      if (osc === "FM66") {
                         status.innerHTML += "added transcoded from 24-bit PCM to 16-bit PCM";
                         if (size > 6144) {
                           status.innerHTML += ", truncated to 2048 samples";
@@ -554,7 +554,7 @@ function handleFiles(f) {
                           newarray[i * 4 + 3] = array[44 + i * 3 + 2];
                         }
                       }
-                      data[1].push(newarray);
+                      data[0].push(newarray);
                       name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                     }
                     break;
@@ -563,9 +563,9 @@ function handleFiles(f) {
                     if (size < 8192) {
                       status.innerHTML += "skipped (sample count too small)";
                     } else {
-                      data[1] = new Array();
+                      data[0] = new Array();
                       var newarray;
-                      if (osc === "FM66" || osc === "FM66P") {
+                      if (osc === "FM66") {
                         status.innerHTML += "added transcoded from 32-bit PCM to 16-bit PCM";
                         if (size > 8192) {
                           status.innerHTML += ", truncated to 2048 samples";
@@ -616,7 +616,7 @@ function handleFiles(f) {
                           newarray[i * 4 + 3] = array[44 + i * 4 + 3];
                         }
                       }
-                      data[1].push(newarray);
+                      data[0].push(newarray);
                       name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                     }
                     break;
@@ -631,13 +631,14 @@ function handleFiles(f) {
             status.innerHTML += "skipped (size mismatch)";
           }
         } else {
-          if (data[0].length >= count[osc][0]) {
+          if (typeof data[1] !== 'undefined' && data[1].length >= count[osc][1]) {
             status.innerHTML += "skipped (maximum voice bank limit reached)";
           } else {
+            data[1] = new Array();
             if (array.length == 4096) {
               status.innerHTML += "added (assuming raw voice bank)";
               name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-              data[0].push(array);
+              data[1].push(array);
             } else {
               switch(array.slice(0, 6).join("")) {
                 case "2406709160":
@@ -645,14 +646,14 @@ function handleFiles(f) {
                 case "2406709320":
                   status.innerHTML += "added 6-operators voice bank";
                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                  data[0].push(array.slice(6, 4102));
+                  data[1].push(array.slice(6, 4102));
                   break;
                 case "2406704160":
                   status.innerHTML += "ignoring SysEx size mismatch, ";
                 case "2406704320":
                   status.innerHTML += "added 4-operators voice bank";
                   name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                  data[0].push(array.slice(6, 4102));
+                  data[1].push(array.slice(6, 4102));
                   break;
                 default:
                   status.innerHTML += "skipped unsupported SysEx";
@@ -842,7 +843,7 @@ function handleFiles(f) {
         }
       }
       status.innerHTML += "<br/>";
-      if (data[0].length > 0) {
+      if (data[(osc === "FM66" || osc === "FM67") ? 1 : 0].length > 0) {
         document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
         name.disabled = false;
       }
