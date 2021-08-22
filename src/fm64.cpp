@@ -778,30 +778,37 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 
   q31_t * __restrict y = (q31_t *)yn;
+///ldr r10, &s_opval
+///ldm r10, {r0, r1, r2, r3}
   for (uint32_t f = frames; f--; y++) {
-//#ifndef MOD16
+#ifndef MOD16
     osc_out = 0;
-//#endif
+#endif
+///ldr r11, &s_modmatrix
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-      modw0 = 0;
+///ldm r11!, {r4, r5, r6, r7}
+///smuad r4, r0, r4
+///smlad r4, r1, r5, r4
+///smlad r4, r2, r6, r4
+///smlad r4, r3, r7, r4
 #ifdef MOD16
 #ifdef OP6
         __asm__ volatile ( \
-"add r2, %3, %1, lsl #4\n" \
-"ldr r0, [%2, #0]\n" \
+"add r2, %[s_modmatrix], %[i], lsl #4\n" \
+"ldr r0, [%[s_opval], #0]\n" \
 "ldr r1, [r2, #0]\n" \
 "smuad %0, r0, r1\n" \
-"ldr r0, [%2, #4]\n" \
+"ldr r0, [%[s_opval], #4]\n" \
 "ldr r1, [r2, #4]\n" \
-"smlad %0, r0, r1, %0\n" \
-"ldr r0, [%2, #8]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+"ldr r0, [%[s_opval], #8]\n" \
 "ldr r1, [r2, #8]\n" \
-"smlad %0, r0, r1, %0\n" \
-"ldr r0, [%2, #12]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+"ldr r0, [%[s_opval], #12]\n" \
 "ldr r1, [r2, #12]\n" \
-"smlad %0, r0, r1, %0\n" \
-: "+r" (modw0) \
-: "r" (i), "r" (s_opval), "r" (s_modmatrix) \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+: [modw0] "=r" (modw0) \
+: [i] "r" (i), [s_opval] "r" (s_opval), [s_modmatrix] "r" (s_modmatrix) \
 : "r0", "r1", "r2" \
         );
 #else
@@ -817,13 +824,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "ldr r0, [%2, #8]\n" \
 "ldr r1, [r2, #8]\n" \
 "smlad %0, r0, r1, %0\n" \
-: "+r" (modw0) \
+: "=r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
 : "r0", "r1", "r2" \
         );
 #endif
       modw0 = (modw0 << 3) + phase_to_param(s_phase[i]);
 #else
+      modw0 = 0;
 #if FEEDBACK_COUNT == 2
       __asm__ volatile ( \
 "lsls r1, %2, #25\n" \
@@ -933,33 +941,43 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef MOD16
 #ifdef OP6
       __asm__ volatile ( \
-"ldr r0, [%1, #0]\n" \
-"ldr r1, [%2, #0]\n" \
-"smuad %0, r0, r1\n" \
-"ldr r0, [%1, #4]\n" \
-"ldr r1, [%2, #4]\n" \
-"smlad %0, r0, r1, %0\n" \
-"ldr r0, [%1, #8]\n" \
-"ldr r1, [%2, #8]\n" \
-"smlad %0, r0, r1, %0\n" \
+///ldr r9, &s_comp
+///ldm r9, {r4, r5, r6}
+///smuad r4, r0, r4
+///smlad r4, r1, r5, r4
+///smlad r4, r2, r6, r4
+///lsl r4, r4
+"ldr r0, [%[s_opval], #0]\n" \
+"ldr r1, [%[s_comp], #0]\n" \
+"smuad %[osc_out], r0, r1\n" \
+"ldr r0, [%[s_opval], #4]\n" \
+"ldr r1, [%[s_comp], #4]\n" \
+"smlad %[osc_out], r0, r1, %0\n" \
+"ldr r0, [%[s_opval], #8]\n" \
+"ldr r1, [%[s_comp], #8]\n" \
+"smlad %[osc_out], r0, r1, %0\n" \
 "lsl %0, %0, #1\n" \
-
-"ldrb r2, [%3, #0]\n" \
-"ldrh r0, [%1, r2, lsl #1]\n" \
-"ldr r2, [%4, #0]\n" \
-"smulwb r0, r2, r0\n" \
-"ldrb r2, [%3, #1]\n" \
-"ldrh r1, [%1, r2, lsl #1]\n" \
-"ldr r2, [%4, #4]\n" \
+: [osc_out] "=&r" (osc_out) \
+: [s_opval] "r" (s_opval), [s_comp] "r" (s_comp) \
+: "r0", "r1" \
+        );
+      __asm__ volatile ( \
+"ldrb r1, [%[s_feedback_src], #0]\n" \
+"ldrb r2, [%[s_feedback_src], #1]\n" \
+"ldrsh r0, [%[s_opval], r1, lsl #1]\n" \
+"ldr r1, [%[s_feedback], #0]\n" \
+"smulwb r0, r1, r0\n" \
+"ldrsh r1, [%[s_opval], r2, lsl #1]\n" \
+"ldr r2, [%[s_feedback], #4]\n" \
 "smulwb r1, r2, r1\n" \
-"ldr r2, [%1, #16]\n" \
 "pkhtb r0, r1, r0, asr #16\n" \
-"str r0, [%1, #16]\n" \
-"sadd16 r0, r0, r2\n" \
-"str r0, [%1, #12]\n" \
-: "+r" (osc_out) \
-: "r" (s_opval), "r" (s_comp), "r" (s_feedback_src), "r" (s_feedback) \
-: "memory", "r0", "r1", "r2" \
+"ldr r1, [%[s_opval], #16]\n" \
+"str r0, [%[s_opval], #16]\n" \
+"sadd16 r0, r0, r1\n" \
+"str r0, [%[s_opval], #12]\n" \
+: \
+: [s_opval] "r" (s_opval), [s_feedback_src] "r" (s_feedback_src), [s_feedback] "r" (s_feedback) \
+: "r0", "r1", "r2", "memory" \
         );
 #else
       __asm__ volatile ( \
@@ -971,22 +989,22 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "smlad %0, r0, r1, %0\n" \
 "lsl %0, %0, #1\n" \
 
-"ldrb r2, [%3, #0]\n" \
-"ldrh r0, [%1, r2, lsl #1]\n" \
-"ldr r2, [%4, #0]\n" \
-"smulwb r0, r2, r0\n" \
+"ldrb r1, [%3, #0]\n" \
 "ldrb r2, [%3, #1]\n" \
-"ldrh r1, [%1, r2, lsl #1]\n" \
+"ldrsh r0, [%1, r1, lsl #1]\n" \
+"ldr r1, [%4, #0]\n" \
+"smulwb r0, r1, r0\n" \
+"ldrsh r1, [%1, r2, lsl #1]\n" \
 "ldr r2, [%4, #4]\n" \
 "smulwb r1, r2, r1\n" \
-"ldr r2, [%1, #12]\n" \
 "pkhtb r0, r1, r0, asr #16\n" \
+"ldr r1, [%1, #12]\n" \
 "str r0, [%1, #12]\n" \
-"sadd16 r0, r0, r2\n" \
+"sadd16 r0, r0, r1\n" \
 "str r0, [%1, #8]\n" \
-: "+r" (osc_out) \
+: "=&r" (osc_out) \
 : "r" (s_opval), "r" (s_comp), "r" (s_feedback_src), "r" (s_feedback) \
-: "memory", "r0", "r1", "r2" \
+: "r0", "r1", "r2" \
         );
 #endif
 #else
