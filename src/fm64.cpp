@@ -159,6 +159,7 @@ typedef q31_t phase_t;
 #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
 #ifdef MOD16
+q15_t s_modmatrix[OPERATOR_COUNT][OPERATOR_COUNT + FEEDBACK_COUNT];
 static q15_t compensation[] = {
   0x7FFF,
   0x3FFF,
@@ -167,6 +168,7 @@ static q15_t compensation[] = {
   0x1999,
   0x1555
 };
+static q15_t s_comp[OPERATOR_COUNT];
 #else
 static q31_t compensation[] = {
   0x7FFFFFFF,
@@ -176,6 +178,7 @@ static q31_t compensation[] = {
   0x19999999,
   0x15555555
 };
+static q31_t s_comp[OPERATOR_COUNT];
 #endif
 
 //#define DX7_SAMPLING_FREQ 49096.545017211284821233588006932f // 1/20.368032usec
@@ -223,10 +226,6 @@ static q31_t compensation[] = {
 //#define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 #define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
 #define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
-
-#ifdef MOD16
-q15_t s_modmatrix[OPERATOR_COUNT][OPERATOR_COUNT + FEEDBACK_COUNT];
-#endif
 
 static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
@@ -332,20 +331,10 @@ static float s_release_rate_exp_factor;
 
 static float s_level_scale_factor;
 
-#ifdef MOD16
-static q15_t s_comp[OPERATOR_COUNT];
-#else
-static q31_t s_comp[OPERATOR_COUNT];
-#endif
-
 static q31_t s_feedback[FEEDBACK_COUNT];
 static uint8_t s_feedback_src[FEEDBACK_COUNT];
 static uint8_t s_feedback_src_alg[FEEDBACK_COUNT];
-#ifdef FEEDBACK2
-static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT] = {OPERATOR_COUNT, OPERATOR_COUNT};
-#else
-static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT] = {OPERATOR_COUNT};
-#endif
+static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT];
 
 #ifdef PEG
 static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
@@ -445,20 +434,25 @@ void setFeedbackRoute(uint32_t idx) {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef MOD16
     if (i == dst)
-      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7A92;
+//      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7A92;
+      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7FFF;
     else
       s_modmatrix[i][OPERATOR_COUNT + idx] = 0;
 #else
     if (i == dst)
       s_algorithm[i] |= ALG_FBK_MASK << idx;
     else
-      s_algorithm[i] &= ~ALG_FBK_MASK << idx;
+      s_algorithm[i] &= ~(ALG_FBK_MASK << idx);
 #endif
   }
 }
 
 void setAlgorithm() {
   int32_t comp = 0;
+  s_feedback_dst_alg[0] = OPERATOR_COUNT;
+#ifdef FEEDBACK2
+  s_feedback_dst_alg[1] = OPERATOR_COUNT;
+#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
     for (uint32_t fbidx = 0; fbidx < FEEDBACK_COUNT; fbidx++) {
@@ -467,19 +461,23 @@ void setAlgorithm() {
         s_feedback_dst_alg[fbidx] = i;
         s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
       }
-      setFeedbackRoute(fbidx);
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
 #ifdef MOD16
     for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
       if (s_algorithm[i] & (1 << j))
-        s_modmatrix[i][j] = 0x7A92;
+//        s_modmatrix[i][j] = 0x7A92;
+        s_modmatrix[i][j] = 0x7FFF;
       else
         s_modmatrix[i][j] = 0;
     }
 #endif
   }
+  setFeedbackRoute(0);
+#ifdef FEEDBACK2
+  setFeedbackRoute(1);
+#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
     if (s_algorithm[i] & ALG_OUT_MASK)
       s_comp[i] = compensation[comp - 1];
@@ -786,24 +784,38 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = 0;
 #ifdef MOD16
 #ifdef OP6
+/**/
       __asm__ volatile ( \
-"add %3, %3, %1, lsl #4\n" \
+"add r3, %3, %1, lsl #4\n" \
+"eor r2, r2\n" \
 "ldr r0, [%2, #0]\n" \
-"ldr r1, [%3, #0]\n" \
+"ldr r1, [r3, #0]\n" \
 "smlald %0, r2, r0, r1\n" \
 "ldr r0, [%2, #4]\n" \
-"ldr r1, [%3, #4]\n" \
+"ldr r1, [r3, #4]\n" \
 "smlald %0, r2, r0, r1\n" \
 "ldr r0, [%2, #8]\n" \
-"ldr r1, [%3, #8]\n" \
+"ldr r1, [r3, #8]\n" \
 "smlald %0, r2, r0, r1\n" \
 "ldr r0, [%2, #12]\n" \
-"ldr r1, [%3, #12]\n" \
+"ldr r1, [r3, #12]\n" \
 "smlald %0, r2, r0, r1\n" \
+"lsl %0, %0, #1\n" \
+"tst r2, r2\n" \
+"ite mi\n" \
+"orrmi %0, %0, #0x80000000\n" \
+"bicpl %0, %0, #0x80000000\n" \
 : "+r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "memory", "r0", "r1", "r2" \
+: "memory", "r0", "r1", "r2", "r3" \
         );
+/*
+"lsl %0, %0, #1\n" \
+"tst r2, r2\n" \
+"ite mi\n" \
+"orrmi %0, %0, #0x80000000\n" \
+"bicpl %0, %0, #0x80000000\n" \
+*/
 #else
       __asm__ volatile ( \
 "add %3, %3, %1, lsl #2\n" \
@@ -821,16 +833,17 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
 : "memory", "r0", "r1" \
         );
+
 #endif
 #else
 #ifdef FEEDBACK2
       __asm__ volatile ( \
 "lsls r1, %2, #25\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %4]\n" \
+"ldrmi.w r1, [%3, #28]\n" \
 "addmi %0, %0, r1\n" \
 : "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (28) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
 : "r1" \
         );
 #endif
@@ -838,7 +851,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         __asm__ volatile ( \
 "lsls r1, %2, #26\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %4]\n" \
+"ldrmi.w r1, [%3, #24]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #27\n" \
 "beq.n end%=\n"\
@@ -850,34 +863,34 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ".byte 0x07\n" \
 ".byte 0x03\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %5]\n" \
+"ldrmi.w r1, [%3, #16]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #28\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %6]\n" \
+"ldrmi.w r1, [%3, #12]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #29\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %7]\n" \
+"ldrmi.w r1, [%3, #8]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #30\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %8]\n" \
+"ldrmi.w r1, [%3, #4]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #31\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %9]\n" \
+"ldrmi.w r1, [%3, #0]\n" \
 "addmi %0, %0, r1\n" \
 "end%=:\n" \
 : "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (24), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
 : "r1" \
         );
 #else
       __asm__ volatile ( \
 "lsls r1, %2, #26\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %4]\n" \
+"ldrmi.w r1, [%3, #12]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #29\n" \
 "beq.n end%=\n"\
@@ -887,27 +900,25 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ".byte 0x06\n" \
 ".byte 0x02\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %5]\n" \
+"ldrmi.w r1, [%3, #8]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #30\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %6]\n" \
+"ldrmi.w r1, [%3, #4]\n" \
 "addmi %0, %0, r1\n" \
 "lsls r1, %2, #31\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %7]\n" \
+"ldrmi.w r1, [%3, #0]\n" \
 "addmi %0, %0, r1\n" \
 "end%=:\n" \
 : "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (12), "i" (8), "i" (4), "i" (0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
 : "r1" \
         );
 #endif
 #endif
 #ifdef MOD16
-//      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 4) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
-//      modw0 = (modw0 << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
-      modw0 = (modw0 << 2) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
 #else
       modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
 #endif
@@ -917,8 +928,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #else
-//      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
-      s_opval[i] = smmul(osc_sin((q15_t)(modw0 >> 16)), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #endif
 #else
 #ifdef WFBITS
