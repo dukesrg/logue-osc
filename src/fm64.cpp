@@ -31,7 +31,7 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define FEEDBACK2 //second feedback
-#define MOD16 //16-bit mod matrix processing
+//#define MOD16 //16-bit mod matrix processing
 
 #ifdef MOD16
   #define FEEDBACK2 //second feedback is mandatory and 'free' for 16-bit mod matrix
@@ -58,7 +58,7 @@
 
 #include "fm64.h"
 
-  #include "custom_param.h"
+#include "custom_param.h"
   CUSTOM_PARAM_INIT(
 #ifdef KIT_MODE
     CUSTOM_PARAM_ID(7),
@@ -159,6 +159,7 @@ typedef q31_t phase_t;
 #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
 #ifdef MOD16
+static const uint8_t *s_algorithm;
 q15_t s_modmatrix[OPERATOR_COUNT][OPERATOR_COUNT + FEEDBACK_COUNT];
 static q15_t compensation[] = {
   0x7FFF,
@@ -170,6 +171,7 @@ static q15_t compensation[] = {
 };
 static q15_t s_comp[OPERATOR_COUNT];
 #else
+static uint8_t s_algorithm[OPERATOR_COUNT] = {0};
 static q31_t compensation[] = {
   0x7FFFFFFF,
   0x3FFFFFFF,
@@ -275,7 +277,6 @@ static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
 static int8_t s_waveform_offset[OPERATOR_COUNT + 3] = {0};
 #endif
 #endif
-static uint8_t s_algorithm[OPERATOR_COUNT] = {0};
 static int8_t s_left_depth[OPERATOR_COUNT];
 static int8_t s_right_depth[OPERATOR_COUNT];
 static uint8_t s_pitchfreq[OPERATOR_COUNT];
@@ -434,8 +435,8 @@ void setFeedbackRoute(uint32_t idx) {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifdef MOD16
     if (i == dst)
-//      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7A92;
-      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7FFF;
+      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7A92;
+//      s_modmatrix[i][OPERATOR_COUNT + idx] = 0x7FFF;
     else
       s_modmatrix[i][OPERATOR_COUNT + idx] = 0;
 #else
@@ -449,29 +450,37 @@ void setFeedbackRoute(uint32_t idx) {
 
 void setAlgorithm() {
   int32_t comp = 0;
+#ifdef MOD16
+  s_algorithm = dx7_algorithm[clipminmaxi32(0, s_algorithm_idx + s_algorithm_offset, ALGORITHM_COUNT - 1)];
+#endif
   s_feedback_dst_alg[0] = OPERATOR_COUNT;
 #ifdef FEEDBACK2
   s_feedback_dst_alg[1] = OPERATOR_COUNT;
 #endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifndef MOD16
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
+#endif
     for (uint32_t fbidx = 0; fbidx < FEEDBACK_COUNT; fbidx++) {
       if (s_algorithm[i] & (ALG_FBK_MASK << fbidx)) {
         s_feedback_src_alg[fbidx] = s_algorithm[i] & (ALG_FBK_MASK - 1);
         s_feedback_dst_alg[fbidx] = i;
+#ifndef MOD16
         s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
+#endif
       }
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
 #ifdef MOD16
-    for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
-      if ((s_algorithm[i] & (1 << j)) && (j < OPERATOR_COUNT - 1))
-//        s_modmatrix[i][j] = 0x7A92;
-        s_modmatrix[i][j] = 0x7FFF;
+    for (uint32_t j = 0; j < (OPERATOR_COUNT - 1); j++) {
+      if (s_algorithm[i] & (1 << j))
+        s_modmatrix[i][j] = 0x7A92;
+//        s_modmatrix[i][j] = 0x7FFF;
       else
         s_modmatrix[i][j] = 0;
     }
+    s_modmatrix[i][OPERATOR_COUNT - 1] = 0;
 #endif
   }
   setFeedbackRoute(0);
@@ -826,30 +835,26 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         );
 */
         __asm__ volatile ( \
-"add r3, %3, %1, lsl #4\n" \
-"eor r2, r2\n" \
+"add r2, %3, %1, lsl #4\n" \
 "ldr r0, [%2, #0]\n" \
-"ldr r1, [r3, #0]\n" \
-"smlald %0, r2, r0, r1\n" \
+"ldr r1, [r2, #0]\n" \
+"smuad %0, r0, r1\n" \
 "ldr r0, [%2, #4]\n" \
-"ldr r1, [r3, #4]\n" \
-"smlald %0, r2, r0, r1\n" \
+"ldr r1, [r2, #4]\n" \
+"smlad %0, r0, r1, %0\n" \
 "ldr r0, [%2, #8]\n" \
-"ldr r1, [r3, #8]\n" \
-"smlald %0, r2, r0, r1\n" \
+"ldr r1, [r2, #8]\n" \
+"smlad %0, r0, r1, %0\n" \
 "ldr r0, [%2, #12]\n" \
-"ldr r1, [r3, #12]\n" \
-"smlald %0, r2, r0, r1\n" \
-"lsl %0, %0, #1\n" \
-"tst r2, r2\n" \
-"ite mi\n" \
-"orrmi %0, %0, #0x80000000\n" \
-"bicpl %0, %0, #0x80000000\n" \
+"ldr r1, [r2, #12]\n" \
+"smlad %0, r0, r1, %0\n" \
 : "+r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "memory", "r0", "r1", "r2", "r3" \
+: "r0", "r1", "r2" \
         );
 /*
+"eor r2, r2\n" \
+"smlald %0, r2, r0, r1\n" \
 "lsl %0, %0, #1\n" \
 "tst r2, r2\n" \
 "ite mi\n" \
@@ -858,23 +863,24 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 */
 #else
       __asm__ volatile ( \
-"add %3, %3, %1, lsl #2\n" \
-"add %3, %3, %1, lsl #3\n" \
+"add r2, %3, %1, lsl #2\n" \
+"add r2, r2 %1, lsl #3\n" \
 "ldr r0, [%2, #0]\n" \
-"ldr r1, [%3, #0]\n" \
+"ldr r1, [r2, #0]\n" \
 "smuad %0, r0, r1\n" \
 "ldr r0, [%2, #4]\n" \
-"ldr r1, [%3, #4]\n" \
+"ldr r1, [r2, #4]\n" \
 "smlad %0, r0, r1, %0\n" \
 "ldr r0, [%2, #8]\n" \
-"ldr r1, [%3, #8]\n" \
+"ldr r1, [r2, #8]\n" \
 "smlad %0, r0, r1, %0\n" \
 : "+r" (modw0) \
 : "r" (i), "r" (s_opval), "r" (s_modmatrix) \
-: "memory", "r0", "r1" \
+: "r0", "r1", "r2" \
         );
 
 #endif
+      modw0 = (modw0 << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
 #else
 #ifdef FEEDBACK2
       __asm__ volatile ( \
@@ -956,10 +962,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r1" \
         );
 #endif
-#endif
-#ifdef MOD16
-      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
-#else
       modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
 #endif
       s_phase[i] += opw0[i];
