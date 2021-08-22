@@ -466,7 +466,7 @@ void setAlgorithm() {
       comp++;
 #ifdef MOD16
     for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
-      if (s_algorithm[i] & (1 << j))
+      if ((s_algorithm[i] & (1 << j)) && (j < OPERATOR_COUNT - 1))
 //        s_modmatrix[i][j] = 0x7A92;
         s_modmatrix[i][j] = 0x7FFF;
       else
@@ -784,8 +784,48 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = 0;
 #ifdef MOD16
 #ifdef OP6
-/**/
+/*
       __asm__ volatile ( \
+"lsls r1, %2, #26\n" \
+"itt mi\n" \
+"ldrshmi.w r1, [%3, #12]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #27\n" \
+"beq.n end%=\n"\
+"tbb [pc, %1]\n" \
+".byte 0x1B\n" \
+".byte 0x16\n" \
+".byte 0x11\n" \
+".byte 0x0C\n" \
+".byte 0x07\n" \
+".byte 0x03\n" \
+"itt mi\n" \
+"ldrshmi.w r1, [%3, #8]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #28\n" \
+"itt mi\n" \
+"ldrshmi.w r1, [%3, #6]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #29\n" \
+"itt mi\n" \
+"ldrshmi.w r1, [%3, #4]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #30\n" \
+"itt mi\n" \
+"ldrshmi.w r1, [%3, #2]\n" \
+"addmi %0, %0, r1\n" \
+"lsls r1, %2, #31\n" \
+"itt mi\n" \
+"ldrshmi.w r1, [%3, #0]\n" \
+"addmi %0, %0, r1\n" \
+"end%=:\n" \
+"lsl %0, %0, #16\n" \
+: "+r" (modw0) \
+: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
+: "r1" \
+        );
+*/
+        __asm__ volatile ( \
 "add r3, %3, %1, lsl #4\n" \
 "eor r2, r2\n" \
 "ldr r0, [%2, #0]\n" \
