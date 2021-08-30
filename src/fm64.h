@@ -372,3 +372,8 @@ union {
   dx7_voice_t dx7;
   dx11_voice_t dx11;
 } dx_voices[BANK_COUNT][BANK_SIZE] = {};
+
+#ifdef CUSTOM_ALGORITHM_COUNT
+static const __attribute__((used, section(".hooks")))
+uint8_t custom_algorithm[CUSTOM_ALGORITHM_COUNT][DX7_OPERATOR_COUNT][DX7_OPERATOR_COUNT + 1] = {};
+#endif

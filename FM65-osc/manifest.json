@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.8-11",
+        "version" : "1.8-12",
         "name" : "FM65",
         "num_param" : 6,
         "params" : [
@@ -14,12 +14,13 @@
             ["Det scal All", -99, 100, "%"],
             ["Rat offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
-            ["Alg offset", -84, 84, "%"],
+            ["Alg offset", -99, 99, "%"],
             ["Lvl offs Mod", -99, 99, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 4],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Korg opsix user algorithm modulation matrices", 64, 42, 16],
+            ["Yamaha DX7-series voice banks", 736, 4096, 4],
+            ["custom_params", 17120, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -42,8 +43,8 @@
             ["FB2 scale", -99, 100, "%"],
             ["FB route", 0, 66, "%"],
             ["FB2 route", 0, 66, "%"],
-            ["Alg select", 0, 85, "%"],
-            ["Alg offset", -84, 84, "%"],
+            ["Alg select", 0, 100, "%"],
+            ["Alg offset", -99, 99, "%"],
             ["Lvl offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
             ["Lvl offs Mod", -99, 99, "%"],

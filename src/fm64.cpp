@@ -201,6 +201,10 @@ typedef q31_t phase_t;
 #define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
 #ifdef MOD16
+#ifdef CUSTOM_ALGORITHM_COUNT
+#define CUSTOM_MI_SCALE_FACTOR 0x139CA3E //normalized for 0-100 range of opsix
+//#define CUSTOM_OUT_SCALE_FACTOR 0x147AE14 //^
+#endif
 #define MI_SCALE_FACTOR 0x7A93
 static const uint8_t *s_algorithm;
 static q15_t s_opval[OPERATOR_COUNT + FEEDBACK_COUNT * 2];
@@ -445,7 +449,13 @@ void setFeedbackRoute(uint32_t idx) {
 void setAlgorithm() {
   int32_t comp = 0;
 #ifdef MOD16
+#ifdef CUSTOM_ALGORITHM_COUNT
+  uint32_t algidx = (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset;
+  if (algidx < ALGORITHM_COUNT)
+    s_algorithm = dx7_algorithm[clipminmaxi32(0, algidx, ALGORITHM_COUNT + CUSTOM_ALGORITHM_COUNT - 1)];
+#else
   s_algorithm = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)];
+#endif
 #endif
   s_feedback_dst_alg[0] = OPERATOR_COUNT;
 #if FEEDBACK_COUNT == 2
@@ -454,6 +464,9 @@ void setAlgorithm() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
 #ifndef MOD16
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
+#endif
+#ifdef CUSTOM_ALGORITHM_COUNT
+      if (algidx < ALGORITHM_COUNT) {
 #endif
     for (uint32_t fbidx = 0; fbidx < FEEDBACK_COUNT; fbidx++) {
       if (s_algorithm[i] & (ALG_FBK_MASK << fbidx)) {
@@ -466,25 +479,52 @@ void setAlgorithm() {
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
+#ifdef CUSTOM_ALGORITHM_COUNT
+      } else {
+         comp += custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT];
+      }
+#endif
+
 #ifdef MOD16
-    for (uint32_t j = 0; j < (OPERATOR_COUNT - 1); j++) {
-      if (s_algorithm[i] & (1 << j))
+    for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
+#ifdef CUSTOM_ALGORITHM_COUNT
+      if (algidx < ALGORITHM_COUNT) {
+#endif
+      if ((j < (OPERATOR_COUNT - 1)) && (s_algorithm[i] & (1 << j)))
         s_modmatrix[i][j] = MI_SCALE_FACTOR;
       else
         s_modmatrix[i][j] = 0;
+#ifdef CUSTOM_ALGORITHM_COUNT
+    } else {
+      s_modmatrix[i][j] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][j] * CUSTOM_MI_SCALE_FACTOR) >> 16;
     }
-    s_modmatrix[i][OPERATOR_COUNT - 1] = 0;
+#endif
+    }
 #endif
   }
   setFeedbackRoute(0);
 #if FEEDBACK_COUNT == 2
   setFeedbackRoute(1);
 #endif
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+#ifdef CUSTOM_ALGORITHM_COUNT
+  if (algidx >= ALGORITHM_COUNT)
+    comp = 0x7FFFFFFF / comp;
+#endif
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifdef CUSTOM_ALGORITHM_COUNT
+    if (algidx < ALGORITHM_COUNT) {
+#endif
     if (s_algorithm[i] & ALG_OUT_MASK)
       s_comp[i] = compensation[comp - 1];
     else
       s_comp[i] = 0;
+#ifdef CUSTOM_ALGORITHM_COUNT
+    } else {
+//      s_comp[i] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] * CUSTOM_OUT_SCALE_FACTOR) >> 16;
+      s_comp[i] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] * comp) >> 16;
+    }
+#endif
+  }
 #ifdef WFBITS
   setWaveform();
 #endif

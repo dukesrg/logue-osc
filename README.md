@@ -79,7 +79,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |FMxx features|FM48|FM64|FM65|FM66|FM67|FM68|FM69|
 |-|-|-|-|-|-|-|-|
-|Algorithm count|85|85|85|85|85|85|85|
+|Preset algorithm count|85|85|85|85|85|85|85|
+|User algorithm count|-|-|16|-|-|-|-|
 |Operators count|4|6|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|5|4|4|3|2|5|
@@ -121,8 +122,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 |17|FB2 scale|-99&hellip;100 ⁽⁴⁾|Feedback 2 multiplier|
 |18|FB route|0&hellip;66|Feedback 1 route|
 |19|FB2 route|0&hellip;66|Feedback 2 route|
-|20|Alg select|0&hellip;85|Algorithm select|
-|21|Alg offset|-39&hellip;39|Algorithm offset|
+|20|Alg select|0&hellip;100|Algorithm select|
+|21|Alg offset|-99&hellip;99|Algorithm offset|
 |22|Lvl offs All|-99&hellip;99|Level offset for all operators|
 |23|Lvl offs Car|-99&hellip;99|Level offset for carriers|
 |24|Lvl offs Mod|-99&hellip;99|Level offset for modulators|
