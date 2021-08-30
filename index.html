@@ -634,7 +634,8 @@ function handleFiles(f) {
           if (typeof data[1] !== 'undefined' && data[1].length >= count[osc][1]) {
             status.innerHTML += "skipped (maximum voice bank limit reached)";
           } else {
-            data[1] = new Array();
+            if (typeof data[1] == 'undefined')
+              data[1] = new Array();
             if (array.length == 4096) {
               status.innerHTML += "added (assuming raw voice bank)";
               name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
