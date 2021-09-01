@@ -490,7 +490,7 @@ void setAlgorithm() {
 #ifdef CUSTOM_ALGORITHM_COUNT
       if (algidx < ALGORITHM_COUNT) {
 #endif
-      if ((j < (OPERATOR_COUNT - 1)) && (s_algorithm[i] & (1 << j)))
+      if ((j < (OPERATOR_COUNT - 1)) && (s_algorithm[i] & (1 << j)) && !(s_algorithm[i] & (ALG_FBK_MASK + ALG_FBK2_MASK)))
         s_modmatrix[i][j] = MI_SCALE_FACTOR;
       else
         s_modmatrix[i][j] = 0;
