@@ -138,8 +138,6 @@
   #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
 #endif
 #define osc_sin(a) osc_sinq(a)
-typedef q31_t phase_t;
-#define phase_to_param(a) (a)
 #ifdef USE_Q31_PITCH
   typedef q31_t pitch_t;
   #define f32_to_pitch(a) f32_to_q31(a)
@@ -869,7 +867,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r0", "r1" \
         );
 #endif
-      modw0 = (modw0 << 3) + phase_to_param(s_phase[i]);
+      modw0 = (modw0 << 3) + s_phase[i];
 #else
       modw0 = 0;
 #if FEEDBACK_COUNT == 2
@@ -952,7 +950,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 : "r1" \
         );
 #endif
-      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + phase_to_param(s_phase[i]);
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[i];
 #endif
       s_phase[i] += opw0[i];
 
