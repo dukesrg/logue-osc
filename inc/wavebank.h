@@ -260,7 +260,7 @@ q31_t osc_wavebank(q31_t x, uint32_t idx_x, uint32_t idx_y) {
 }
 
   /**
-   * Fixex point linear wavetable lookup, interpolated version.
+   * Fixed point linear wavetable lookup, interpolated version.
    *
    * @param   x  Phase in [0, 1.0) in Q31.
    * @param   idx  Wave index.

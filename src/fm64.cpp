@@ -31,6 +31,7 @@
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
 //#define MOD16 //16-bit mod matrix processing
+//#define ROLLOUT //Inner loop rollout
 
 #ifdef MOD16
   #define FEEDBACK_COUNT 2 //second feedback is mandatory and 'free' for 16-bit mod matrix
@@ -703,12 +704,12 @@ void initvoice(int32_t voice_index) {
   s_pegval = 0;
 #endif
 }
-
+/*
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
 
 }
-
+*/
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
   if (s_state) {
@@ -819,6 +820,169 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ///ldr r10, &s_opval
 ///ldm r10, {r0, r1, r2, r3}
   for (uint32_t f = frames; f--; y++) {
+#ifdef ROLLOUT
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[0]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[0];
+#ifdef WFBITS
+      s_opval[0] = smmul(osc_wavebank(modw0, s_waveform[0]), param_eglut(s_egval[0], s_oplevel[0])) << 1;
+#else
+      s_opval[0] = smmul(osc_sin(modw0), param_eglut(s_egval[0], s_oplevel[0])) << 1;
+#endif
+
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[1]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[1];
+#ifdef WFBITS
+      s_opval[1] = smmul(osc_wavebank(modw0, s_waveform[1]), param_eglut(s_egval[1], s_oplevel[1])) << 1;
+#else
+      s_opval[1] = smmul(osc_sin(modw0), param_eglut(s_egval[1], s_oplevel[1])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[2]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[2];
+#ifdef WFBITS
+      s_opval[2] = smmul(osc_wavebank(modw0, s_waveform[2]), param_eglut(s_egval[2], s_oplevel[2])) << 1;
+#else
+      s_opval[2] = smmul(osc_sin(modw0), param_eglut(s_egval[2], s_oplevel[2])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[3]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[3];
+#ifdef WFBITS
+      s_opval[3] = smmul(osc_wavebank(modw0, s_waveform[3]), param_eglut(s_egval[3], s_oplevel[3])) << 1;
+#else
+      s_opval[3] = smmul(osc_sin(modw0), param_eglut(s_egval[3], s_oplevel[3])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #28\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[4]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[4];
+#ifdef WFBITS
+      s_opval[4] = smmul(osc_wavebank(modw0, s_waveform[4]), param_eglut(s_egval[4], s_oplevel[4])) << 1;
+#else
+      s_opval[4] = smmul(osc_sin(modw0), param_eglut(s_egval[4], s_oplevel[4])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #27\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #16]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #28\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[5]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[5];
+#ifdef WFBITS
+      s_opval[5] = smmul(osc_wavebank(modw0, s_waveform[5]), param_eglut(s_egval[5], s_oplevel[5])) << 1;
+#else
+      s_opval[5] = smmul(osc_sin(modw0), param_eglut(s_egval[5], s_oplevel[5])) << 1;
+#endif
+#else
 #ifndef MOD16
     osc_out = 0;
 #endif
@@ -872,24 +1036,24 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       modw0 = 0;
 #if FEEDBACK_COUNT == 2
       __asm__ volatile ( \
-"lsls r1, %2, #25\n" \
+"lsls r1, %[s_algorithm_i], #25\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #28]\n" \
-"addmi %0, %0, r1\n" \
-: "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
+"ldrmi.w r1, [%[s_opval], #28]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \
         );
 #endif
 #ifdef OP6
         __asm__ volatile ( \
-"lsls r1, %2, #26\n" \
+"lsls r1, %[s_algorithm_i], #26\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #24]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #27\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #27\n" \
 "beq.n end%=\n"\
-"tbb [pc, %1]\n" \
+"tbb [pc, %[i]]\n" \
 ".byte 0x1B\n" \
 ".byte 0x16\n" \
 ".byte 0x11\n" \
@@ -897,56 +1061,56 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 ".byte 0x07\n" \
 ".byte 0x03\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #16]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #28\n" \
+"ldrmi.w r1, [%[s_opval], #16]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #28\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #12]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #29\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #8]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #30\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #4]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #31\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #0]\n" \
-"addmi %0, %0, r1\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
 "end%=:\n" \
-: "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
+: [modw0] "+r" (modw0) \
+: [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \
         );
 #else
       __asm__ volatile ( \
-"lsls r1, %2, #26\n" \
+"lsls r1, %[s_algorithm_i], #26\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #12]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #29\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
 "beq.n end%=\n"\
-"tbb [pc, %1]\n" \
+"tbb [pc, %[i]]\n" \
 ".byte 0x10\n" \
 ".byte 0x0B\n" \
 ".byte 0x06\n" \
 ".byte 0x02\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #8]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #30\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #4]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #31\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, #0]\n" \
-"addmi %0, %0, r1\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
 "end%=:\n" \
-: "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval) \
+: [modw0] "+r" (modw0) \
+: [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \
         );
 #endif
@@ -976,6 +1140,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
+#endif
 #ifdef MOD16
 #ifdef OP6
       __asm__ volatile ( \
@@ -1049,6 +1214,19 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
         );
 #endif
 #else
+#ifdef ROLLOUT
+    for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+      osc_out += smmul(s_opval[i], s_comp[i]) << 1;
+      s_phase[i] += opw0[i];
+      if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
+        s_egval[i] = q31add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+      } else {
+        s_egval[i] = s_eglevel[i][s_egstage[i]];
+        if (s_egstage[i] < EG_STAGE_COUNT - 2)
+          s_egstage[i]++;
+      }
+    }
+#endif
     s_opval[OPERATOR_COUNT] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
     s_opval[OPERATOR_COUNT + FEEDBACK_COUNT] = smmul(s_opval[s_feedback_src[0]], s_feedback[0]);
     s_opval[OPERATOR_COUNT] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
