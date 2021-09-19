@@ -13,16 +13,15 @@
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_wavebank(q31_t x, uint32_t waveform) {
-  x &= 0x7FFFFFFF;
   uint32_t x0p;
   uint32_t x0;
   uint32_t x1;
   q31_t fr;
   q31_t y0 = 0;
   if (waveform & 0x04)
-    x0p = x >> (31 - k_wt_sine_size_exp - 1 - 1);
+    x0p = ubfx(x, 31 - k_wt_sine_size_exp - 2, k_wt_sine_size_exp + 2);
   else
-    x0p = x >> (31 - k_wt_sine_size_exp - 1);
+    x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   if (waveform < 2 || !(x & 0x40000000)) {
     x0 = x0p & k_wt_sine_mask;
     x1 = (x0 + 1) & k_wt_sine_mask;

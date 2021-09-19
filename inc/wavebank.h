@@ -234,8 +234,7 @@ float osc_wavebank(float x, float idx_x, float idx_y) {
    */
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - SAMPLE_COUNT_EXP);
+  uint32_t x0p = ubfx(x, 31 - SAMPLE_COUNT_EXP, SAMPLE_COUNT_EXP);
   uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT];
@@ -268,8 +267,7 @@ q31_t osc_wavebank(q31_t x, uint32_t idx_x, uint32_t idx_y) {
    */
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, q31_t idx) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - SAMPLE_COUNT_EXP);
+  uint32_t x0p = ubfx(x, 31 - SAMPLE_COUNT_EXP, SAMPLE_COUNT_EXP);
   uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[q31mul(idx, (WAVE_COUNT - 1)) * SAMPLE_COUNT];

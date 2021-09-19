@@ -124,8 +124,7 @@ q31_t wt_sine_lut_q[k_wt_sine_lut_size];
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_sinq(q31_t x) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_sine_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   const uint32_t x0 = x0p & k_wt_sine_mask;
   const uint32_t x1 = x0 + 1;
   const q31_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
@@ -135,8 +134,7 @@ q31_t osc_sinq(q31_t x) {
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 q15_t osc_sinq(q15_t x) {
-  x &= 0x7FFF;
-  uint16_t x0p = x >> (15 - k_wt_sine_size_exp - 1);
+  uint32_t x0p = ubfx(x, 15 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   const uint16_t x0 = x0p & k_wt_sine_mask;
   const uint16_t x1 = x0 + 1;
   const q15_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFF;
@@ -156,8 +154,7 @@ q31_t wt_saw_lut_q[k_wt_saw_lut_tsize];
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_sawq(q31_t x) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_saw_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   uint32_t x0 = x0p, x1 = x0p + 1;
   const q31_t fr = (x << (k_wt_saw_size_exp + 1)) & 0x7FFFFFFF;
   if (x0p >= k_wt_saw_size) {
@@ -178,8 +175,7 @@ q31_t osc_sawq(q31_t x) {
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_bl_sawq(q31_t x, uint8_t idx) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_saw_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   uint32_t x0 = x0p, x1 = x0p + 1;
   const q31_t fr = (x << (k_wt_saw_size_exp + 1)) & 0x7FFFFFFF;
   const q31_t *wt = &wt_saw_lut_q[idx * k_wt_saw_lut_size];
@@ -202,8 +198,7 @@ q31_t osc_bl_sawq(q31_t x, uint8_t idx) {
 #define k_wt_saw_notes_cnt_recip 0x15555555 // 1/6
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_bl2_sawq(q31_t x, q31_t idx) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_saw_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   uint32_t x0 = x0p, x1 = x0p + 1;
   q31_t y0, y1;
   const q31_t fr = (x << (k_wt_saw_size_exp + 1)) & 0x7FFFFFFF;
