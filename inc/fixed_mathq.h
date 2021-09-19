@@ -41,6 +41,24 @@ q15_t linintq(const q15_t fr, const q15_t x0, const q15_t x1) {
   return x0 + ((fr * (x1 - x0)) >> 15);
 }
 
+//positive-only LUT
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t linintq(const q31_t fr, const uint32_t x0, const uint32_t x1) {
+  return (x0 >> 1) + smmul(fr, x1 - x0);
+}
+
+//positive-only LUT
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t linintq(const q31_t fr, const uint16_t x0, const uint16_t x1) {
+  return (x0 << 15) + (fr >> 16) * (x1 - x0);
+}
+
+//positive-only LUT
+static inline __attribute__((optimize("Ofast"), always_inline))
+q15_t linintq(const q15_t fr, const uint16_t x0, const uint16_t x1) {
+  return (x0 >> 1) + ((fr * (x1 - x0)) >> 16);
+}
+
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t clipmaxq(const q31_t x, const q31_t m)
 {
