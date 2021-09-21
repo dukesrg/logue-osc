@@ -1051,15 +1051,14 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%[s_opval], #24]\n" \
 "addmi %[modw0], %[modw0], r1\n" \
-"lsls r1, %[s_algorithm_i], #27\n" \
-"beq.n end%=\n"\
 "tbb [pc, %[i]]\n" \
-".byte 0x1B\n" \
-".byte 0x16\n" \
-".byte 0x11\n" \
-".byte 0x0C\n" \
-".byte 0x07\n" \
+".byte 0x1C\n" \
+".byte 0x17\n" \
+".byte 0x12\n" \
+".byte 0x0D\n" \
+".byte 0x08\n" \
 ".byte 0x03\n" \
+"lsls r1, %[s_algorithm_i], #27\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%[s_opval], #16]\n" \
 "addmi %[modw0], %[modw0], r1\n" \
@@ -1079,7 +1078,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%[s_opval], #0]\n" \
 "addmi %[modw0], %[modw0], r1\n" \
-"end%=:\n" \
 : [modw0] "+r" (modw0) \
 : [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \
@@ -1090,13 +1088,12 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%[s_opval], #12]\n" \
 "addmi %[modw0], %[modw0], r1\n" \
-"lsls r1, %[s_algorithm_i], #29\n" \
-"beq.n end%=\n"\
 "tbb [pc, %[i]]\n" \
-".byte 0x10\n" \
-".byte 0x0B\n" \
-".byte 0x06\n" \
+".byte 0x11\n" \
+".byte 0x0C\n" \
+".byte 0x07\n" \
 ".byte 0x02\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
 "itt mi\n" \
 "ldrmi.w r1, [%[s_opval], #8]\n" \
 "addmi %[modw0], %[modw0], r1\n" \
@@ -1108,7 +1105,6 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 "itt mi\n" \
 "ldrmi.w r1, [%[s_opval], #0]\n" \
 "addmi %[modw0], %[modw0], r1\n" \
-"end%=:\n" \
 : [modw0] "+r" (modw0) \
 : [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \

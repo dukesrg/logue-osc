@@ -151,13 +151,19 @@
 #pragma GCC diagnostic ignored "-Wnarrowing"
 static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK
-DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT] = {WAVEBANK};
+struct {
+  DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT];
+  uint32_t guard;
+} wb = {{WAVEBANK}, 0};
 #else
-uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT);
+struct {
+  uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)];
+  uint32_t guard;
+} wb = {"WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT), 0};
 #endif
 #pragma GCC diagnostic pop
 
-static const DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
+static const DATA_TYPE *wavebank = (DATA_TYPE*)wb.wave_bank;
 
   /**
    * Floating point linear wavetable lookup.
@@ -232,6 +238,26 @@ float osc_wavebank(float x, float idx_x, float idx_y) {
    * @param   idx  Wave index.
    * @return     Wave sample.
    */
+#ifdef FORMAT_PCM16
+static inline __attribute__((always_inline, optimize("Ofast")))
+q31_t osc_wavebank(q31_t x, uint32_t idx) {
+  q31_t result;
+  __asm__ volatile ( \
+"ubfx r0, %[x], %[frlsb], #15\n" \
+"pkhbt r0, r0, r0, lsl #16\n" \
+"ubfx %[x], %[x], %[xlsb], %[xwidth]\n" \
+"ldr %[wt], [%[wt], %[x], lsl #1]\n" \
+"mov %[result], %[wt], lsl #16\n" \
+"asr %[result], %[result], #1\n" \
+"smlsdx %[result], r0, %[wt], %[result]\n" \
+"lsl %[result], %[result], #1\n" \
+: [result] "=r" (result) \
+: [x] "r" (x), [wt] "r" (&wavebank[idx * SAMPLE_COUNT]), [frlsb] "i" (31 - SAMPLE_COUNT_EXP - 15), [xlsb] "i" (31 - SAMPLE_COUNT_EXP), [xwidth] "i" (SAMPLE_COUNT_EXP) \
+: "r0" \
+  );
+  return result;
+}
+#else
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx) {
   uint32_t x0p = ubfx(x, 31 - SAMPLE_COUNT_EXP, SAMPLE_COUNT_EXP);
@@ -244,6 +270,7 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
   return linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
 #endif
 }
+#endif
 
   /**
    * Fixed point grid wavetable lookup.
