@@ -153,13 +153,27 @@ static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK
 struct {
   DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT];
+#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
   uint32_t guard;
-} wb = {{WAVEBANK}, 0};
+#endif
+} wb = {
+  {WAVEBANK},
+#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
+  0
+#endif
+};
 #else
 struct {
   uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)];
+#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
   uint32_t guard;
-} wb = {"WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT), 0};
+#endif
+} wb = {
+  "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT),
+#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
+   0
+#endif
+};
 #endif
 #pragma GCC diagnostic pop
 
@@ -238,7 +252,7 @@ float osc_wavebank(float x, float idx_x, float idx_y) {
    * @param   idx  Wave index.
    * @return     Wave sample.
    */
-#ifdef FORMAT_PCM16
+#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx) {
   q31_t result;
