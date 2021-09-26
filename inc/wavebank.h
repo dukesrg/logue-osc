@@ -12,6 +12,7 @@
  *   - FORMAT_PCM32: 32-bit linear PCM
  *   - FORMAT_FLOAT32: Single precision floating point
  * - SAMPLE_COUNT: samples per waveform, must be power of 2
+ * - SAMPLE_GUARD: additional guard sample at the end of each waveform equal to starting sample for optimized output
  * - WAVE_COUNT: total number of waveforms in wavetable, must be power of 2
  * - for grid mode only
  *   - WAVE_COUNT_X: number of waveforms in wavetable dimention X, must be power of 2
@@ -19,7 +20,7 @@
  * 
  * Warning, lookup functions are overloaded, please take care of the parameter types.
  * 
- * 2020 (c) Oleg Burdaev
+ * 2020-2021 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */
@@ -111,6 +112,14 @@
   #error "Unsupported SAMPLE_COUNT"
 #endif
 
+#ifdef SAMPLE_GUARD
+  #define SAMPLE_COUNT_TOTAL (SAMPLE_COUNT + 1)
+  #define NEXT_SAMPLE(x) (x + 1);
+#else
+  #define SAMPLE_COUNT_TOTAL SAMPLE_COUNT
+  #define NEXT_SAMPLE(x) ((x + 1) & (SAMPLE_COUNT - 1));
+#endif
+
 #if WAVE_COUNT_X == 64
   #define WAVE_COUNT_X_EXP 6
 #elif WAVE_COUNT_X == 32
@@ -151,33 +160,13 @@
 #pragma GCC diagnostic ignored "-Wnarrowing"
 static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK
-struct {
-  DATA_TYPE wave_bank[SAMPLE_COUNT * WAVE_COUNT];
-#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
-  uint32_t guard;
-#endif
-} wb = {
-  {WAVEBANK},
-#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
-  0
-#endif
-};
+  DATA_TYPE wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT] = {WAVEBANK};
 #else
-struct {
-  uint8_t wave_bank[SAMPLE_COUNT * WAVE_COUNT * sizeof(DATA_TYPE)];
-#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
-  uint32_t guard;
-#endif
-} wb = {
-  "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT),
-#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
-   0
-#endif
-};
+  uint8_t wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
 #endif
 #pragma GCC diagnostic pop
 
-static const DATA_TYPE *wavebank = (DATA_TYPE*)wb.wave_bank;
+static const DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
 
   /**
    * Floating point linear wavetable lookup.
@@ -191,8 +180,8 @@ float osc_wavebank(float x, uint32_t idx) {
   const float p = x - (uint32_t)x;
   const float x0f = p * SAMPLE_COUNT;
   const uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
-  const uint32_t x1 = (x0 + 1) & (SAMPLE_COUNT - 1);
-  const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT];
+  const uint32_t x1 = NEXT_SAMPLE(x0);
+  const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT_TOTAL];
   return linintf(x0f - (uint32_t)x0f, to_f32(wt[x0]), to_f32(wt[x1]));
 }
 
@@ -221,11 +210,11 @@ float osc_wavebank(float x, float idx) {
   const float p = x - (uint32_t)x;
   const float x0f = p * SAMPLE_COUNT;
   const uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
-  const uint32_t x1 = (x0 + 1) & (SAMPLE_COUNT - 1);
-  const DATA_TYPE *wt = &wavebank[(uint32_t)idx * SAMPLE_COUNT];
+  const uint32_t x1 = NEXT_SAMPLE(x0);
+  const DATA_TYPE *wt = &wavebank[(uint32_t)idx * SAMPLE_COUNT_TOTAL];
   const float fr = x0f - (uint32_t)x0f;
   const float y0 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
-  wt += SAMPLE_COUNT;
+  wt += SAMPLE_COUNT_TOTAL;
   const float y1 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
   return linintf((idx - (uint32_t)idx), y0, y1);
 }
@@ -252,9 +241,9 @@ float osc_wavebank(float x, float idx_x, float idx_y) {
    * @param   idx  Wave index.
    * @return     Wave sample.
    */
-#if defined(FORMAT_PCM16) && defined(FAST_LININT_16)
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, uint32_t idx) {
+#if defined(FORMAT_PCM16) && defined(SAMPLE_GUARD)
   q31_t result;
   __asm__ volatile ( \
 "ubfx r0, %[x], %[frlsb], #15\n" \
@@ -266,25 +255,19 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
 "smlsdx %[result], r0, %[wt], %[result]\n" \
 "lsl %[result], %[result], #1\n" \
 : [result] "=r" (result) \
-: [x] "r" (x), [wt] "r" (&wavebank[idx * SAMPLE_COUNT]), [frlsb] "i" (31 - SAMPLE_COUNT_EXP - 15), [xlsb] "i" (31 - SAMPLE_COUNT_EXP), [xwidth] "i" (SAMPLE_COUNT_EXP) \
+: [x] "r" (x), [wt] "r" (&wavebank[idx * SAMPLE_COUNT_TOTAL]), [frlsb] "i" (31 - SAMPLE_COUNT_EXP - 15), [xlsb] "i" (31 - SAMPLE_COUNT_EXP), [xwidth] "i" (SAMPLE_COUNT_EXP) \
 : "r0" \
   );
   return result;
-}
 #else
-static inline __attribute__((always_inline, optimize("Ofast")))
-q31_t osc_wavebank(q31_t x, uint32_t idx) {
   uint32_t x0p = ubfx(x, 31 - SAMPLE_COUNT_EXP, SAMPLE_COUNT_EXP);
-  uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
+  uint32_t x0 = x0p;
+  uint32_t x1 = NEXT_SAMPLE(x0);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
-  const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT];
-#ifdef FORMAT_PCM16
-  return linintq(fr, wt[x0], wt[x1]);
-#else
+  const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT_TOTAL];
   return linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
 #endif
 }
-#endif
 
   /**
    * Fixed point grid wavetable lookup.
@@ -309,11 +292,12 @@ q31_t osc_wavebank(q31_t x, uint32_t idx_x, uint32_t idx_y) {
 static inline __attribute__((always_inline, optimize("Ofast")))
 q31_t osc_wavebank(q31_t x, q31_t idx) {
   uint32_t x0p = ubfx(x, 31 - SAMPLE_COUNT_EXP, SAMPLE_COUNT_EXP);
-  uint32_t x0 = x0p, x1 = (x0p + 1) & (SAMPLE_COUNT - 1);
+  uint32_t x0 = x0p;
+  uint32_t x1 = NEXT_SAMPLE(x0);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
-  const DATA_TYPE *wt = &wavebank[q31mul(idx, (WAVE_COUNT - 1)) * SAMPLE_COUNT];
+  const DATA_TYPE *wt = &wavebank[q31mul(idx, (WAVE_COUNT - 1)) * SAMPLE_COUNT_TOTAL];
   const q31_t y0 = linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
-  wt += SAMPLE_COUNT;
+  wt += SAMPLE_COUNT_TOTAL;
   const q31_t y1 = linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
   return linintq((idx * (WAVE_COUNT - 1)) & 0x7FFFFFFF, y0, y1);
 }

@@ -124,12 +124,33 @@ q31_t wt_sine_lut_q[k_wt_sine_lut_size];
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_sinq(q31_t x) {
+#ifdef OSC_SIN_Q15_LUT
+  q31_t result;
+  __asm__ volatile ( \
+"lsls %[x], %[x], #1\n" \
+"ubfx r0, %[x], %[frlsb], #15\n" \
+"pkhbt r0, r0, r0, lsl #16\n" \
+"ubfx %[x], %[x], %[xlsb], %[xwidth]\n" \
+"ldr r1, [%[wt], %[x], lsl #1]\n" \
+"mov %[result], r1, lsl #16\n" \
+"asr %[result], %[result], #1\n" \
+"smlsdx %[result], r0, r1, %[result]\n" \
+"lsl %[result], %[result], #1\n" \
+"it mi\n" \
+"negmi %[result], %[result]\n" \
+: [result] "=r" (result) \
+: [x] "r" (x), [wt] "r" (wt_sine_lut_q), [frlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1 - 15), [xlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1), [xwidth] "i" (k_wt_sine_size_exp + 1 - 1) \
+: "r0", "r1" \
+  );
+  return result;
+#else
   uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   const uint32_t x0 = x0p & k_wt_sine_mask;
   const uint32_t x1 = x0 + 1;
   const q31_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
   const q31_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
   return (x0p < k_wt_sine_size)?y0:-y0;
+#endif
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))
