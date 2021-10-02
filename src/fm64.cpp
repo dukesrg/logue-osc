@@ -1119,13 +1119,25 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 #ifdef MOD16
 #ifdef WFBITS
+#ifdef WAVE_WIDTH
+      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i], s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+#else
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+#endif
+#else
+#ifdef WAVE_WIDTH
+      s_opval[i] = smmul(osc_sinq(modw0, s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #else
       s_opval[i] = smmul(osc_sinq(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #endif
+#endif
 #else
 #ifdef WFBITS
+#ifdef WAVE_WIDTH
+      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i], s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+#else
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+#endif
 #else
 #ifdef WAVE_WIDTH
       s_opval[i] = smmul(osc_sinq(modw0, s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) << 1;

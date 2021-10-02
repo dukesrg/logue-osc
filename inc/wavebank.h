@@ -269,6 +269,33 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
 #endif
 }
 
+#if defined(FORMAT_PCM16) && defined(SAMPLE_GUARD)
+static inline __attribute__((always_inline, optimize("Ofast")))
+q31_t osc_wavebank(q31_t x, uint32_t idx, q31_t width, q31_t width_recip) {
+  q31_t result;
+  __asm__ volatile ( \
+"bic %[x], %[x], #0x80000000\n" \
+"cmp %[x], %[width_recip]\n" \
+"ite hi\n" \
+"eorhi %[x], %[x], %[x]\n" \
+"smmulls %[x], %[x], %[width] \n" \
+"lsl %[x], %[x], #8\n" \
+"ubfx r0, %[x], %[frlsb], #15\n" \
+"pkhbt r0, r0, r0, lsl #16\n" \
+"ubfx %[x], %[x], %[xlsb], %[xwidth]\n" \
+"ldr %[wt], [%[wt], %[x], lsl #1]\n" \
+"mov %[result], %[wt], lsl #16\n" \
+"asr %[result], %[result], #1\n" \
+"smlsdx %[result], r0, %[wt], %[result]\n" \
+"lsl %[result], %[result], #1\n" \
+: [result] "=r" (result) \
+: [x] "r" (x), [wt] "r" (&wavebank[idx * SAMPLE_COUNT_TOTAL]), [frlsb] "i" (31 - SAMPLE_COUNT_EXP - 15), [xlsb] "i" (31 - SAMPLE_COUNT_EXP), [xwidth] "i" (SAMPLE_COUNT_EXP), [width] "r" (width), [width_recip] "r" (width_recip) \
+: "r0" \
+  );
+  return result;
+}
+#endif
+
   /**
    * Fixed point grid wavetable lookup.
    *
