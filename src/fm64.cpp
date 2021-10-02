@@ -138,7 +138,6 @@
 #else
   #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
 #endif
-#define osc_sin(a) osc_sinq(a)
 #ifdef USE_Q31_PITCH
   typedef q31_t pitch_t;
   #define f32_to_pitch(a) f32_to_q31(a)
@@ -301,6 +300,10 @@ static float s_op_rate_scale[OPERATOR_COUNT];
 #ifdef WFBITS
 static uint8_t s_op_waveform[OPERATOR_COUNT];
 static uint32_t s_waveform[OPERATOR_COUNT];
+#endif
+#ifdef WAVE_WIDTH
+static q31_t s_wavewidth = 0x01000000;
+static q31_t s_wavewidth_recip = 0x7FFFFFFF;
 #endif
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -835,7 +838,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[0] = smmul(osc_wavebank(modw0, s_waveform[0]), param_eglut(s_egval[0], s_oplevel[0])) << 1;
 #else
-      s_opval[0] = smmul(osc_sin(modw0), param_eglut(s_egval[0], s_oplevel[0])) << 1;
+      s_opval[0] = smmul(osc_sinq(modw0), param_eglut(s_egval[0], s_oplevel[0])) << 1;
 #endif
 
   modw0 = 0;
@@ -856,7 +859,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[1] = smmul(osc_wavebank(modw0, s_waveform[1]), param_eglut(s_egval[1], s_oplevel[1])) << 1;
 #else
-      s_opval[1] = smmul(osc_sin(modw0), param_eglut(s_egval[1], s_oplevel[1])) << 1;
+      s_opval[1] = smmul(osc_sinq(modw0), param_eglut(s_egval[1], s_oplevel[1])) << 1;
 #endif
   modw0 = 0;
         __asm__ volatile ( \
@@ -881,7 +884,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[2] = smmul(osc_wavebank(modw0, s_waveform[2]), param_eglut(s_egval[2], s_oplevel[2])) << 1;
 #else
-      s_opval[2] = smmul(osc_sin(modw0), param_eglut(s_egval[2], s_oplevel[2])) << 1;
+      s_opval[2] = smmul(osc_sinq(modw0), param_eglut(s_egval[2], s_oplevel[2])) << 1;
 #endif
   modw0 = 0;
         __asm__ volatile ( \
@@ -910,7 +913,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[3] = smmul(osc_wavebank(modw0, s_waveform[3]), param_eglut(s_egval[3], s_oplevel[3])) << 1;
 #else
-      s_opval[3] = smmul(osc_sin(modw0), param_eglut(s_egval[3], s_oplevel[3])) << 1;
+      s_opval[3] = smmul(osc_sinq(modw0), param_eglut(s_egval[3], s_oplevel[3])) << 1;
 #endif
   modw0 = 0;
         __asm__ volatile ( \
@@ -943,7 +946,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[4] = smmul(osc_wavebank(modw0, s_waveform[4]), param_eglut(s_egval[4], s_oplevel[4])) << 1;
 #else
-      s_opval[4] = smmul(osc_sin(modw0), param_eglut(s_egval[4], s_oplevel[4])) << 1;
+      s_opval[4] = smmul(osc_sinq(modw0), param_eglut(s_egval[4], s_oplevel[4])) << 1;
 #endif
   modw0 = 0;
         __asm__ volatile ( \
@@ -980,7 +983,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[5] = smmul(osc_wavebank(modw0, s_waveform[5]), param_eglut(s_egval[5], s_oplevel[5])) << 1;
 #else
-      s_opval[5] = smmul(osc_sin(modw0), param_eglut(s_egval[5], s_oplevel[5])) << 1;
+      s_opval[5] = smmul(osc_sinq(modw0), param_eglut(s_egval[5], s_oplevel[5])) << 1;
 #endif
 #else
 #ifndef MOD16
@@ -1118,13 +1121,17 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 #ifdef WFBITS
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #else
-      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+      s_opval[i] = smmul(osc_sinq(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #endif
 #else
 #ifdef WFBITS
       s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
 #else
-      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+#ifdef WAVE_WIDTH
+      s_opval[i] = smmul(osc_sinq(modw0, s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+#else
+      s_opval[i] = smmul(osc_sinq(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+#endif
 #endif
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
 #endif
@@ -1344,10 +1351,15 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     index = - (int16_t)index;
     negative = 1;
   }
-  if (index > CUSTOM_PARAM_ID(1)) {
+  if (index > CUSTOM_PARAM_ID(1)
+  ) {
     if (tenbits)
       value >>= 3;
-    if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)) && (tenbits || value == 0))
+    if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)
+//#ifdef WAVE_WIDTH
+//      && index != CUSTOM_PARAM_ID(141)
+//#endif
+    ) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
     uvalue = value; //looks like optimizer is crazy: this saves over 100 bypes just by assigning to used valiable with sign conversion >%-O
   }
@@ -1637,6 +1649,13 @@ setkvslevel:
     case CUSTOM_PARAM_ID(140):
       s_waveform_offset[CUSTOM_PARAM_ID(140) - index] = value - 100;
       setWaveform();
+      break;
+#endif
+#ifdef WAVE_WIDTH
+    case CUSTOM_PARAM_ID(141):
+      s_wavewidth = value - 100;
+      s_wavewidth_recip = 0x0147AE14 * (100 - s_wavewidth); // 1/100 * witdh
+      s_wavewidth = 0x64000000 / (100 - s_wavewidth); // (100 >> 7) / width
       break;
 #endif
     default:
