@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.8-25",
+        "version" : "1.8-27",
         "name" : "FM67",
         "num_param" : 6,
         "params" : [
@@ -162,8 +162,7 @@
             ["Waveform Op3", -15, 15, "%"],
             ["Waveform Op4", -15, 15, "%"],
             ["Waveform Op5", -15, 15, "%"],
-            ["Waveform Op6", -15, 15, "%"],
-            ["Wave Width", -99, 99, "%"]
+            ["Waveform Op6", -15, 15, "%"]
         ]
     }
 }

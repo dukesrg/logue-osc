@@ -154,7 +154,7 @@ q31_t osc_sinq(q31_t x) {
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))
-q31_t osc_sinq(q31_t x, q31_t width, q31_t width_recip) {
+q31_t osc_sinq(q31_t x, q31_t width_recip, q31_t width) {
   q31_t result;
   __asm__ volatile ( \
 "bic %[x], %[x], #0x80000000\n" \
@@ -174,7 +174,7 @@ q31_t osc_sinq(q31_t x, q31_t width, q31_t width_recip) {
 "it mi\n" \
 "negmi %[result], %[result]\n" \
 : [result] "=r" (result) \
-: [x] "r" (x), [wt] "r" (wt_sine_lut_q), [frlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1 - 15), [xlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1), [xwidth] "i" (k_wt_sine_size_exp + 1 - 1), [width] "r" (width), [width_recip] "r" (width_recip) \
+: [x] "r" (x), [wt] "r" (wt_sine_lut_q), [frlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1 - 15), [xlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1), [xwidth] "i" (k_wt_sine_size_exp + 1 - 1), [width_recip] "r" (width_recip), [width] "r" (width) \
 : "r0", "r1" \
   );
   return result;

@@ -271,7 +271,7 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
 
 #if defined(FORMAT_PCM16) && defined(SAMPLE_GUARD)
 static inline __attribute__((always_inline, optimize("Ofast")))
-q31_t osc_wavebank(q31_t x, uint32_t idx, q31_t width, q31_t width_recip) {
+q31_t osc_wavebank(q31_t x, uint32_t idx, q31_t width_recip, q31_t width) {
   q31_t result;
   __asm__ volatile ( \
 "bic %[x], %[x], #0x80000000\n" \
@@ -289,7 +289,7 @@ q31_t osc_wavebank(q31_t x, uint32_t idx, q31_t width, q31_t width_recip) {
 "smlsdx %[result], r0, %[wt], %[result]\n" \
 "lsl %[result], %[result], #1\n" \
 : [result] "=r" (result) \
-: [x] "r" (x), [wt] "r" (&wavebank[idx * SAMPLE_COUNT_TOTAL]), [frlsb] "i" (31 - SAMPLE_COUNT_EXP - 15), [xlsb] "i" (31 - SAMPLE_COUNT_EXP), [xwidth] "i" (SAMPLE_COUNT_EXP), [width] "r" (width), [width_recip] "r" (width_recip) \
+: [x] "r" (x), [wt] "r" (&wavebank[idx * SAMPLE_COUNT_TOTAL]), [frlsb] "i" (31 - SAMPLE_COUNT_EXP - 15), [xlsb] "i" (31 - SAMPLE_COUNT_EXP), [xwidth] "i" (SAMPLE_COUNT_EXP), [width_recip] "r" (width_recip), [width] "r" (width) \
 : "r0" \
   );
   return result;

@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.8-25",
+        "version" : "1.8-27",
         "name" : "FM64",
         "num_param" : 6,
         "params" : [
@@ -18,8 +18,8 @@
             ["Lvl offs Mod", -99, 99, "%"]
         ],
         "custom_data" : [
-            ["Yamaha DX7-series voice banks", 64, 4096, 4],
-            ["custom_params", 16448, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 5],
+            ["custom_params", 20544, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -151,18 +151,7 @@
             ["Det scal Op3", -99, 100, "%"],
             ["Det scal Op4", -99, 100, "%"],
             ["Det scal Op5", -99, 100, "%"],
-            ["Det scal Op6", -99, 100, "%"],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["-", 0, 0, ""],
-            ["Wave Width", -99, 99, "%"]
+            ["Det scal Op6", -99, 100, "%"]
         ]
     }
 }

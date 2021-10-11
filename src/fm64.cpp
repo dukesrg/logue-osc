@@ -105,7 +105,17 @@
   #define WAVE_COUNT 2
   #define WFBITS 1
 #endif
-#if !defined(WFBITS)
+
+#ifdef WAVE_PINCH
+  #define WAVE_PINCH_PARAMS , s_wavewidth[i * 2], s_wavewidth[i * 2 + 1]
+#else
+  #define WAVE_PINCH_PARAMS
+#endif
+
+#ifdef WFBITS
+  #define OSC_FUNC(a) osc_wavebank(a, s_waveform[i] WAVE_PINCH_PARAMS)
+#else
+  #define OSC_FUNC(a) osc_sinq(a WAVE_PINCH_PARAMS)
   #if defined(WFSIN32)
     #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
   #elif defined(WFSIN16)
@@ -138,6 +148,7 @@
 #else
   #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
 #endif
+
 #ifdef USE_Q31_PITCH
   typedef q31_t pitch_t;
   #define f32_to_pitch(a) f32_to_q31(a)
@@ -249,6 +260,9 @@ static int8_t s_kvs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
+#ifdef WAVE_PINCH
+static int8_t s_waveform_pinch[OPERATOR_COUNT + 3] = {0};
+#endif
 #ifdef OP6
 static uint8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
 static uint8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
@@ -301,10 +315,6 @@ static float s_op_rate_scale[OPERATOR_COUNT];
 static uint8_t s_op_waveform[OPERATOR_COUNT];
 static uint32_t s_waveform[OPERATOR_COUNT];
 #endif
-#ifdef WAVE_WIDTH
-static q31_t s_wavewidth = 0x01000000;
-static q31_t s_wavewidth_recip = 0x7FFFFFFF;
-#endif
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 static float s_egsrate_recip[OPERATOR_COUNT][2];
@@ -316,10 +326,16 @@ static q31_t s_outlevel[OPERATOR_COUNT];
 static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+#ifdef WAVE_PINCH
+static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+#endif
 #else
 static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
+#ifdef WAVE_PINCH
+static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+#endif
 #endif
 static int16_t s_klsoffset[OPERATOR_COUNT] = {0};
 static int16_t s_egrateoffset[OPERATOR_COUNT] = {0};
@@ -1118,33 +1134,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       s_phase[i] += opw0[i];
 
 #ifdef MOD16
-#ifdef WFBITS
-#ifdef WAVE_WIDTH
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i], s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
+      s_opval[i] = smmul(OSC_FUNC(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #else
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
-#endif
-#else
-#ifdef WAVE_WIDTH
-      s_opval[i] = smmul(osc_sinq(modw0, s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
-#else
-      s_opval[i] = smmul(osc_sinq(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
-#endif
-#endif
-#else
-#ifdef WFBITS
-#ifdef WAVE_WIDTH
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i], s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) << 1;
-#else
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
-#endif
-#else
-#ifdef WAVE_WIDTH
-      s_opval[i] = smmul(osc_sinq(modw0, s_wavewidth, s_wavewidth_recip), param_eglut(s_egval[i], s_oplevel[i])) << 1;
-#else
-      s_opval[i] = smmul(osc_sinq(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
-#endif
-#endif
+      s_opval[i] = smmul(OSC_FUNC(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
 #endif
       if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
@@ -1368,12 +1360,13 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     if (tenbits)
       value >>= 3;
     if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)
-//#ifdef WAVE_WIDTH
+#ifdef WAVE_PINCH
 //      && index != CUSTOM_PARAM_ID(141)
-//#endif
+      && !(index >= CUSTOM_PARAM_ID(141) && index <= CUSTOM_PARAM_ID(149))
+#endif
     ) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
-    uvalue = value; //looks like optimizer is crazy: this saves over 100 bypes just by assigning to used valiable with sign conversion >%-O
+    uvalue = value; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
   }
   switch (index) {
     case CUSTOM_PARAM_ID(1):
@@ -1663,11 +1656,26 @@ setkvslevel:
       setWaveform();
       break;
 #endif
-#ifdef WAVE_WIDTH
+#ifdef WAVE_PINCH
     case CUSTOM_PARAM_ID(141):
-      s_wavewidth = value - 100;
-      s_wavewidth_recip = 0x0147AE14 * (100 - s_wavewidth); // 1/100 * witdh
-      s_wavewidth = 0x64000000 / (100 - s_wavewidth); // (100 >> 7) / width
+    case CUSTOM_PARAM_ID(142):
+    case CUSTOM_PARAM_ID(143):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(144):
+    case CUSTOM_PARAM_ID(145):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(146):
+    case CUSTOM_PARAM_ID(147):
+    case CUSTOM_PARAM_ID(148):
+    case CUSTOM_PARAM_ID(149):
+      s_waveform_pinch[CUSTOM_PARAM_ID(149) - index] = value;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        value = clipminmaxi32(1, 100 - paramOffset(s_waveform_pinch, i), 100);
+        s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh
+        s_wavewidth[i * 2 + 1] = 0x64000000 / value; // (100 >> 7) / width
+      }
       break;
 #endif
     default:
