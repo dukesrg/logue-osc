@@ -83,10 +83,11 @@ For user-customizable oscillators, an online constructor is available at https:/
 |User algorithm count|-|-|16|-|-|-|-|
 |Operators count|4|6|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|
-|Voice bank count|4|5|4|4|3|2|5|
-|Feedback count|1|1|2|1|1|1|1|
+|Voice bank count|4|5|4|4|2|2|5|
+|Feedback count|1|1|2|1|2|1|1|
 |Waveform count|8|1|1|8|16|1|1|
 |Waveform customization||||+|+|||
+|Waveform pinch|||+|||||
 |AMP LUT depth x witch, bits|11x16|11x16|11x16|11x16|11x16|13x16|11x16|
 |Mixing quality, bits|32|32|16|32|32|32|32|
 |Shape LFO target supported|+|+|+|+|+|+|+|
@@ -242,6 +243,15 @@ For user-customizable oscillators, an online constructor is available at https:/
 |137|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
 |138|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
 |139|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
+|140|WF pinch All|0&hellip;99|Waveform pinch for all operators|
+|141|WF pinch Car|0&hellip;99|Waveform pinch for carriers|
+|142|WF pinch Mod|0&hellip;99|Waveform pinch for modulatorss|
+|143|WF pinch Op1|0&hellip;99|Waveform pinch for operator 1|
+|144|WF pinch Op2|0&hellip;99|Waveform pinch for operator 2|
+|145|WF pinch Op3|0&hellip;99|Waveform pinch for operator 3|
+|146|WF pinch Op4|0&hellip;99|Waveform pinch for operator 4|
+|147|WF pinch Op5|0&hellip;99|Waveform pinch for operator 5|
+|148|WF pinch Op6|0&hellip;99|Waveform pinch for operator 6|
 
 ⁽¹⁾ : 0...100 with the step of 1 when assigned to the oscillator parameter, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0..127 with the step of 0.125 when assigned to the Shape or Alt (Shift + Shape) <br/>
