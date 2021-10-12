@@ -7,20 +7,20 @@
         "dev_id" : 1701541188,
         "prg_id" : 0,
         "version" : "1.8-27",
-        "name" : "FM66",
+        "name" : "FM65",
         "num_param" : 6,
         "params" : [
             ["Voice 1", -96, 96, "%"],
             ["Det scal All", -99, 100, "%"],
             ["Rat offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
-            ["Alg offset", -83, 83, "%"],
-            ["Waveform C+M", -77, 77, "%"]
+            ["Alg offset", -99, 99, "%"],
+            ["Lvl offs Mod", -99, 99, "%"]
         ],
         "custom_data" : [
-            ["Raw 16-bit PCM waveforms", 64, 514, 8],
-            ["Yamaha DX7-series voice banks", 4176, 4096, 4],
-            ["custom_params", 20560, 2, 8, 256]
+            ["Korg opsix user algorithm modulation matrices", 64, 42, 16],
+            ["Yamaha DX7-series voice banks", 736, 4096, 4],
+            ["custom_params", 17120, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -43,8 +43,8 @@
             ["FB2 scale", -99, 100, "%"],
             ["FB route", 0, 66, "%"],
             ["FB2 route", 0, 66, "%"],
-            ["Alg select", 0, 84, "%"],
-            ["Alg offset", -83, 83, "%"],
+            ["Alg select", 0, 100, "%"],
+            ["Alg offset", -99, 99, "%"],
             ["Lvl offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
             ["Lvl offs Mod", -99, 99, "%"],
@@ -153,16 +153,25 @@
             ["Det scal Op4", -99, 100, "%"],
             ["Det scal Op5", -99, 100, "%"],
             ["Det scal Op6", -99, 100, "%"],
-            ["Waveform C+M", -77, 77, "%"],
-            ["Waveform 1+2", -77, 77, "%"],
-            ["Waveform 3+4", -77, 77, "%"],
-            ["Waveform 5+6", -77, 77, "%"],
-            ["Waveform Op1", -7, 7, "%"],
-            ["Waveform Op2", -7, 7, "%"],
-            ["Waveform Op3", -7, 7, "%"],
-            ["Waveform Op4", -7, 7, "%"],
-            ["Waveform Op5", -7, 7, "%"],
-            ["Waveform Op6", -7, 7, "%"]
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["WF pinch All", 0, 99, "%"],
+            ["WF pinch Car", 0, 99, "%"],
+            ["WF pinch Mod", 0, 99, "%"],
+            ["WF pinch Op1", 0, 99, "%"],
+            ["WF pinch Op2", 0, 99, "%"],
+            ["WF pinch Op3", 0, 99, "%"],
+            ["WF pinch Op4", 0, 99, "%"],
+            ["WF pinch Op5", 0, 99, "%"],
+            ["WF pinch Op6", 0, 99, "%"]
         ]
     }
 }
