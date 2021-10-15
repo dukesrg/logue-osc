@@ -69,7 +69,7 @@ q31_t osc_fastsinq(q31_t x) {
 }
 
 #ifdef OSC_SIN_Q31_LUT
-q31_t wt_sine_lut_q[k_wt_sine_size] = {
+q31_t wt_sine_lut_q[k_wt_sine_lut_size] = {
 0x00000000, 0x032428D4, 0x0647DC38, 0x096A93F0, 0x0C8BD230, 0x0FAB29E0, 0x12C80C80, 0x15E21540,
 0x18F8B580, 0x1C0B8060, 0x1F19F800, 0x2223A6C0, 0x25280F00, 0x2826BB40, 0x2B1F3640, 0x2E110A00,
 0x30FBC1C0, 0x33DEF000, 0x36BA1F40, 0x398CDA80, 0x3C56BCC0, 0x3F174800, 0x41CE2080, 0x447AD080,
@@ -85,11 +85,12 @@ q31_t wt_sine_lut_q[k_wt_sine_size] = {
 0x5A827B80, 0x5842E100, 0x55F5A500, 0x539B2C80, 0x5133CA00, 0x4EBFEC00, 0x4C3FDD80, 0x49B41380,
 0x471CEB00, 0x447AD080, 0x41CE2080, 0x3F174800, 0x3C56BCC0, 0x398CDA80, 0x36BA1F40, 0x33DEF000,
 0x30FBC1C0, 0x2E110A00, 0x2B1F3640, 0x2826BB40, 0x25280F00, 0x2223A6C0, 0x1F19F800, 0x1C0B8060,
-0x18F8B580, 0x15E21540, 0x12C80C80, 0x0FAB29E0, 0x0C8BD230, 0x096A93F0, 0x0647DC38, 0x032428D4
+0x18F8B580, 0x15E21540, 0x12C80C80, 0x0FAB29E0, 0x0C8BD230, 0x096A93F0, 0x0647DC38, 0x032428D4,
+0x00000000
 };
 #else
 #ifdef OSC_SIN_Q15_LUT
-q15_t wt_sine_lut_q[k_wt_sine_size] = {
+q15_t wt_sine_lut_q[k_wt_sine_lut_size] = {
 0x0000, 0x0324, 0x0648, 0x096B, 0x0C8C, 0x0FAB, 0x12C8, 0x15E2,
 0x18F9, 0x1C0C, 0x1F1A, 0x2224, 0x2528, 0x2827, 0x2B1F, 0x2E11,
 0x30FC, 0x33DF, 0x36BA, 0x398D, 0x3C57, 0x3F17, 0x41CE, 0x447B,
@@ -105,7 +106,8 @@ q15_t wt_sine_lut_q[k_wt_sine_size] = {
 0x5A82, 0x5843, 0x55F6, 0x539B, 0x5134, 0x4EC0, 0x4C40, 0x49B4,
 0x471D, 0x447B, 0x41CE, 0x3F17, 0x3C57, 0x398D, 0x36BA, 0x33DF,
 0x30FC, 0x2E11, 0x2B1F, 0x2827, 0x2528, 0x2224, 0x1F1A, 0x1C0C,
-0x18F9, 0x15E2, 0x12C8, 0x0FAB, 0x0C8C, 0x096B, 0x0648, 0x0324
+0x18F9, 0x15E2, 0x12C8, 0x0FAB, 0x0C8C, 0x096B, 0x0648, 0x0324,
+0x0000
 };
 #endif
 #endif
@@ -122,12 +124,69 @@ q31_t wt_sine_lut_q[k_wt_sine_lut_size];
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_sinq(q31_t x) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_sine_size_exp - 1);
+#ifdef OSC_SIN_Q15_LUT
+  q31_t result;
+  __asm__ volatile ( \
+"lsls %[x], %[x], #1\n" \
+"ubfx r0, %[x], %[frlsb], #15\n" \
+"pkhbt r0, r0, r0, lsl #16\n" \
+"ubfx %[x], %[x], %[xlsb], %[xwidth]\n" \
+"ldr r1, [%[wt], %[x], lsl #1]\n" \
+"mov %[result], r1, lsl #16\n" \
+"asr %[result], %[result], #1\n" \
+"smlsdx %[result], r0, r1, %[result]\n" \
+"lsl %[result], %[result], #1\n" \
+"it mi\n" \
+"negmi %[result], %[result]\n" \
+: [result] "=r" (result) \
+: [x] "r" (x), [wt] "r" (wt_sine_lut_q), [frlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1 - 15), [xlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1), [xwidth] "i" (k_wt_sine_size_exp + 1 - 1) \
+: "r0", "r1" \
+  );
+  return result;
+#else
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   const uint32_t x0 = x0p & k_wt_sine_mask;
-  const uint32_t x1 = (x0 + 1) & k_wt_sine_mask;
+  const uint32_t x1 = x0 + 1;
   const q31_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
   const q31_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
+  return (x0p < k_wt_sine_size)?y0:-y0;
+#endif
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q31_t osc_sinq(q31_t x, q31_t width_recip, q31_t width) {
+  q31_t result;
+  __asm__ volatile ( \
+"bic %[x], %[x], #0x80000000\n" \
+"cmp %[x], %[width_recip]\n" \
+"ite hi\n" \
+"eorhi %[x], %[x], %[x]\n" \
+"smmulls %[x], %[x], %[width] \n" \
+"lsls %[x], %[x], #9\n" \
+"ubfx r0, %[x], %[frlsb], #15\n" \
+"pkhbt r0, r0, r0, lsl #16\n" \
+"ubfx %[x], %[x], %[xlsb], %[xwidth]\n" \
+"ldr r1, [%[wt], %[x], lsl #1]\n" \
+"mov %[result], r1, lsl #16\n" \
+"asr %[result], %[result], #1\n" \
+"smlsdx %[result], r0, r1, %[result]\n" \
+"lsl %[result], %[result], #1\n" \
+"it mi\n" \
+"negmi %[result], %[result]\n" \
+: [result] "=r" (result) \
+: [x] "r" (x), [wt] "r" (wt_sine_lut_q), [frlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1 - 15), [xlsb] "i" (31 - k_wt_sine_size_exp - 1 + 1), [xwidth] "i" (k_wt_sine_size_exp + 1 - 1), [width_recip] "r" (width_recip), [width] "r" (width) \
+: "r0", "r1" \
+  );
+  return result;
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+q15_t osc_sinq(q15_t x) {
+  uint32_t x0p = ubfx(x, 15 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
+  const uint16_t x0 = x0p & k_wt_sine_mask;
+  const uint16_t x1 = x0 + 1;
+  const q15_t fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFF;
+  const q15_t y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
   return (x0p < k_wt_sine_size)?y0:-y0;
 }
 #endif
@@ -143,8 +202,7 @@ q31_t wt_saw_lut_q[k_wt_saw_lut_tsize];
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_sawq(q31_t x) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_saw_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   uint32_t x0 = x0p, x1 = x0p + 1;
   const q31_t fr = (x << (k_wt_saw_size_exp + 1)) & 0x7FFFFFFF;
   if (x0p >= k_wt_saw_size) {
@@ -165,8 +223,7 @@ q31_t osc_sawq(q31_t x) {
    */
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_bl_sawq(q31_t x, uint8_t idx) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_saw_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   uint32_t x0 = x0p, x1 = x0p + 1;
   const q31_t fr = (x << (k_wt_saw_size_exp + 1)) & 0x7FFFFFFF;
   const q31_t *wt = &wt_saw_lut_q[idx * k_wt_saw_lut_size];
@@ -189,8 +246,7 @@ q31_t osc_bl_sawq(q31_t x, uint8_t idx) {
 #define k_wt_saw_notes_cnt_recip 0x15555555 // 1/6
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t osc_bl2_sawq(q31_t x, q31_t idx) {
-  x &= 0x7FFFFFFF;
-  uint32_t x0p = x >> (31 - k_wt_saw_size_exp - 1);
+  uint32_t x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
   uint32_t x0 = x0p, x1 = x0p + 1;
   q31_t y0, y1;
   const q31_t fr = (x << (k_wt_saw_size_exp + 1)) & 0x7FFFFFFF;

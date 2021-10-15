@@ -95,3 +95,19 @@ int32_t ldrsh_lsl(int32_t op1, int32_t op2, int32_t op3)
   __asm__ volatile ("ldrsh %0, [%1, %2, lsl %3]" : "=r" (result) : "r" (op1), "r" (op2), "i" (op3));
   return result;
 }
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+int32_t sbfx(int32_t op1, int32_t op2, int32_t op3)
+{
+  register int32_t result;
+  __asm__ volatile ("sbfx %0, %1, %2, %3" : "=r" (result) : "r" (op1), "i" (op2), "i" (op3));
+  return result;
+}
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+int32_t ubfx(int32_t op1, int32_t op2, int32_t op3)
+{
+  register int32_t result;
+  __asm__ volatile ("ubfx %0, %1, %2, %3" : "=r" (result) : "r" (op1), "i" (op2), "i" (op3));
+  return result;
+}

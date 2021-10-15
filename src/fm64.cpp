@@ -30,6 +30,15 @@
 #define FINE_TUNE //16-bit precision for cents/detune
 //#define KIT_MODE //key tracking to voice (- ~112 bytes)
 #define SPLIT_ZONES 3
+//#define MOD16 //16-bit mod matrix processing
+//#define ROLLOUT //Inner loop rollout
+
+#ifdef MOD16
+  #define FEEDBACK_COUNT 2 //second feedback is mandatory and 'free' for 16-bit mod matrix
+#endif
+#ifndef FEEDBACK_COUNT
+  #define FEEDBACK_COUNT 1
+#endif
 
 #define FAST_POWF //native logue-sdk pow2f must be fixed, lost precesion (- ~6K bytes)
 //#define FASTER_POWF //not very precise (- ~6.3K bytes)
@@ -46,7 +55,7 @@
 
 #include "fm64.h"
 
-  #include "custom_param.h"
+#include "custom_param.h"
   CUSTOM_PARAM_INIT(
 #ifdef KIT_MODE
     CUSTOM_PARAM_ID(7),
@@ -57,18 +66,18 @@
     CUSTOM_PARAM_ID(12),
 #else
     CUSTOM_PARAM_ID(2),
-    CUSTOM_PARAM_ID(119),
-    CUSTOM_PARAM_ID(74),
-    CUSTOM_PARAM_ID(21),
-    CUSTOM_PARAM_ID(19),
-#ifdef WFBITS
-    CUSTOM_PARAM_ID(128),
-#else
+    CUSTOM_PARAM_ID(122),
+    CUSTOM_PARAM_ID(77),
+    CUSTOM_PARAM_ID(24),
     CUSTOM_PARAM_ID(22),
+#ifdef WFBITS
+    CUSTOM_PARAM_ID(131),
+#else
+    CUSTOM_PARAM_ID(25),
 #endif
 #endif
     CUSTOM_PARAM_ID(1),
-    CUSTOM_PARAM_ID(16)
+    CUSTOM_PARAM_ID(17)
   );
 
 #if defined(WF16x2)
@@ -96,7 +105,17 @@
   #define WAVE_COUNT 2
   #define WFBITS 1
 #endif
-#if !defined(WFBITS)
+
+#ifdef WAVE_PINCH
+  #define WAVE_PINCH_PARAMS , s_wavewidth[i * 2], s_wavewidth[i * 2 + 1]
+#else
+  #define WAVE_PINCH_PARAMS
+#endif
+
+#ifdef WFBITS
+  #define OSC_FUNC(a) osc_wavebank(a, s_waveform[i] WAVE_PINCH_PARAMS)
+#else
+  #define OSC_FUNC(a) osc_sinq(a WAVE_PINCH_PARAMS)
   #if defined(WFSIN32)
     #define OSC_SIN_Q31_LUT //use pre-calculated Q31 LUT instead of converted from firmware float, saves ~96 bytes of code
   #elif defined(WFSIN16)
@@ -129,9 +148,7 @@
 #else
   #define param_eglut(a,b) (ldr_lsl((int32_t)eg_lut, usat_asr(31, q31add(a,b), (EG_LUT_SHR + 1)), 2))
 #endif
-#define osc_sin(a) osc_sinq(a)
-typedef q31_t phase_t;
-#define phase_to_param(a) (a)
+
 #ifdef USE_Q31_PITCH
   typedef q31_t pitch_t;
   #define f32_to_pitch(a) f32_to_q31(a)
@@ -146,15 +163,6 @@ typedef q31_t phase_t;
 #define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
-static q31_t compensation[] = {
-  0x7FFFFFFF,
-  0x3FFFFFFF,
-  0x2AAAAAAA,
-  0x1FFFFFFF,
-  0x19999999,
-  0x15555555
-};
-
 //#define DX7_SAMPLING_FREQ 49096.545017211284821233588006932f // 1/20.368032usec
 //#define DX7_TO_LOGUE_FREQ 0.977665536f // 48000/49096.545
 //-.0325870980969347836053763275142f // log2(DX7_TO_LOGUE_FREQ)
@@ -201,6 +209,39 @@ static q31_t compensation[] = {
 #define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
 #define PEG_RATE_SCALE 196.38618f; // ~ 192 >> 24 semitones per sample at 49096.545
 
+#ifdef MOD16
+#ifdef CUSTOM_ALGORITHM_COUNT
+#define CUSTOM_MI_SCALE_FACTOR 0x139CA3E //normalized for 0-100 range of opsix
+//#define CUSTOM_OUT_SCALE_FACTOR 0x147AE14 //^
+#endif
+#define MI_SCALE_FACTOR 0x7A93
+static const uint8_t *s_algorithm;
+static q15_t s_opval[OPERATOR_COUNT + FEEDBACK_COUNT * 2];
+static q15_t s_modmatrix[OPERATOR_COUNT][OPERATOR_COUNT + FEEDBACK_COUNT];
+static q15_t s_comp[OPERATOR_COUNT];
+static q15_t compensation[] = {
+  0x7FFF,
+  0x3FFF,
+  0x2AAA,
+  0x1FFF,
+  0x1999,
+  0x1555
+};
+#else
+#define MI_SCALE_FACTOR 0x7A92BE8B // 3.830413123f >> 2
+static uint8_t s_algorithm[OPERATOR_COUNT] = {0};
+static q31_t s_opval[OPERATOR_COUNT + FEEDBACK_COUNT * 2];
+static q31_t s_comp[OPERATOR_COUNT];
+static q31_t compensation[] = {
+  0x7FFFFFFF,
+  0x3FFFFFFF,
+  0x2AAAAAAA,
+  0x1FFFFFFF,
+  0x19999999,
+  0x15555555
+};
+#endif
+
 static uint8_t s_algorithm_idx;
 static int8_t s_algorithm_offset = 0;
 static uint8_t s_algorithm_select = 0;
@@ -219,6 +260,9 @@ static int8_t s_kvs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
+#ifdef WAVE_PINCH
+static int8_t s_waveform_pinch[OPERATOR_COUNT + 3] = {0};
+#endif
 #ifdef OP6
 static uint8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
 static uint8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
@@ -234,10 +278,14 @@ static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 10
 static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
 #endif
-static float s_feedback_offset = 0.f;
-static float s_feedback_scale = 1.f;
-static uint8_t s_feedback_route = 0;
-static uint8_t s_feedback_level;
+static float s_feedback_offset[FEEDBACK_COUNT] = {0.f};
+#if FEEDBACK_COUNT == 2
+static float s_feedback_scale[FEEDBACK_COUNT] = {1.f, 1.f};
+#else
+static float s_feedback_scale[FEEDBACK_COUNT] = {1.f};
+#endif
+static uint8_t s_feedback_route[FEEDBACK_COUNT] = {0};
+static uint8_t s_feedback_level[FEEDBACK_COUNT] = {0};
 #ifdef WFBITS
 #ifdef OP6
 static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
@@ -245,7 +293,6 @@ static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
 static int8_t s_waveform_offset[OPERATOR_COUNT + 3] = {0};
 #endif
 #endif
-static uint8_t s_algorithm[OPERATOR_COUNT] = {0};
 static int8_t s_left_depth[OPERATOR_COUNT];
 static int8_t s_right_depth[OPERATOR_COUNT];
 static uint8_t s_pitchfreq[OPERATOR_COUNT];
@@ -261,7 +308,6 @@ static uint32_t s_sample_num;
 static uint32_t s_sample_count[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 
 static q31_t s_velocity = 0;
-static q31_t s_feedback;
 
 static int8_t s_op_level[OPERATOR_COUNT];
 static float s_op_rate_scale[OPERATOR_COUNT];
@@ -274,20 +320,25 @@ static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
 static float s_egsrate_recip[OPERATOR_COUNT][2];
 static q31_t s_eglevel[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egval[OPERATOR_COUNT];
-static q31_t s_opval[OPERATOR_COUNT + 1]; // operators + feedback
 static q31_t s_oplevel[OPERATOR_COUNT];
 static q31_t s_outlevel[OPERATOR_COUNT];
 #ifdef OP6
 static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
+#ifdef WAVE_PINCH
+static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+#endif
 #else
 static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
+#ifdef WAVE_PINCH
+static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
 #endif
-static uint32_t s_klsoffset[OPERATOR_COUNT] = {0};
-static uint32_t s_egrateoffset[OPERATOR_COUNT] = {0};
+#endif
+static int16_t s_klsoffset[OPERATOR_COUNT] = {0};
+static int16_t s_egrateoffset[OPERATOR_COUNT] = {0};
 static float s_krsoffset[OPERATOR_COUNT] = {0.f};
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_kvslevel[OPERATOR_COUNT];
@@ -298,12 +349,10 @@ static float s_release_rate_exp_factor;
 
 static float s_level_scale_factor;
 
-static q31_t s_comp[OPERATOR_COUNT];
-
-static uint8_t s_feedback_src;
-static uint8_t s_feedback_src_alg;
-static uint8_t s_feedback_dst_alg;
-static q31_t s_feedback_opval[2];
+static q31_t s_feedback[FEEDBACK_COUNT];
+static uint8_t s_feedback_src[FEEDBACK_COUNT];
+static uint8_t s_feedback_src_alg[FEEDBACK_COUNT];
+static uint8_t s_feedback_dst_alg[FEEDBACK_COUNT];
 
 #ifdef PEG
 static int32_t s_pegrate[PEG_STAGE_COUNT + 1];
@@ -386,52 +435,120 @@ void setWaveform() {
 }
 #endif
 
-void setFeedback() {
-  float value = clipmaxf(s_feedback_level + s_feedback_offset, 7.f);
-  s_feedback = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale) * FEEDBACK_RECIPF);
+void setFeedback(uint32_t idx) {
+  float value = clipmaxf(s_feedback_level[idx] + s_feedback_offset[idx], 7.f);
+  s_feedback[idx] = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
 }
 
-void setFeedbackRoute() {
+void setFeedbackRoute(uint32_t idx) {
   uint32_t dst;
-  if (s_feedback_route == 0) {
-    s_feedback_src = s_feedback_src_alg;
-    dst = s_feedback_dst_alg;
+  if (s_feedback_route[idx] == 0) {
+    s_feedback_src[idx] = s_feedback_src_alg[idx];
+    dst = s_feedback_dst_alg[idx];
   } else {
-    s_feedback_src = 6 - clipminmaxi32(1, s_feedback_route / 10, 6);
-    dst = 6 - clipminmaxi32(1, s_feedback_route % 10, 6);
+    s_feedback_src[idx] = OPERATOR_COUNT - clipminmaxi32(1, s_feedback_route[idx] / 10, OPERATOR_COUNT);
+    dst = OPERATOR_COUNT - clipminmaxi32(1, s_feedback_route[idx] % 10, OPERATOR_COUNT);
   }
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifdef MOD16
     if (i == dst)
-      s_algorithm[i] |= ALG_FBK_MASK;
+      s_modmatrix[i][OPERATOR_COUNT + idx] = MI_SCALE_FACTOR;
     else
-      s_algorithm[i] &= ~ALG_FBK_MASK;
+      s_modmatrix[i][OPERATOR_COUNT + idx] = 0;
+#else
+    if (i == dst)
+      s_algorithm[i] |= ALG_FBK_MASK << idx;
+    else
+      s_algorithm[i] &= ~(ALG_FBK_MASK << idx);
+#endif
   }
 }
 
 void setAlgorithm() {
   int32_t comp = 0;
+#ifdef MOD16
+#ifdef CUSTOM_ALGORITHM_COUNT
+  uint32_t algidx = (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset;
+  if (algidx < ALGORITHM_COUNT)
+    s_algorithm = dx7_algorithm[clipminmaxi32(0, algidx, ALGORITHM_COUNT + CUSTOM_ALGORITHM_COUNT - 1)];
+#else
+  s_algorithm = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)];
+#endif
+#endif
+  s_feedback_dst_alg[0] = OPERATOR_COUNT;
+#if FEEDBACK_COUNT == 2
+  s_feedback_dst_alg[1] = OPERATOR_COUNT;
+#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifndef MOD16
     s_algorithm[i] = dx7_algorithm[clipminmaxi32(0, (s_algorithm_select == 0 ? s_algorithm_idx : s_algorithm_select - 1) + s_algorithm_offset, ALGORITHM_COUNT - 1)][i];
-    if (s_algorithm[i] & ALG_FBK_MASK) {
-      s_feedback_src_alg = s_algorithm[i] & (ALG_FBK_MASK - 1);
-      s_feedback_dst_alg = i;
-      s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
-      setFeedbackRoute();
+#endif
+#ifdef CUSTOM_ALGORITHM_COUNT
+      if (algidx < ALGORITHM_COUNT) {
+#endif
+    for (uint32_t fbidx = 0; fbidx < FEEDBACK_COUNT; fbidx++) {
+      if (s_algorithm[i] & (ALG_FBK_MASK << fbidx)) {
+        s_feedback_src_alg[fbidx] = s_algorithm[i] & (ALG_FBK_MASK - 1);
+        s_feedback_dst_alg[fbidx] = i;
+#ifndef MOD16
+        s_algorithm[i] &= ~(ALG_FBK_MASK - 1);
+#endif
+      }
     }
     if (s_algorithm[i] & ALG_OUT_MASK)
       comp++;
+#ifdef CUSTOM_ALGORITHM_COUNT
+      } else {
+         comp += custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT];
+      }
+#endif
+
+#ifdef MOD16
+    for (uint32_t j = 0; j < OPERATOR_COUNT; j++) {
+#ifdef CUSTOM_ALGORITHM_COUNT
+      if (algidx < ALGORITHM_COUNT) {
+#endif
+      if ((j < (OPERATOR_COUNT - 1)) && (s_algorithm[i] & (1 << j)) && !(s_algorithm[i] & (ALG_FBK_MASK + ALG_FBK2_MASK)))
+        s_modmatrix[i][j] = MI_SCALE_FACTOR;
+      else
+        s_modmatrix[i][j] = 0;
+#ifdef CUSTOM_ALGORITHM_COUNT
+    } else {
+      s_modmatrix[i][j] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][j] * CUSTOM_MI_SCALE_FACTOR) >> 16;
+    }
+#endif
+    }
+#endif
   }
-//  s_comp = compensation[comp];
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+  setFeedbackRoute(0);
+#if FEEDBACK_COUNT == 2
+  setFeedbackRoute(1);
+#endif
+#ifdef CUSTOM_ALGORITHM_COUNT
+  if (algidx >= ALGORITHM_COUNT)
+    comp = 0x7FFFFFFF / comp;
+#endif
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifdef CUSTOM_ALGORITHM_COUNT
+    if (algidx < ALGORITHM_COUNT) {
+#endif
     if (s_algorithm[i] & ALG_OUT_MASK)
-      s_comp[i] = compensation[comp];
+      s_comp[i] = compensation[comp - 1];
     else
       s_comp[i] = 0;
+#ifdef CUSTOM_ALGORITHM_COUNT
+    } else {
+//      s_comp[i] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] * CUSTOM_OUT_SCALE_FACTOR) >> 16;
+      s_comp[i] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] * comp) >> 16;
+    }
+#endif
+  }
 #ifdef WFBITS
   setWaveform();
 #endif
 }
 
+static inline __attribute__((optimize("Ofast"), always_inline))
 void initvoice(int32_t voice_index) {
   voice_index %= BANK_COUNT * BANK_SIZE;
   if (voice_index < 0)
@@ -443,7 +560,7 @@ void initvoice(int32_t voice_index) {
     s_algorithm_idx = voice->als;
     s_transpose = voice->trnp - TRANSPOSE_CENTER;
 
-    s_feedback_level = voice->fbl;
+    s_feedback_level[0] = voice->fbl;
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX7_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
@@ -507,7 +624,7 @@ void initvoice(int32_t voice_index) {
 #endif
     s_opi = 0;
     s_transpose = voice->trps - TRANSPOSE_CENTER;
-    s_feedback_level = voice->fbl;
+    s_feedback_level[0] = voice->fbl;
 #ifdef PEG
     s_peg_stage_start = PEG_STAGE_COUNT - DX11_PEG_STAGE_COUNT;
     for (uint32_t i = s_peg_stage_start; i < PEG_STAGE_COUNT; i++) {
@@ -573,21 +690,21 @@ void initvoice(int32_t voice_index) {
 #endif
 #endif
   }
-  s_feedback_opval[0] = 0;
-  s_feedback_opval[1] = 0;
-  s_opval[OPERATOR_COUNT] = 0;
   setAlgorithm();
-  setFeedback();
   setOutLevel();
   setKvsLevel();
   setVelocityLevel();
+  for (uint32_t i = 0; i < FEEDBACK_COUNT; i++)
+    setFeedback(i);
+  for (uint32_t i = 0; i < OPERATOR_COUNT + FEEDBACK_COUNT * 2; i++)
+    s_opval[i] = 0;
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
     s_sample_count[i][EG_STAGE_COUNT - 1] = 0xFFFFFFFF;
     s_egsrate[i][EG_STAGE_COUNT - 1] = 0;
     s_egstage[i] = EG_STAGE_COUNT - 1;
     s_egval[i] = 0;
-    s_opval[i] = 0;
   }
+
 #ifdef PEG
   uint32_t samples = 0;
   int32_t dl;
@@ -606,12 +723,12 @@ void initvoice(int32_t voice_index) {
   s_pegval = 0;
 #endif
 }
-
+/*
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
 
 }
-
+*/
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
   if (s_state) {
@@ -719,91 +836,309 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 
   q31_t * __restrict y = (q31_t *)yn;
+///ldr r10, &s_opval
+///ldm r10, {r0, r1, r2, r3}
   for (uint32_t f = frames; f--; y++) {
+#ifdef ROLLOUT
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[0]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[0];
+#ifdef WFBITS
+      s_opval[0] = smmul(osc_wavebank(modw0, s_waveform[0]), param_eglut(s_egval[0], s_oplevel[0])) << 1;
+#else
+      s_opval[0] = smmul(osc_sinq(modw0), param_eglut(s_egval[0], s_oplevel[0])) << 1;
+#endif
+
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[1]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[1];
+#ifdef WFBITS
+      s_opval[1] = smmul(osc_wavebank(modw0, s_waveform[1]), param_eglut(s_egval[1], s_oplevel[1])) << 1;
+#else
+      s_opval[1] = smmul(osc_sinq(modw0), param_eglut(s_egval[1], s_oplevel[1])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[2]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[2];
+#ifdef WFBITS
+      s_opval[2] = smmul(osc_wavebank(modw0, s_waveform[2]), param_eglut(s_egval[2], s_oplevel[2])) << 1;
+#else
+      s_opval[2] = smmul(osc_sinq(modw0), param_eglut(s_egval[2], s_oplevel[2])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[3]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[3];
+#ifdef WFBITS
+      s_opval[3] = smmul(osc_wavebank(modw0, s_waveform[3]), param_eglut(s_egval[3], s_oplevel[3])) << 1;
+#else
+      s_opval[3] = smmul(osc_sinq(modw0), param_eglut(s_egval[3], s_oplevel[3])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #28\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[4]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[4];
+#ifdef WFBITS
+      s_opval[4] = smmul(osc_wavebank(modw0, s_waveform[4]), param_eglut(s_egval[4], s_oplevel[4])) << 1;
+#else
+      s_opval[4] = smmul(osc_sinq(modw0), param_eglut(s_egval[4], s_oplevel[4])) << 1;
+#endif
+  modw0 = 0;
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #27\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #16]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #28\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"end%=:\n" \
+: [modw0] "+r" (modw0) \
+: [s_algorithm_i] "l" (s_algorithm[5]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[5];
+#ifdef WFBITS
+      s_opval[5] = smmul(osc_wavebank(modw0, s_waveform[5]), param_eglut(s_egval[5], s_oplevel[5])) << 1;
+#else
+      s_opval[5] = smmul(osc_sinq(modw0), param_eglut(s_egval[5], s_oplevel[5])) << 1;
+#endif
+#else
+#ifndef MOD16
     osc_out = 0;
+#endif
+///ldr r11, &s_modmatrix
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-      modw0 = 0;
+///ldm r11!, {r4, r5, r6, r7}
+///smuad r4, r0, r4
+///smlad r4, r1, r5, r4
+///smlad r4, r2, r6, r4
+///smlad r4, r3, r7, r4
+#ifdef MOD16
 #ifdef OP6
         __asm__ volatile ( \
-"lsls r1, %2, #26\n" \
+"add %[s_modmatrix], %[s_modmatrix], %[i], lsl #4\n" \
+"ldr r0, [%[s_opval], #0]\n" \
+"ldr r1, [%[s_modmatrix], #0]\n" \
+"smuad %[modw0], r0, r1\n" \
+"ldr r0, [%[s_opval], #4]\n" \
+"ldr r1, [%[s_modmatrix], #4]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+"ldr r0, [%[s_opval], #8]\n" \
+"ldr r1, [%[s_modmatrix], #8]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+"ldr r0, [%[s_opval], #12]\n" \
+"ldr r1, [%[s_modmatrix], #12]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+: [modw0] "=&r" (modw0) \
+: [i] "r" (i), [s_opval] "r" (s_opval), [s_modmatrix] "r" (s_modmatrix) \
+: "r0", "r1" \
+        );
+#else
+      __asm__ volatile ( \
+"add %[s_modmatrix], %[s_modmatrix], %[i], lsl #2\n" \
+"add %[s_modmatrix], %[s_modmatrix], %[i], lsl #3\n" \
+"ldr r0, [%[s_opval], #0]\n" \
+"ldr r1, [%[s_modmatrix], #0]\n" \
+"smuad %[modw0], r0, r1\n" \
+"ldr r0, [%[s_opval], #4]\n" \
+"ldr r1, [%[s_modmatrix], #4]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+"ldr r0, [%[s_opval], #8]\n" \
+"ldr r1, [%[s_modmatrix], #8]\n" \
+"smlad %[modw0], r0, r1, %[modw0]\n" \
+: [modw0] "=&r" (modw0) \
+: [i] "r" (i), [s_opval] "r" (s_opval), [s_modmatrix] "r" (s_modmatrix) \
+: "r0", "r1" \
+        );
+#endif
+      modw0 = (modw0 << 3) + s_phase[i];
+#else
+      modw0 = 0;
+#if FEEDBACK_COUNT == 2
+      __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #25\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %4]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #27\n" \
-"beq.n end%=\n"\
-"tbb [pc, %1]\n" \
-".byte 0x1B\n" \
-".byte 0x16\n" \
-".byte 0x11\n" \
-".byte 0x0C\n" \
-".byte 0x07\n" \
+"ldrmi.w r1, [%[s_opval], #28]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
+: "r1" \
+        );
+#endif
+#ifdef OP6
+        __asm__ volatile ( \
+"lsls r1, %[s_algorithm_i], #26\n" \
+"itt mi\n" \
+"ldrmi.w r1, [%[s_opval], #24]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"tbb [pc, %[i]]\n" \
+".byte 0x1C\n" \
+".byte 0x17\n" \
+".byte 0x12\n" \
+".byte 0x0D\n" \
+".byte 0x08\n" \
 ".byte 0x03\n" \
+"lsls r1, %[s_algorithm_i], #27\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %5]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #28\n" \
+"ldrmi.w r1, [%[s_opval], #16]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #28\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %6]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #29\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %7]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #30\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %8]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #31\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %9]\n" \
-"addmi %0, %0, r1\n" \
-"end%=:\n" \
-: "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (24), "i" (16), "i" (12), "i" (8), "i" (4), "i" (0) \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \
         );
 #else
       __asm__ volatile ( \
-"lsls r1, %2, #26\n" \
+"lsls r1, %[s_algorithm_i], #26\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %4]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #29\n" \
-"beq.n end%=\n"\
-"tbb [pc, %1]\n" \
-".byte 0x10\n" \
-".byte 0x0B\n" \
-".byte 0x06\n" \
+"ldrmi.w r1, [%[s_opval], #12]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"tbb [pc, %[i]]\n" \
+".byte 0x11\n" \
+".byte 0x0C\n" \
+".byte 0x07\n" \
 ".byte 0x02\n" \
+"lsls r1, %[s_algorithm_i], #29\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %5]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #30\n" \
+"ldrmi.w r1, [%[s_opval], #8]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #30\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %6]\n" \
-"addmi %0, %0, r1\n" \
-"lsls r1, %2, #31\n" \
+"ldrmi.w r1, [%[s_opval], #4]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+"lsls r1, %[s_algorithm_i], #31\n" \
 "itt mi\n" \
-"ldrmi.w r1, [%3, %7]\n" \
-"addmi %0, %0, r1\n" \
-"end%=:\n" \
-: "+r" (modw0) \
-: "r" (i), "l" (s_algorithm[i]), "r" (s_opval), "i" (12), "i" (8), "i" (4), "i" (0) \
+"ldrmi.w r1, [%[s_opval], #0]\n" \
+"addmi %[modw0], %[modw0], r1\n" \
+: [modw0] "+r" (modw0) \
+: [i] "r" (i), [s_algorithm_i] "l" (s_algorithm[i]), [s_opval] "r" (s_opval) \
 : "r1" \
         );
 #endif
-
-      modw0 = ((smmul(modw0, 0x7A92BE8B)) << 3) + phase_to_param(s_phase[i]); // modw0 * 3.830413123f
+      modw0 = ((smmul(modw0, MI_SCALE_FACTOR)) << 3) + s_phase[i];
+#endif
       s_phase[i] += opw0[i];
 
-#ifdef WFBITS
-      s_opval[i] = smmul(osc_wavebank(modw0, s_waveform[i]), param_eglut(s_egval[i], s_oplevel[i])) << 1;
+#ifdef MOD16
+      s_opval[i] = smmul(OSC_FUNC(modw0), param_eglut(s_egval[i], s_oplevel[i])) >> 15;
 #else
-      s_opval[i] = smmul(osc_sin(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
-#endif
-
+      s_opval[i] = smmul(OSC_FUNC(modw0), param_eglut(s_egval[i], s_oplevel[i])) << 1;
       osc_out += smmul(s_opval[i], s_comp[i]) << 1;
-
+#endif
       if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
         s_egval[i] = q31add(s_egval[i], s_egsrate[i][s_egstage[i]]);
       } else {
@@ -812,9 +1147,102 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
           s_egstage[i]++;
       }
     }
-    s_opval[OPERATOR_COUNT] = s_feedback_opval[0];
-    s_feedback_opval[0] = smmul(s_opval[s_feedback_src], s_feedback);
-    s_opval[OPERATOR_COUNT] += s_feedback_opval[0];
+#endif
+#ifdef MOD16
+#ifdef OP6
+      __asm__ volatile ( \
+///ldr r9, &s_comp
+///ldm r9, {r4, r5, r6}
+///smuad r4, r0, r4
+///smlad r4, r1, r5, r4
+///smlad r4, r2, r6, r4
+///lsl r4, r4
+"ldr r0, [%[s_opval], #0]\n" \
+"ldr r1, [%[s_comp], #0]\n" \
+"smuad %[osc_out], r0, r1\n" \
+"ldr r0, [%[s_opval], #4]\n" \
+"ldr r1, [%[s_comp], #4]\n" \
+"smlad %[osc_out], r0, r1, %[osc_out]\n" \
+"ldr r0, [%[s_opval], #8]\n" \
+"ldr r1, [%[s_comp], #8]\n" \
+"smlad %[osc_out], r0, r1, %[osc_out]\n" \
+"lsl %[osc_out], %[osc_out], #1\n" \
+: [osc_out] "=&r" (osc_out) \
+: [s_opval] "r" (s_opval), [s_comp] "r" (s_comp) \
+: "r0", "r1" \
+        );
+      __asm__ volatile ( \
+"ldrb r1, [%[s_feedback_src], #0]\n" \
+"ldrb r2, [%[s_feedback_src], #1]\n" \
+"ldrsh r0, [%[s_opval], r1, lsl #1]\n" \
+"ldr r1, [%[s_feedback], #0]\n" \
+"smulwb r0, r1, r0\n" \
+"ldrsh r1, [%[s_opval], r2, lsl #1]\n" \
+"ldr r2, [%[s_feedback], #4]\n" \
+"smulwb r1, r2, r1\n" \
+"pkhtb r0, r1, r0, asr #16\n" \
+"ldr r1, [%[s_opval], #16]\n" \
+"str r0, [%[s_opval], #16]\n" \
+"sadd16 r0, r0, r1\n" \
+"str r0, [%[s_opval], #12]\n" \
+: \
+: [s_opval] "r" (s_opval), [s_feedback_src] "r" (s_feedback_src), [s_feedback] "r" (s_feedback) \
+: "r0", "r1", "r2", "memory" \
+        );
+#else
+      __asm__ volatile ( \
+"ldr r0, [%[s_opval], #0]\n" \
+"ldr r1, [%[s_comp], #0]\n" \
+"smuad %0, r0, r1\n" \
+"ldr r0, [%[s_opval], #4]\n" \
+"ldr r1, [%[s_comp], #4]\n" \
+"smlad %[osc_out], r0, r1, %[osc_out]\n" \
+"lsl %[osc_out], %[osc_out], #1\n" \
+: [osc_out] "=&r" (osc_out) \
+: [s_opval] "r" (s_opval), [s_comp] "r" (s_comp) \
+: "r0", "r1" \
+      __asm__ volatile ( \
+"ldrb r1, [%[s_feedback_src], #0]\n" \
+"ldrb r2, [%[s_feedback_src], #1]\n" \
+"ldrsh r0, [%[s_opval], r1, lsl #1]\n" \
+"ldr r1, [%[s_feedback], #0]\n" \
+"smulwb r0, r1, r0\n" \
+"ldrsh r1, [%[s_opval], r2, lsl #1]\n" \
+"ldr r2, [%[s_feedback], #4]\n" \
+"smulwb r1, r2, r1\n" \
+"pkhtb r0, r1, r0, asr #16\n" \
+"ldr r1, [%[s_opval], #12]\n" \
+"str r0, [%[s_opval], #12]\n" \
+"sadd16 r0, r0, r1\n" \
+"str r0, [%[s_opval], #8]\n" \
+: \
+: [s_opval] "r" (s_opval), [s_feedback_src] "r" (s_feedback_src), [s_feedback] "r" (s_feedback) \
+: "r0", "r1", "r2", "memory" \
+        );
+#endif
+#else
+#ifdef ROLLOUT
+    for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+      osc_out += smmul(s_opval[i], s_comp[i]) << 1;
+      s_phase[i] += opw0[i];
+      if ( s_sample_num < s_sample_count[i][s_egstage[i]] ) {
+        s_egval[i] = q31add(s_egval[i], s_egsrate[i][s_egstage[i]]);
+      } else {
+        s_egval[i] = s_eglevel[i][s_egstage[i]];
+        if (s_egstage[i] < EG_STAGE_COUNT - 2)
+          s_egstage[i]++;
+      }
+    }
+#endif
+    s_opval[OPERATOR_COUNT] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT] = smmul(s_opval[s_feedback_src[0]], s_feedback[0]);
+    s_opval[OPERATOR_COUNT] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT];
+#if FEEDBACK_COUNT == 2
+    s_opval[OPERATOR_COUNT + 1] = s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1];
+    s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1] = smmul(s_opval[s_feedback_src[1]], s_feedback[1]);
+    s_opval[OPERATOR_COUNT + 1] += s_opval[OPERATOR_COUNT + FEEDBACK_COUNT + 1];
+#endif
+#endif
 #ifdef PEG
     if (
       s_sample_num < s_peg_sample_count[s_pegstage]
@@ -927,12 +1355,18 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     index = - (int16_t)index;
     negative = 1;
   }
-  if (index > CUSTOM_PARAM_ID(1)) {
+  if (index > CUSTOM_PARAM_ID(1)
+  ) {
     if (tenbits)
       value >>= 3;
-    if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(17) && index != CUSTOM_PARAM_ID(18)) && (tenbits || value == 0))
+    if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)
+#ifdef WAVE_PINCH
+//      && index != CUSTOM_PARAM_ID(141)
+      && !(index >= CUSTOM_PARAM_ID(141) && index <= CUSTOM_PARAM_ID(149))
+#endif
+    ) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
-    uvalue = value; //looks like optimizer is crazy: this saves over 100 bypes just by assigning to used valiable with sign conversion >%-O
+    uvalue = value; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
   }
   switch (index) {
     case CUSTOM_PARAM_ID(1):
@@ -966,248 +1400,282 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(13), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
     case CUSTOM_PARAM_ID(15):
-      s_feedback_offset = (value - 100) * .07f;
+#if FEEDBACK_COUNT == 2
+    case CUSTOM_PARAM_ID(16):
+#endif
+      index -= CUSTOM_PARAM_ID(15);
+      s_feedback_offset[index] = (value - 100) * .07f;
       goto setfeedback;
       break;
-    case CUSTOM_PARAM_ID(16):
-      s_feedback_scale = value * .01f;
-setfeedback:
-      setFeedback();
-      break;
     case CUSTOM_PARAM_ID(17):
-      s_feedback_route = value;
-      setFeedbackRoute();
-      break;
+#if FEEDBACK_COUNT == 2
     case CUSTOM_PARAM_ID(18):
+#endif
+      index -= CUSTOM_PARAM_ID(17);
+      s_feedback_scale[index] = value * .01f;
+setfeedback:
+      setFeedback(index);
+      break;
+    case CUSTOM_PARAM_ID(19):
+#if FEEDBACK_COUNT == 2
+    case CUSTOM_PARAM_ID(20):
+#endif
+      index -= CUSTOM_PARAM_ID(19);
+      s_feedback_route[index] = value;
+      setFeedbackRoute(index);
+      break;
+    case CUSTOM_PARAM_ID(21):
       s_algorithm_select = value;
       goto setalgorithm;
       break;
-    case CUSTOM_PARAM_ID(19):
+    case CUSTOM_PARAM_ID(22):
       s_algorithm_offset = value - 100;
 setalgorithm:
       setAlgorithm();
       break;
-    case CUSTOM_PARAM_ID(20):
-    case CUSTOM_PARAM_ID(21):
-    case CUSTOM_PARAM_ID(22):
-#ifdef OP6
     case CUSTOM_PARAM_ID(23):
     case CUSTOM_PARAM_ID(24):
+    case CUSTOM_PARAM_ID(25):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(26):
+    case CUSTOM_PARAM_ID(27):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(25):
-    case CUSTOM_PARAM_ID(26):
-    case CUSTOM_PARAM_ID(27):
     case CUSTOM_PARAM_ID(28):
-      s_level_offset[CUSTOM_PARAM_ID(28) - index] = value - 100;
-      goto setoutlevel;
-      break;
     case CUSTOM_PARAM_ID(29):
     case CUSTOM_PARAM_ID(30):
     case CUSTOM_PARAM_ID(31):
-#ifdef OP6
+      s_level_offset[CUSTOM_PARAM_ID(31) - index] = value - 100;
+      goto setoutlevel;
+      break;
     case CUSTOM_PARAM_ID(32):
     case CUSTOM_PARAM_ID(33):
+    case CUSTOM_PARAM_ID(34):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(35):
+    case CUSTOM_PARAM_ID(36):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(34):
-    case CUSTOM_PARAM_ID(35):
-    case CUSTOM_PARAM_ID(36):
     case CUSTOM_PARAM_ID(37):
-      s_level_scale[CUSTOM_PARAM_ID(37) - index] = value;
-setoutlevel:
-      setOutLevel();
-      break;
     case CUSTOM_PARAM_ID(38):
     case CUSTOM_PARAM_ID(39):
     case CUSTOM_PARAM_ID(40):
-#ifdef OP6
+      s_level_scale[CUSTOM_PARAM_ID(40) - index] = value;
+setoutlevel:
+      setOutLevel();
+      break;
     case CUSTOM_PARAM_ID(41):
     case CUSTOM_PARAM_ID(42):
+    case CUSTOM_PARAM_ID(43):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(44):
+    case CUSTOM_PARAM_ID(45):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(43):
-    case CUSTOM_PARAM_ID(44):
-    case CUSTOM_PARAM_ID(45):
     case CUSTOM_PARAM_ID(46):
-      s_kls_offset[CUSTOM_PARAM_ID(46) - index] = value - 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_klsoffset[i] = paramOffset(s_kls_offset, i);
-      break;
     case CUSTOM_PARAM_ID(47):
     case CUSTOM_PARAM_ID(48):
     case CUSTOM_PARAM_ID(49):
-#ifdef OP6
+      s_kls_offset[CUSTOM_PARAM_ID(49) - index] = value - 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_klsoffset[i] = paramOffset(s_kls_offset, i);
+      break;
     case CUSTOM_PARAM_ID(50):
     case CUSTOM_PARAM_ID(51):
+    case CUSTOM_PARAM_ID(52):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(53):
+    case CUSTOM_PARAM_ID(54):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(52):
-    case CUSTOM_PARAM_ID(53):
-    case CUSTOM_PARAM_ID(54):
     case CUSTOM_PARAM_ID(55):
-      s_kls_scale[CUSTOM_PARAM_ID(55) - index] = value;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_klslevel[i] = paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTOR_DB;
-      break;
     case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
     case CUSTOM_PARAM_ID(58):
-#ifdef OP6
+      s_kls_scale[CUSTOM_PARAM_ID(58) - index] = value;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_klslevel[i] = paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTOR_DB;
+      break;
     case CUSTOM_PARAM_ID(59):
     case CUSTOM_PARAM_ID(60):
+    case CUSTOM_PARAM_ID(61):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(62):
+    case CUSTOM_PARAM_ID(63):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(61):
-    case CUSTOM_PARAM_ID(62):
-    case CUSTOM_PARAM_ID(63):
     case CUSTOM_PARAM_ID(64):
-      s_kvs_offset[CUSTOM_PARAM_ID(64) - index] = value - 100;
-      goto setkvslevel;
-      break;
     case CUSTOM_PARAM_ID(65):
     case CUSTOM_PARAM_ID(66):
     case CUSTOM_PARAM_ID(67):
-#ifdef OP6
+      s_kvs_offset[CUSTOM_PARAM_ID(67) - index] = value - 100;
+      goto setkvslevel;
+      break;
     case CUSTOM_PARAM_ID(68):
     case CUSTOM_PARAM_ID(69):
+    case CUSTOM_PARAM_ID(70):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(71):
+    case CUSTOM_PARAM_ID(72):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(70):
-    case CUSTOM_PARAM_ID(71):
-    case CUSTOM_PARAM_ID(72):
     case CUSTOM_PARAM_ID(73):
-      s_kvs_scale[CUSTOM_PARAM_ID(73) - index] = value;
-setkvslevel:
-      setKvsLevel();
-      break;
     case CUSTOM_PARAM_ID(74):
     case CUSTOM_PARAM_ID(75):
     case CUSTOM_PARAM_ID(76):
-#ifdef OP6
+      s_kvs_scale[CUSTOM_PARAM_ID(76) - index] = value;
+setkvslevel:
+      setKvsLevel();
+      break;
     case CUSTOM_PARAM_ID(77):
     case CUSTOM_PARAM_ID(78):
+    case CUSTOM_PARAM_ID(79):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(80):
+    case CUSTOM_PARAM_ID(81):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(79):
-    case CUSTOM_PARAM_ID(80):
-    case CUSTOM_PARAM_ID(81):
     case CUSTOM_PARAM_ID(82):
-      s_egrate_offset[CUSTOM_PARAM_ID(82) - index] = value - 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_egrateoffset[i] = paramOffset(s_egrate_offset, i);
-      break;
     case CUSTOM_PARAM_ID(83):
     case CUSTOM_PARAM_ID(84):
     case CUSTOM_PARAM_ID(85):
-#ifdef OP6
+      s_egrate_offset[CUSTOM_PARAM_ID(85) - index] = value - 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_egrateoffset[i] = paramOffset(s_egrate_offset, i);
+      break;
     case CUSTOM_PARAM_ID(86):
     case CUSTOM_PARAM_ID(87):
+    case CUSTOM_PARAM_ID(88):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(89):
+    case CUSTOM_PARAM_ID(90):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(88):
-    case CUSTOM_PARAM_ID(89):
-    case CUSTOM_PARAM_ID(90):
     case CUSTOM_PARAM_ID(91):
-      s_egrate_scale[CUSTOM_PARAM_ID(91) - index] = value;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_egratelevel[i] = paramScale(s_egrate_scale, i);
-      break;
     case CUSTOM_PARAM_ID(92):
     case CUSTOM_PARAM_ID(93):
     case CUSTOM_PARAM_ID(94):
-#ifdef OP6
+      s_egrate_scale[CUSTOM_PARAM_ID(94) - index] = value;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_egratelevel[i] = paramScale(s_egrate_scale, i);
+      break;
     case CUSTOM_PARAM_ID(95):
     case CUSTOM_PARAM_ID(96):
+    case CUSTOM_PARAM_ID(97):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(98):
+    case CUSTOM_PARAM_ID(99):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(97):
-    case CUSTOM_PARAM_ID(98):
-    case CUSTOM_PARAM_ID(99):
     case CUSTOM_PARAM_ID(100):
-      s_krs_offset[CUSTOM_PARAM_ID(100) - index] = value - 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_krsoffset[i] = paramOffset(s_krs_offset, i) * .07f;
-      break;
     case CUSTOM_PARAM_ID(101):
     case CUSTOM_PARAM_ID(102):
     case CUSTOM_PARAM_ID(103):
-#ifdef OP6
+      s_krs_offset[CUSTOM_PARAM_ID(103) - index] = value - 100;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_krsoffset[i] = paramOffset(s_krs_offset, i) * .07f;
+      break;
     case CUSTOM_PARAM_ID(104):
     case CUSTOM_PARAM_ID(105):
+    case CUSTOM_PARAM_ID(106):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(107):
+    case CUSTOM_PARAM_ID(108):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(106):
-    case CUSTOM_PARAM_ID(107):
-    case CUSTOM_PARAM_ID(108):
     case CUSTOM_PARAM_ID(109):
-      s_krs_scale[CUSTOM_PARAM_ID(109) - index] = uvalue;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_krslevel[i] = paramScale(s_krs_scale, i) * RATE_SCALING_FACTOR;
-      break;
     case CUSTOM_PARAM_ID(110):
     case CUSTOM_PARAM_ID(111):
     case CUSTOM_PARAM_ID(112):
-#ifdef OP6
+      s_krs_scale[CUSTOM_PARAM_ID(112) - index] = uvalue;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+        s_krslevel[i] = paramScale(s_krs_scale, i) * RATE_SCALING_FACTOR;
+      break;
     case CUSTOM_PARAM_ID(113):
     case CUSTOM_PARAM_ID(114):
+    case CUSTOM_PARAM_ID(115):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(116):
+    case CUSTOM_PARAM_ID(117):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(115):
-    case CUSTOM_PARAM_ID(116):
-    case CUSTOM_PARAM_ID(117):
     case CUSTOM_PARAM_ID(118):
-      s_detune_offset[CUSTOM_PARAM_ID(118) - index] = value - 100;
-      break;
-#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(119):
     case CUSTOM_PARAM_ID(120):
     case CUSTOM_PARAM_ID(121):
-#ifdef OP6
+      s_detune_offset[CUSTOM_PARAM_ID(121) - index] = value - 100;
+      break;
+#ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(122):
     case CUSTOM_PARAM_ID(123):
+    case CUSTOM_PARAM_ID(124):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(125):
+    case CUSTOM_PARAM_ID(126):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(124):
-    case CUSTOM_PARAM_ID(125):
-    case CUSTOM_PARAM_ID(126):
     case CUSTOM_PARAM_ID(127):
-      s_detune_scale[CUSTOM_PARAM_ID(127) - index] = value;
+    case CUSTOM_PARAM_ID(128):
+    case CUSTOM_PARAM_ID(129):
+    case CUSTOM_PARAM_ID(130):
+      s_detune_scale[CUSTOM_PARAM_ID(130) - index] = value;
       break;
 #endif
 #ifdef WFBITS
-    case CUSTOM_PARAM_ID(128):
-#ifdef OP6
-    case CUSTOM_PARAM_ID(129):
-#else
-      index++;
-#endif
-    case CUSTOM_PARAM_ID(130):
     case CUSTOM_PARAM_ID(131):
 #ifdef OP6
     case CUSTOM_PARAM_ID(132):
+#else
+      index++;
+#endif
     case CUSTOM_PARAM_ID(133):
+    case CUSTOM_PARAM_ID(134):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(135):
+    case CUSTOM_PARAM_ID(136):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(134):
-    case CUSTOM_PARAM_ID(135):
-    case CUSTOM_PARAM_ID(136):
     case CUSTOM_PARAM_ID(137):
-      s_waveform_offset[CUSTOM_PARAM_ID(137) - index] = value - 100;
+    case CUSTOM_PARAM_ID(138):
+    case CUSTOM_PARAM_ID(139):
+    case CUSTOM_PARAM_ID(140):
+      s_waveform_offset[CUSTOM_PARAM_ID(140) - index] = value - 100;
       setWaveform();
+      break;
+#endif
+#ifdef WAVE_PINCH
+    case CUSTOM_PARAM_ID(141):
+    case CUSTOM_PARAM_ID(142):
+    case CUSTOM_PARAM_ID(143):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(144):
+    case CUSTOM_PARAM_ID(145):
+#else
+      index += 2;
+#endif
+    case CUSTOM_PARAM_ID(146):
+    case CUSTOM_PARAM_ID(147):
+    case CUSTOM_PARAM_ID(148):
+    case CUSTOM_PARAM_ID(149):
+      s_waveform_pinch[CUSTOM_PARAM_ID(149) - index] = value;
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        value = clipminmaxi32(1, 100 - paramOffset(s_waveform_pinch, i), 100);
+        s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh
+        s_wavewidth[i * 2 + 1] = 0x64000000 / value; // (100 >> 7) / width
+      }
       break;
 #endif
     default:
