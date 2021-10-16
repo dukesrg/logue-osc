@@ -6,15 +6,16 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.2-0",
+        "version" : "1.2-1",
         "name" : "Morpheus-P",
-        "num_param" : 5,
+        "num_param" : 6,
         "params" : [
-            ["Mode", 0, 1, ""],
-            ["LFOX", 0, 100, "%"],
-            ["LFOY", 0, 100, "%"],
-            ["LFOTrigger", 0, 3, ""],
-            ["Interpolate", 0, 1, ""]
+            ["LFO X Type", 0, 4, "%"],
+            ["LFO Y Type", 0, 4, "%"],
+            ["LFO X Shape", 0, 100, "%"],
+            ["LFO Y Shape", 0, 100, "%"],
+            ["LFO X Depth", -100, 100, "%"],
+            ["LFO Y Depth", -100, 100, "%"]
         ],
         "custom_data" : [
           ["Raw wave, signed 8-bit PCM", 64, 16384]
