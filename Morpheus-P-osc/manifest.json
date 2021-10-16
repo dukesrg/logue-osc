@@ -12,8 +12,8 @@
         "params" : [
             ["LFO X mode", 0, 3, ""],
             ["LFO Y mode", 0, 4, ""],
-            ["LFO X wave", 0, 99, "%"],
-            ["LFO Y wave", 0, 99, "%"],
+            ["LFO X wave", -90, 68, "%"],
+            ["LFO Y wave", -90, 68, "%"],
             ["LFO X depth", -100, 100, "%"],
             ["LFO Y depth", -100, 100, "%"]
         ],

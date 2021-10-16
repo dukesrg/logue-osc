@@ -56,6 +56,8 @@ static float s_phase = 0.f;
 static inline __attribute__((optimize("Ofast"), always_inline))
 float get_vco(vco_t &vco) {
   static float x;
+  static uint32_t wave;
+  static const float *const *waves;
 
   if (vco.depth == 0.f)
     return vco.shape;
@@ -66,32 +68,45 @@ float get_vco(vco_t &vco) {
   }
 
   switch (vco.wave) {
-    case 0:
+    case 100:
       x = vco.lfo.saw_bi();
      break;
-    case 1:
+    case 101:
       x = vco.lfo.triangle_bi();
       break;
-    case 2:
+    case 102:
       x = vco.lfo.square_bi();
       break;
-    case 3:
+    case 103:
       x = vco.lfo.sine_bi();
       break;
-    case 4:
+    case 104:
       if (vco.phiold > 0 && vco.lfo.phi0 <= 0)
         vco.snh = osc_white();
       x = vco.snh;
       break;
     default:
-      vco.wave -= 5;
-      x = q31_to_f32(vco.lfo.phi0 < 0 ? vco.lfo.phi0 + 0x7FFFFFFF : vco.lfo.phi0);
-      if (vco.wave < k_waves_e_cnt)
-        x = osc_wave_scanf(wavesE[vco.wave], x);
-      else if (vco.wave < k_waves_e_cnt + k_waves_f_cnt)
-        x = osc_wave_scanf(wavesF[vco.wave - k_waves_e_cnt], x);
-      else
-        x = osc_wavebank(x, vco.wave - k_waves_e_cnt - k_waves_f_cnt);
+//      x = q31_to_f32(vco.lfo.phi0 < 0 ? vco.lfo.phi0 + 0x7FFFFFFF : vco.lfo.phi0);
+      x = q31_to_f32((uint32_t)vco.lfo.phi0 >> 1);
+      if (vco.wave < 100) {
+        wave = 99 - vco.wave;
+        if (wave < k_waves_a_cnt)
+          waves = wavesA;
+        else if ((wave -= k_waves_a_cnt) < k_waves_b_cnt)
+          waves = wavesB;
+        else if ((wave -= k_waves_b_cnt) < k_waves_c_cnt)
+          waves = wavesC;
+        else if ((wave -= k_waves_c_cnt) < k_waves_d_cnt)
+          waves = wavesE;
+        else if ((wave -= k_waves_d_cnt) < k_waves_e_cnt)
+          waves = wavesE;
+        else {
+          waves = wavesF;
+          wave -= k_waves_e_cnt;
+        }
+        x = osc_wave_scanf(waves[wave], x);
+      } else
+        x = osc_wavebank(x, vco.wave - 105);
       break;
   }
 
@@ -187,7 +202,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_phase = 0.f;
   for (uint32_t i = 0; i < 2; i++) {
     s_vco[i].lfo.setF0(s_vco[i].freq, k_samplerate_recipf);
-    if (s_vco[i].wave == 4)
+    if (s_vco[i].wave == 104)
       s_vco[i].snh = osc_white();
     switch (s_vco[i].mode) {
       case lfo_mode_free_run:
@@ -221,12 +236,16 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
+      if (value == 0)
+        value = 100;
       index -= k_user_osc_param_id3;
       s_vco[index].wave = value;
       break;
     case k_user_osc_param_id5:
     case k_user_osc_param_id6:
       index -= k_user_osc_param_id5;
+      if (value == 0)
+        value = 100;
       if (value == 100)
         s_vco[index].depth = 0.f;
       else

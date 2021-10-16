@@ -76,14 +76,18 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |#|Morpheus LFO X&Y waves|
 |-|-|
+|-75&hellip;-90|Wave Bank F|
+|-60&hellip;-74|Wave Bank E|
+|-47&hellip;-59|Wave Bank D|
+|-33&hellip;-46|Wave Bank C|
+|-17&hellip;-32|Wave Bank B|
+|-1&hellip;-16|Wave Bank A|
 |0|Sawtooth|
 |1|Triangle|
 |2|Square|
 |3|Sine|
 |4|White noise S&H|
-|5&hellip;19|Wave Bank E|
-|20&hellip;35|Wave Bank F|
-|36&hellip;99|Custom waves|
+|5&hellip;68|Custom waves|
 
 |FMxx features|FM48|FM64|FM65|FM66|FM67|FM68|FM69|
 |-|-|-|-|-|-|-|-|
