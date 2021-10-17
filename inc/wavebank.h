@@ -8,6 +8,7 @@
  *   - FORMAT_ALAW: A-law
  *   - FORMAT_ULAW: u-law
  *   - FORMAT_PCM8: 8-bit linear PCM
+ *   - FORMAT_PCM12: 12-bit linear PCM
  *   - FORMAT_PCM16: 16-bit linear PCM
  *   - FORMAT_PCM32: 32-bit linear PCM
  *   - FORMAT_FLOAT32: Single precision floating point
@@ -30,7 +31,7 @@
 #include "fixed_mathq.h"
 #include "g711_decode.h"
 
-#if !defined(FORMAT_ALAW) && !defined(FORMAT_ULAW) && !defined(FORMAT_PCM8) && !defined(FORMAT_PCM16) && !defined(FORMAT_PCM32) && !defined(FORMAT_FLOAT32)
+#if !defined(FORMAT_ALAW) && !defined(FORMAT_ULAW) && !defined(FORMAT_PCM8) && !defined(FORMAT_PCM12) && !defined(FORMAT_PCM16) && !defined(FORMAT_PCM32) && !defined(FORMAT_FLOAT32)
   #pragma message "FORMAT not defined, enforcing u-Law"
   #define FORMAT_ULAW
 #endif
@@ -52,6 +53,10 @@
   #define DATA_TYPE q7_t
   #define to_f32(a) q7_to_f32(a)
   #define to_q31(a) q7_to_q31(a)
+#endif
+#ifdef FORMAT_PCM12
+  #define FORMAT_PREFIX "p12"
+  #define DATA_TYPE uint8_t
 #endif
 #ifdef FORMAT_PCM16
   #define FORMAT_PREFIX "p16"
@@ -162,7 +167,11 @@ static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK
   DATA_TYPE wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT] = {WAVEBANK};
 #else
+#ifdef FORMAT_PCM12
+  uint8_t wave_bank[(SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))* WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+#else
   uint8_t wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+#endif
 #endif
 #pragma GCC diagnostic pop
 
@@ -182,7 +191,36 @@ float osc_wavebank(float x, uint32_t idx) {
   const uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
   const uint32_t x1 = NEXT_SAMPLE(x0);
   const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT_TOTAL];
+#ifdef FORMAT_PCM12
+  q31_t a0, a1;
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt], r0]\n" \
+"tst %[x], #0x1\n" \
+"it ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsl %[a], %[a], #20\n" \
+: [a] "=r" (a0)  \
+: [x] "r" (x0), [wt] "r" (wt) \
+: "r0" \
+  );
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt], r0]\n" \
+"tst %[x], #0x1\n" \
+"it ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsl %[a], %[a], #20\n" \
+: [a] "=r" (a1)  \
+: [x] "r" (x1), [wt] "r" (wt) \
+: "r0" \
+  );
+  return linintf(x0f - (uint32_t)x0f, q31_to_f32(a0), q31_to_f32(a1));
+#else
   return linintf(x0f - (uint32_t)x0f, to_f32(wt[x0]), to_f32(wt[x1]));
+#endif
 }
 
   /**
@@ -213,9 +251,45 @@ float osc_wavebank(float x, float idx) {
   const uint32_t x1 = NEXT_SAMPLE(x0);
   const DATA_TYPE *wt = &wavebank[(uint32_t)idx * SAMPLE_COUNT_TOTAL];
   const float fr = x0f - (uint32_t)x0f;
+#ifdef FORMAT_PCM12
+  q31_t a0, a1, b0, b1;
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt0], r0]\n" \
+"ldr %[b], [%[wt1], r0]\n" \
+"tst %[x], #0x1\n" \
+"itt ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsrne %[b], %[b], #12\n" \
+"lsl %[a], %[a], #20\n" \
+"lsl %[b], %[b], #20\n" \
+: [a] "=r" (a0), [b] "=r" (b0)  \
+: [x] "r" (x0), [wt0] "r" (wt), [wt1] "r" (wt + SAMPLE_COUNT_TOTAL) \
+: "r0" \
+  );
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt0], r0]\n" \
+"ldr %[b], [%[wt1], r0]\n" \
+"tst %[x], #0x1\n" \
+"itt ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsrne %[b], %[b], #12\n" \
+"lsl %[a], %[a], #20\n" \
+"lsl %[b], %[b], #20\n" \
+: [a] "=r" (a1), [b] "=r" (b1)  \
+: [x] "r" (x1), [wt0] "r" (wt), [wt1] "r" (wt + SAMPLE_COUNT_TOTAL) \
+: "r0" \
+  );
+  const float y0 = linintf(fr, q31_to_f32(a0), q31_to_f32(a1));
+  const float y1 = linintf(fr, q31_to_f32(b0), q31_to_f32(b1));
+#else
   const float y0 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
   wt += SAMPLE_COUNT_TOTAL;
   const float y1 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
+#endif
   return linintf((idx - (uint32_t)idx), y0, y1);
 }
 
@@ -265,7 +339,36 @@ q31_t osc_wavebank(q31_t x, uint32_t idx) {
   uint32_t x1 = NEXT_SAMPLE(x0);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[idx * SAMPLE_COUNT_TOTAL];
+#ifdef FORMAT_PCM12
+  q31_t a0, a1;
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt], r0]\n" \
+"tst %[x], #0x1\n" \
+"it ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsl %[a], %[a], #20\n" \
+: [a] "=r" (a0)  \
+: [x] "r" (x0), [wt] "r" (wt) \
+: "r0" \
+  );
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt], r0]\n" \
+"tst %[x], #0x1\n" \
+"it ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsl %[a], %[a], #20\n" \
+: [a] "=r" (a1)  \
+: [x] "r" (x1), [wt] "r" (wt) \
+: "r0" \
+  );
+  return linintf(fr, a0, a1);
+#else
   return linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
+#endif
 #endif
 }
 
@@ -323,9 +426,45 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
   uint32_t x1 = NEXT_SAMPLE(x0);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[q31mul(idx, (WAVE_COUNT - 1)) * SAMPLE_COUNT_TOTAL];
+#ifdef FORMAT_PCM12
+  q31_t a0, a1, b0, b1;
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt0], r0]\n" \
+"ldr %[b], [%[wt1], r0]\n" \
+"tst %[x], #0x1\n" \
+"itt ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsrne %[b], %[b], #12\n" \
+"lsl %[a], %[a], #20\n" \
+"lsl %[b], %[b], #20\n" \
+: [a] "=r" (a0), [b] "=r" (b0)  \
+: [x] "r" (x0), [wt0] "r" (wt), [wt1] "r" (wt + SAMPLE_COUNT_TOTAL) \
+: "r0" \
+  );
+  __asm__ volatile ( \
+"mov r0, %[x], lsr #1\n" \
+"add r0, r0, r0, lsl #1\n" \
+"ldr %[a], [%[wt0], r0]\n" \
+"ldr %[b], [%[wt1], r0]\n" \
+"tst %[x], #0x1\n" \
+"itt ne\n" \
+"lsrne %[a], %[a], #12\n" \
+"lsrne %[b], %[b], #12\n" \
+"lsl %[a], %[a], #20\n" \
+"lsl %[b], %[b], #20\n" \
+: [a] "=r" (a1), [b] "=r" (b1)  \
+: [x] "r" (x1), [wt0] "r" (wt), [wt1] "r" (wt + SAMPLE_COUNT_TOTAL) \
+: "r0" \
+  );
+  const q31_t y0 = linintf(fr, a0, a1);
+  const q31_t y1 = linintf(fr, b0, b1);
+#else
   const q31_t y0 = linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
   wt += SAMPLE_COUNT_TOTAL;
   const q31_t y1 = linintq(fr, to_q31(wt[x0]), to_q31(wt[x1]));
+#endif
   return linintq((idx * (WAVE_COUNT - 1)) & 0x7FFFFFFF, y0, y1);
 }
 

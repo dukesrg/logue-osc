@@ -23,15 +23,20 @@
   #define USE_Q31_PHASE
 #endif
 
-#define LFO_MAX_RATE (10.f / 30.f) //maximum LFO rate in Hz divided by logarithmic slope
-#define LFO_RATE_LOG_BIAS 29.827234f //normalize logarithmic LFO for 0...1
+#define LFO_COUNT 2 //number of LFOs
+#define LFO_MAX_RATE .33333334f //maximum LFO rate in Hz divided by logarithmic slope 10/30
+#define LFO_RATE_LOG_BIAS 29.827234f //normalize logarithmic LFO for 0...1 log10(30+1)/0.05
 
 enum {
   lfo_mode_one_shot = 0,
   lfo_mode_key_trigger = 1,
   lfo_mode_random = 2,
   lfo_mode_free_run = 3,
-  lfo_mode_off = 4
+  lfo_mode_one_shot_plus_shape_lfo = 4,
+  lfo_mode_key_trigger_plus_shape_lfo = 5,
+  lfo_mode_random_plus_shape_lfo = 6,
+  lfo_mode_free_run_plus_shape_lfo = 7,
+  lfo_mode_linear = 8
 };
 
 typedef struct {
@@ -41,11 +46,12 @@ typedef struct {
   float freq;
   float shape;
   float snh;
+  float offset;
   dsp::SimpleLFO lfo;
   q31_t phiold;
 } vco_t;
 
-static vco_t s_vco[2];
+static vco_t s_vco[LFO_COUNT];
 
 #ifdef USE_Q31_PHASE
 static q31_t s_phase = 0;
@@ -55,14 +61,14 @@ static float s_phase = 0.f;
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 float get_vco(vco_t &vco) {
-  static float x;
-  static uint32_t wave;
-  static const float *const *waves;
+  float x;
+  uint32_t wave;
+  const float *const *waves;
 
-  if (vco.depth == 0.f)
-    return vco.shape;
+//  if (vco.depth == 0.f)
+//    return vco.shape + vco.offset;
 
-  if (vco.mode == lfo_mode_one_shot && vco.phiold > 0 && vco.lfo.phi0 <= 0) {
+  if ((vco.mode == lfo_mode_one_shot || vco.mode == lfo_mode_one_shot_plus_shape_lfo) && vco.phiold > 0 && vco.lfo.phi0 <= 0) {
     vco.lfo.phi0 = 0x7FFFFFFF;
     vco.lfo.w0 = 0;
   }
@@ -86,7 +92,6 @@ float get_vco(vco_t &vco) {
       x = vco.snh;
       break;
     default:
-//      x = q31_to_f32(vco.lfo.phi0 < 0 ? vco.lfo.phi0 + 0x7FFFFFFF : vco.lfo.phi0);
       x = q31_to_f32((uint32_t)vco.lfo.phi0 >> 1);
       if (vco.wave < 100) {
         wave = 99 - vco.wave;
@@ -113,7 +118,7 @@ float get_vco(vco_t &vco) {
   vco.phiold = vco.lfo.phi0;
   vco.lfo.cycle();
 
-  return x * vco.depth + .5f;
+  return clipminmaxf(0.f, x * vco.depth + vco.offset, 1.f);
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -162,7 +167,18 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
       break;
 */
 
-  if (s_vco[1].mode == lfo_mode_off) {
+  for (uint32_t i = 0; i < LFO_COUNT; i++) {
+    s_vco[i].offset = .5f;
+    if (s_vco[i].mode >= lfo_mode_one_shot_plus_shape_lfo)
+      s_vco[i].offset += q31_to_f32(params->shape_lfo) * .5f;
+    if (s_vco[i].depth == 0.f)
+      s_vco[i].offset += s_vco[i].shape - 0.5;
+  }
+
+  if (s_vco[1].mode == lfo_mode_linear) {
+    if (s_vco[0].depth != 0.f)
+      s_vco[0].offset += s_vco[0].shape - 0.5;
+
       for (uint32_t f = frames; f--; y++) {
 #ifdef USE_Q31
   #ifdef USE_Q31_PHASE
@@ -200,19 +216,23 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   s_phase = 0.f;
-  for (uint32_t i = 0; i < 2; i++) {
+  for (uint32_t i = 0; i < LFO_COUNT; i++) {
     s_vco[i].lfo.setF0(s_vco[i].freq, k_samplerate_recipf);
     if (s_vco[i].wave == 104)
       s_vco[i].snh = osc_white();
     switch (s_vco[i].mode) {
       case lfo_mode_free_run:
+      case lfo_mode_free_run_plus_shape_lfo:
         break;
       case lfo_mode_one_shot:
+      case lfo_mode_one_shot_plus_shape_lfo:
       case lfo_mode_key_trigger:
+      case lfo_mode_key_trigger_plus_shape_lfo:
         s_vco[i].lfo.reset();
         s_vco[i].phiold = s_vco[i].lfo.phi0;
       break;
       case lfo_mode_random:
+      case lfo_mode_random_plus_shape_lfo:
         s_vco[i].lfo.phi0 = f32_to_q31(osc_white());
       break;
     }
@@ -226,7 +246,13 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_shiftshape:
       index -= k_user_osc_param_shape;
       s_vco[index].shape = param_val_to_f32(value);
-      s_vco[index].freq = (fasterdbampf(s_vco[index].shape * LFO_RATE_LOG_BIAS) - 1.f) * LFO_MAX_RATE;
+      if (s_vco[1].mode == lfo_mode_linear) {
+        if (index == 1)
+          index--;
+        else
+          break;
+      }
+      s_vco[index].freq = (fasterdbampf(param_val_to_f32(value) * LFO_RATE_LOG_BIAS) - 1.f) * LFO_MAX_RATE;
       s_vco[index].lfo.setF0(s_vco[index].freq, k_samplerate_recipf);
       break;
     case k_user_osc_param_id1:

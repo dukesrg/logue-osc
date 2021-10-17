@@ -70,9 +70,13 @@ For user-customizable oscillators, an online constructor is available at https:/
 |-|-|
 |1|One shot|
 |2|Key trigger|
-|3|Rendom|
+|3|Random|
 |4|Free run|
-|5|Off (LFO Y only, deactivates grid mode)|
+|5|One shot + Shape LFO|
+|6|Key trigger + Shape LFO|
+|7|Random + Shape LFO|
+|8|Free run + Shape LFO|
+|9|Off (LFO Y only, deactivates grid mode)|
 
 |#|Morpheus LFO X&Y waves|
 |-|-|
