@@ -92,7 +92,7 @@ float get_vco(vco_t &vco) {
       x = vco.snh;
       break;
     default:
-      x = q31_to_f32((uint32_t)vco.lfo.phi0 >> 1);
+      x = q31_to_f32(vco.lfo.phi0) * .5f + .5f;
       if (vco.wave < 100) {
         wave = 99 - vco.wave;
         if (wave < k_waves_a_cnt)
@@ -270,8 +270,6 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_id5:
     case k_user_osc_param_id6:
       index -= k_user_osc_param_id5;
-      if (value == 0)
-        value = 100;
       if (value == 100)
         s_vco[index].depth = 0.f;
       else
