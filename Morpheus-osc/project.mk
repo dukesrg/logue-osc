@@ -4,7 +4,7 @@
 
 include $(PLATFORMDIR)/osc.mk
 
-PROJECT = Morpheus-P
+PROJECT = Morpheus
 
 UCSRC =
 

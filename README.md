@@ -34,7 +34,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Oscillator|Shape / A knob|Shift-Shape / Alt / B knob|Param 1|Param 2|Param 3|Param 4|Param 5|Param 6|
 |-|-|-|-|-|-|-|-|-|
 |Supersaw<br>FastSaw|Unison level|Detune level|Unison range 1&hellip;12 pairs|Detune range 1&hellip;100 cents|Band limit 0&hellip;100%|Attenuate 0&hellip;30dB|Route LFO<br>1 - Shape / Unison<br>2 - Shift-Shape / Detune<br>3 - both|Polyphony 1&hellip;12 voices|
-|Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave select|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave select|Mode<br>1 - Linear X<br>2 - Grid XY|LFO X type|LFO Y type|LFO trigger<br>1 - none<br>2 - LFO X<br>3 - LFO Y<br>4 - both|Morph Interpolate<br>1 - off<br>2 - on|-|
+|Morpheus|Morph X<br>LFO X rate 0.0&hellip;10.0Hz<br>or wave X position|Morph Y<br>LFO Y rate 0.0&hellip;10.0Hz<br>or wave Y position|LFO X mode|LFO Y mode|LFO X wave|LFO Y wave|LFO X depth -100%&hellip;100%|LFO Y depth -100%&hellip;100%|
 |Anthologue|Assignable controller 1|Assignable controller 2|Program select 1&hellip;25|Sub timbre select 1&hellip;25|Play mode select<br>1 - note<br>2 - sequence trigger<br>3 - sequence trigger with native BMP|Assignable controller 1 select 1&hellip;79|Assignable controller 2 select 1&hellip;79|-|
 
 ### Oscillator notes
@@ -64,18 +64,34 @@ For user-customizable oscillators, an online constructor is available at https:/
 * FM64 does not suport waveform select due to performance limitations.
 * Both FM64 and FM48 support manual selection from 40 algoritms introduced in Korg opsix, though several algorithm won't produce any sound with FM48.
 * FMxx algoritm parameter value is numerically the offset to the selected voice algorithm (with saturation). Just to enable both the ability to keep the default voice algorithm on oscillator init and to save/recall altered algorith with the program.
+* Morpheus LFO rate control is in a non-linear scale, with more precise control in lower frequencies.
 
-|#|Morpheus LFO X&Y types|
+|#|Morpheus LFO X&Y modes|
 |-|-|
-|0|LFO off (wave select mode)|
-|1|Sawtooth (ascending)|
-|2|Sawtooth (descending)|
-|3|Triangle (ping-pong)|
-|4|Sine|
-|5&hellip;19|Wave Bank E|
-|20&hellip;35|Wave Bank F|
-|36&hellip;99|Custom waves|
-|100|White noise S&H|
+|1|One shot|
+|2|Key trigger|
+|3|Random|
+|4|Free run|
+|5|One shot + Shape LFO|
+|6|Key trigger + Shape LFO|
+|7|Random + Shape LFO|
+|8|Free run + Shape LFO|
+|9|Off (LFO Y only, deactivates grid mode)|
+
+|#|Morpheus LFO X&Y waves|
+|-|-|
+|-75&hellip;-90|Wave Bank F|
+|-60&hellip;-74|Wave Bank E|
+|-47&hellip;-59|Wave Bank D|
+|-33&hellip;-46|Wave Bank C|
+|-17&hellip;-32|Wave Bank B|
+|-1&hellip;-16|Wave Bank A|
+|0|Sawtooth|
+|1|Triangle|
+|2|Square|
+|3|Sine|
+|4|White noise S&H|
+|5&hellip;68|Custom waves|
 
 |FMxx features|FM48|FM64|FM65|FM66|FM67|FM68|FM69|
 |-|-|-|-|-|-|-|-|
