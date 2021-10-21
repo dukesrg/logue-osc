@@ -16,12 +16,18 @@
 #define q7_to_q31(q) ((q31_t)(q) << 24)
 #define q31_to_q7(q) ((q15_t)((q31_t)(q) >> 24))
 
+#define q11_to_q31(q) ((q31_t)(q) << 20)
+#define q31_to_q11(q) ((q15_t)((q31_t)(q) >> 20))
+
 #define q15_to_q31(q) ((q31_t)(q) << 16)
 #define q31_to_q15(q) ((q15_t)((q31_t)(q) >> 16))
 
 #define q7_to_f32_c .0078125f
 #define q7_to_f32(q) ((float)(q) * q7_to_f32_c)
 #define f32_to_q7(f) ((q7_t)ssat((q31_t)((float)(f) * ((1<<7)-1)),8))
+
+#define q11_to_f32_c .00048828125f
+#define q11_to_f32(q) ((float)(q) * q11_to_f32_c)
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 q31_t linintq(const q31_t fr, const q31_t x0, const q31_t x1) {

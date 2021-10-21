@@ -60,6 +60,14 @@ static float s_phase = 0.f;
 #endif
 
 static inline __attribute__((optimize("Ofast"), always_inline))
+void set_vco_freq(uint32_t index) {
+  if (s_vco[1].mode != lfo_mode_linear)
+    s_vco[index].lfo.setF0(s_vco[index].freq, k_samplerate_recipf);
+  else if (index == 1)
+    s_vco[0].lfo.setF0(s_vco[1].freq, k_samplerate_recipf);
+}
+
+static inline __attribute__((optimize("Ofast"), always_inline))
 float get_vco(vco_t &vco) {
   float x;
   uint32_t wave;
@@ -217,7 +225,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 {
   s_phase = 0.f;
   for (uint32_t i = 0; i < LFO_COUNT; i++) {
-    s_vco[i].lfo.setF0(s_vco[i].freq, k_samplerate_recipf);
+    set_vco_freq(i);
     if (s_vco[i].wave == 104)
       s_vco[i].snh = osc_white();
     switch (s_vco[i].mode) {
@@ -246,19 +254,14 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case k_user_osc_param_shiftshape:
       index -= k_user_osc_param_shape;
       s_vco[index].shape = param_val_to_f32(value);
-      if (s_vco[1].mode == lfo_mode_linear) {
-        if (index == 1)
-          index--;
-        else
-          break;
-      }
-      s_vco[index].freq = (fasterdbampf(param_val_to_f32(value) * LFO_RATE_LOG_BIAS) - 1.f) * LFO_MAX_RATE;
-      s_vco[index].lfo.setF0(s_vco[index].freq, k_samplerate_recipf);
+      s_vco[index].freq = (fasterdbampf(s_vco[index].shape * LFO_RATE_LOG_BIAS) - 1.f) * LFO_MAX_RATE;
+      set_vco_freq(index);
       break;
     case k_user_osc_param_id1:
     case k_user_osc_param_id2:
       index -= k_user_osc_param_id1;
       s_vco[index].mode = value;
+      set_vco_freq(index);
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
