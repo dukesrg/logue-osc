@@ -247,16 +247,21 @@ float osc_wavebank(float x, float idx) {
 #ifdef FORMAT_PCM12
   q31_t a0, a1;
   __asm__ volatile ( \
+"tst %[x0], #0x1\n" \
 "mov %[x0], %[x0], lsr #1\n" \
 "add %[x0], %[x0], %[x0], lsl #1\n" \
-"mov %[x1], %[x1], lsr #1\n" \
-"add %[x1], %[x1], %[x1], lsl #1\n" \
+"ldr %[a0], [%[wt0], %[x0]]\n" \
+"ldr %[x0], [%[wt1], %[x0]]\n" \
+"ittee ne\n" \
+"sbfxeq %[a1], %[a1], #12, #12\n" \
+"sbfxeq %[x1], %[x1], #12, #12\n" \
+
 "ldr %[a0], [%[wt0], %[x0]]\n" \
 "ldr %[x0], [%[wt1], %[x0]]\n" \
 "ldr %[a1], [%[wt0], %[x1]]\n" \
 "ldr %[x1], [%[wt1], %[x1]]\n" \
-: [a0] "=r" (a0), [a1] "=r" (a1), [x0] "+r" (x0), [x1] "+r" (x1) \
-: [wt0] "r" ((uint32_t)idx * (SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))), [wt1] "r" ((uint32_t)idx + 1 * (SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))) \
+: [a0] "=r" (a0), [a1] "=r" (a1), [x0] "+r" (x0), [x1] "=r" (x1) \
+: [wt0] "r" (&wavebank[(uint32_t)idx * (SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))]), [wt1] "r" (&wavebank[((uint32_t)idx + 1) * (SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))]) \
 : \
   );
 /*

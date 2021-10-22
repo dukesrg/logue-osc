@@ -11,6 +11,7 @@
 #include "fixed_math.h"
 #include "simplelfo.hpp"
 #include "userosc.h"
+#include "osc_apiq.h"
 
 #define SAMPLE_COUNT 256
 #define WAVE_COUNT 64
@@ -41,7 +42,7 @@ enum {
 
 typedef struct {
   uint32_t mode;
-  uint32_t wave;
+  int32_t wave;
   float depth;
   float freq;
   float shape;
@@ -70,8 +71,8 @@ void set_vco_freq(uint32_t index) {
 static inline __attribute__((optimize("Ofast"), always_inline))
 float get_vco(vco_t &vco) {
   float x;
-  uint32_t wave;
-  const float *const *waves;
+//  uint32_t wave;
+//  const float *const *waves;
 
 //  if (vco.depth == 0.f)
 //    return vco.shape + vco.offset;
@@ -82,26 +83,26 @@ float get_vco(vco_t &vco) {
   }
 
   switch (vco.wave) {
-    case 100:
+    case 0:
       x = vco.lfo.saw_bi();
      break;
-    case 101:
+    case 1:
       x = vco.lfo.triangle_bi();
       break;
-    case 102:
+    case 2:
       x = vco.lfo.square_bi();
       break;
-    case 103:
+    case 3:
       x = vco.lfo.sine_bi();
       break;
-    case 104:
+    case 4:
       if (vco.phiold > 0 && vco.lfo.phi0 <= 0)
         vco.snh = osc_white();
       x = vco.snh;
       break;
     default:
       x = q31_to_f32(vco.lfo.phi0) * .5f + .5f;
-      if (vco.wave < 100) {
+/*      if (vco.wave < 100) {
         wave = 99 - vco.wave;
         if (wave < k_waves_a_cnt)
           waves = wavesA;
@@ -120,6 +121,11 @@ float get_vco(vco_t &vco) {
         x = osc_wave_scanf(waves[wave], x);
       } else
         x = osc_wavebank(x, vco.wave - 105);
+*/
+      if (vco.wave < 0)
+        x = osc_wave_scanf(wavesAll[- 1 - vco.wave], x);
+      else
+        x = osc_wavebank(x, (uint32_t)(vco.wave - 5));
       break;
   }
 
@@ -127,6 +133,11 @@ float get_vco(vco_t &vco) {
   vco.lfo.cycle();
 
   return clipminmaxf(0.f, x * vco.depth + vco.offset, 1.f);
+}
+
+void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
+{
+  osc_wave_init_all();
 }
 
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
@@ -226,7 +237,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   s_phase = 0.f;
   for (uint32_t i = 0; i < LFO_COUNT; i++) {
     set_vco_freq(i);
-    if (s_vco[i].wave == 104)
+    if (s_vco[i].wave == 4)
       s_vco[i].snh = osc_white();
     switch (s_vco[i].mode) {
       case lfo_mode_free_run:
@@ -265,10 +276,11 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       break;
     case k_user_osc_param_id3:
     case k_user_osc_param_id4:
+      index -= k_user_osc_param_id3;
       if (value == 0)
         value = 100;
-      index -= k_user_osc_param_id3;
-      s_vco[index].wave = value;
+//      s_vco[index].wave = clipminmaxi32(100 - k_waves_all_cnt, value, 104 + WAVE_COUNT);
+      s_vco[index].wave = (int32_t)value - 100;
       break;
     case k_user_osc_param_id5:
     case k_user_osc_param_id6:
