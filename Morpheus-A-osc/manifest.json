@@ -6,15 +6,16 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.2-0",
+        "version" : "1.3-6",
         "name" : "Morpheus-A",
-        "num_param" : 5,
+        "num_param" : 6,
         "params" : [
-            ["Mode", 0, 1, ""],
-            ["LFOX", 0, 100, "%"],
-            ["LFOY", 0, 100, "%"],
-            ["LFOTrigger", 0, 3, ""],
-            ["Interpolate", 0, 1, ""]
+            ["LFO X mode", 0, 7, ""],
+            ["LFO Y mode", 0, 8, ""],
+            ["LFO X wave", -90, 68, "%"],
+            ["LFO Y wave", -90, 68, "%"],
+            ["LFO X depth", -100, 100, "%"],
+            ["LFO Y depth", -100, 100, "%"]
         ],
         "custom_data" : [
           ["Raw wave, A-law encoded", 64, 16384]
