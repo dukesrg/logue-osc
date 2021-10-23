@@ -19,6 +19,7 @@
 //#define WF8 //all 8 DX11 waveforms runtime generated from half-sine
 //#define WF4 //4 first DX11 waveforms runtime generated from half-sine
 //#define WF2 //2 first DX11 waveforms runtime generated from half-sine
+//#define WFROM //logue SDK wave banks A-F
 //#define OPSIX //enable KORG Opsix extensions
 //#define SY77 //enable SY77 extensions
 #define TWEAK_ALG //use reserved bits for extended algorithms count support
@@ -80,7 +81,10 @@
     CUSTOM_PARAM_ID(17)
   );
 
-#if defined(WF16x2)
+#if defined(WFROM)
+  #define WAVE_COUNT k_waves_all_cnt
+  #define WFBITS 7
+#elif defined(WF16x2)
   #include "waveforms16x2.h"
   #define WFBITS 4
 #elif defined(WF32)
@@ -113,7 +117,11 @@
 #endif
 
 #ifdef WFBITS
+#ifdef WFROM
+  #define OSC_FUNC(a) osc_wave_scanf(s_waveform[i], a)
+#else
   #define OSC_FUNC(a) osc_wavebank(a, s_waveform[i] WAVE_PINCH_PARAMS)
+#endif
 #else
   #define OSC_FUNC(a) osc_sinq(a WAVE_PINCH_PARAMS)
   #if defined(WFSIN32)
@@ -313,7 +321,11 @@ static int8_t s_op_level[OPERATOR_COUNT];
 static float s_op_rate_scale[OPERATOR_COUNT];
 #ifdef WFBITS
 static uint8_t s_op_waveform[OPERATOR_COUNT];
+#ifdef WFROM
+static const float * s_waveform[OPERATOR_COUNT];
+#else
 static uint32_t s_waveform[OPERATOR_COUNT];
+#endif
 #endif
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -425,6 +437,15 @@ void setLevel() {
 #ifdef WFBITS
 void setWaveform() {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+#ifdef WFROM
+    s_waveform[i] = wavesAll[clipminmaxi32(
+      0, s_op_waveform[i] +
+      s_waveform_offset[i] +
+      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] % 10)) +
+      ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
+      WAVE_COUNT - 1
+    )];
+#else
     s_waveform[i] = clipminmaxi32(
       0, s_op_waveform[i] +
       s_waveform_offset[i] +
@@ -432,6 +453,7 @@ void setWaveform() {
       ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
       WAVE_COUNT - 1
     );
+#endif
 }
 #endif
 
@@ -723,12 +745,14 @@ void initvoice(int32_t voice_index) {
   s_pegval = 0;
 #endif
 }
-/*
+
+#ifdef WFROM
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
-
+  osc_wave_init_all();
 }
-*/
+#endif
+
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
   if (s_state) {
