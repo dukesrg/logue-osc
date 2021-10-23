@@ -284,3 +284,29 @@ void osc_api_initq() {
   for (i = k_wt_saw_lut_tsize; i--; wt_saw_lut_q[i] = f32_to_q31(wt_saw_lut_f[i]));
 #endif
 }
+
+  /**
+   * All firmware wavebanks grouped for faster access.
+   */
+#define k_waves_all_cnt (k_waves_a_cnt + k_waves_b_cnt + k_waves_c_cnt + k_waves_d_cnt + k_waves_e_cnt + k_waves_f_cnt)
+static const float * wavesAll[k_waves_all_cnt];
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+void osc_wave_init_all() {
+  uint32_t i, j = 0;
+  for (i = 0; i < k_waves_a_cnt; wavesAll[j++] = wavesA[i++]);
+  for (i = 0; i < k_waves_b_cnt; wavesAll[j++] = wavesB[i++]);
+  for (i = 0; i < k_waves_c_cnt; wavesAll[j++] = wavesC[i++]);
+  for (i = 0; i < k_waves_d_cnt; wavesAll[j++] = wavesD[i++]);
+  for (i = 0; i < k_waves_e_cnt; wavesAll[j++] = wavesE[i++]);
+  for (i = 0; i < k_waves_f_cnt; wavesAll[j++] = wavesF[i++]);
+};
+
+static inline __attribute__((always_inline, optimize("Ofast")))
+q31_t osc_wave_scanf(const float *w, q31_t x) {
+  const uint32_t x0p = ubfx(x, 31 - k_waves_size_exp, k_waves_size_exp);
+  const uint32_t x0 = x0p;
+  const uint32_t x1 = x0 + 1;
+  const q31_t fr = (x << k_waves_size_exp) & 0x7FFFFFFF;
+  return linintq(fr, f32_to_q31(w[x0]), f32_to_q31(w[x1]));
+}
