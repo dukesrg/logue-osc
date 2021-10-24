@@ -296,9 +296,9 @@ static uint8_t s_feedback_route[FEEDBACK_COUNT] = {0};
 static uint8_t s_feedback_level[FEEDBACK_COUNT] = {0};
 #ifdef WFBITS
 #ifdef OP6
-static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
+static int8_t s_waveform_offset[OPERATOR_COUNT + 3 + 4] = {0};
 #else
-static int8_t s_waveform_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_waveform_offset[OPERATOR_COUNT + 3 + 3] = {0};
 #endif
 #endif
 static int8_t s_left_depth[OPERATOR_COUNT];
@@ -440,16 +440,16 @@ void setWaveform() {
 #ifdef WFROM
     s_waveform[i] = wavesAll[clipminmaxi32(
       0, s_op_waveform[i] +
-      s_waveform_offset[i] +
-      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] % 10)) +
+      paramOffset(s_waveform_offset, i) +
+      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] % 10)) +
       ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
       WAVE_COUNT - 1
     )];
 #else
     s_waveform[i] = clipminmaxi32(
       0, s_op_waveform[i] +
-      s_waveform_offset[i] +
-      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] % 10)) +
+      paramOffset(s_waveform_offset, i) +
+      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] % 10)) +
       ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
       WAVE_COUNT - 1
     );
@@ -1666,35 +1666,38 @@ setkvslevel:
 #endif
     case CUSTOM_PARAM_ID(133):
     case CUSTOM_PARAM_ID(134):
-#ifdef OP6
     case CUSTOM_PARAM_ID(135):
     case CUSTOM_PARAM_ID(136):
+    case CUSTOM_PARAM_ID(137):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(138):
+    case CUSTOM_PARAM_ID(139):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(137):
-    case CUSTOM_PARAM_ID(138):
-    case CUSTOM_PARAM_ID(139):
     case CUSTOM_PARAM_ID(140):
-      s_waveform_offset[CUSTOM_PARAM_ID(140) - index] = value - 100;
+    case CUSTOM_PARAM_ID(141):
+    case CUSTOM_PARAM_ID(142):
+    case CUSTOM_PARAM_ID(143):
+      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = value - 100;
       setWaveform();
       break;
 #endif
 #ifdef WAVE_PINCH
-    case CUSTOM_PARAM_ID(141):
-    case CUSTOM_PARAM_ID(142):
-    case CUSTOM_PARAM_ID(143):
-#ifdef OP6
     case CUSTOM_PARAM_ID(144):
     case CUSTOM_PARAM_ID(145):
+    case CUSTOM_PARAM_ID(146):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(147):
+    case CUSTOM_PARAM_ID(148):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(146):
-    case CUSTOM_PARAM_ID(147):
-    case CUSTOM_PARAM_ID(148):
     case CUSTOM_PARAM_ID(149):
-      s_waveform_pinch[CUSTOM_PARAM_ID(149) - index] = value;
+    case CUSTOM_PARAM_ID(150):
+    case CUSTOM_PARAM_ID(151):
+    case CUSTOM_PARAM_ID(152):
+      s_waveform_pinch[CUSTOM_PARAM_ID(152) - index] = value;
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
         value = clipminmaxi32(1, 100 - paramOffset(s_waveform_pinch, i), 100);
         s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh
