@@ -14,6 +14,7 @@
  *   - FORMAT_FLOAT32: Single precision floating point
  * - SAMPLE_COUNT: samples per waveform, must be power of 2
  * - SAMPLE_GUARD: additional guard sample at the end of each waveform equal to starting sample for optimized output
+ * - WAVEBANK_NO_HOOKS: do not place wavebank in .hooks section
  * - WAVE_COUNT: total number of waveforms in wavetable, must be power of 2
  * - for grid mode only
  *   - WAVE_COUNT_X: number of waveforms in wavetable dimention X, must be power of 2
@@ -37,6 +38,29 @@
   #define FORMAT_PCM16
 #endif
 
+#ifdef SAMPLE_GUARD
+  #define SAMPLE_COUNT_TOTAL (SAMPLE_COUNT + 1)
+  #define NEXT_SAMPLE(x) (x + 1)
+#else
+  #define SAMPLE_COUNT_TOTAL SAMPLE_COUNT
+  #define NEXT_SAMPLE(x) ((x + 1) & (SAMPLE_COUNT - 1))
+#endif
+
+#ifdef FORMAT_PCM12
+  #define FORMAT_PREFIX "p12"
+  #define DATA_TYPE uint8_t
+  #define to_f32(a) q11_to_f32(a)
+  #define to_q31(a) q11_to_q31(a)
+  #define from_f32(a) f32_to_q11(a)
+  #define from_q31(a) q11_to_q31(a)
+  #ifdef SAMPLE_GUARD
+    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1) + 2)
+  #else
+    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1))
+  #endif
+#else
+  #define DATA_TYPE_COUNT SAMPLE_COUNT_TOTAL
+#endif
 #ifdef FORMAT_ALAW
   #define FORMAT_PREFIX "a8"
   #define DATA_TYPE uint8_t
@@ -60,14 +84,6 @@
   #define to_q31(a) q7_to_q31(a)
   #define from_f32(a) f32_to_q7(a)
   #define from_q31(a) q7_to_q31(a)
-#endif
-#ifdef FORMAT_PCM12
-  #define FORMAT_PREFIX "p12"
-  #define DATA_TYPE uint8_t
-  #define to_f32(a) q11_to_f32(a)
-  #define to_q31(a) q11_to_q31(a)
-  #define from_f32(a) f32_to_q11(a)
-  #define from_q31(a) q11_to_q31(a)
 #endif
 #ifdef FORMAT_PCM16
   #define FORMAT_PREFIX "p16"
@@ -134,14 +150,6 @@
   #error "Unsupported SAMPLE_COUNT"
 #endif
 
-#ifdef SAMPLE_GUARD
-  #define SAMPLE_COUNT_TOTAL (SAMPLE_COUNT + 1)
-  #define NEXT_SAMPLE(x) (x + 1);
-#else
-  #define SAMPLE_COUNT_TOTAL SAMPLE_COUNT
-  #define NEXT_SAMPLE(x) ((x + 1) & (SAMPLE_COUNT - 1));
-#endif
-
 #if WAVE_COUNT_X == 64
   #define WAVE_COUNT_X_EXP 6
 #elif WAVE_COUNT_X == 32
@@ -180,14 +188,19 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnarrowing"
+#ifdef WAVEBANK_NO_HOOKS
+static
+#else
 static const __attribute__((used, section(".hooks")))
+#endif
 #ifdef WAVEBANK
-  DATA_TYPE wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT] = {WAVEBANK};
+  DATA_TYPE wave_bank[WAVE_COUNT * DATA_TYPE_COUNT] = {WAVEBANK};
 #else
-#ifdef FORMAT_PCM12
-  uint8_t wave_bank[(SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1)) * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+  uint8_t wave_bank[WAVE_COUNT * DATA_TYPE_COUNT * sizeof(DATA_TYPE)] =
+#ifdef WAVEBANK_NO_HOOKS
+  {0};
 #else
-  uint8_t wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+ "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
 #endif
 #endif
 #pragma GCC diagnostic pop
@@ -438,9 +451,9 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
    */
 static inline __attribute__((always_inline, optimize("Ofast")))
 void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
-  const float *waves;
+  const float *waves = wt_sine_lut_f;
+/*
   if (wavenum == 0) {
-    waves = wt_sine_lut_f;
     for (uint32_t i = 0; i < k_wt_sine_size; i++) {
 #if SAMPLE_COUNT == (k_wt_sine_size * 2)
       wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[i]);
@@ -455,10 +468,39 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 //todo: squashed waveforms
 #endif
     }
-#ifdef SAMPLE_GUARD
-    wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[0]);
+  } else
+*/
+  if (wavenum < 8) {
+    uint32_t k, dbl = wavenum >> 2;
+    float valf1, valf2, sign;
+    for (uint32_t i = 0; i < k_wt_sine_size; i++) {
+      k = i << dbl;
+      sign = 1.f;
+      if (k > k_wt_sine_size) {
+        k = 2 * k_wt_sine_size - k;
+        if (wavenum < 6)
+          sign = -1.f;
+      }
+#if SAMPLE_COUNT == (k_wt_sine_size * 2)
+      valf1 = waves[k];
+      valf2 = waves[k_wt_sine_size - k];
+      if (wavenum & 0x01) {
+        valf1 *= valf1;
+        valf2 *= valf2;
+      }
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(valf1 * sign);
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = wavenum < 2 ? -from_f32(valf2) : (DATA_TYPE)0;
+#elif SAMPLE_COUNT > (k_wt_sine_size * 2)
+      float delta = (float)(k_wt_sine_size * 2) / SAMPLE_COUNT;
+//todo: stretched DX11/TX81Z waveforms
+      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_sine_size * 2); j++) {
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j] = from_f32(linintf(delta * j, waves[i], waves[i + 1]));
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j + k_wt_sine_size] = -from_f32(linintf(delta * j, waves[k_wt_sine_size - i], waves[k_wt_sine_size - i - 1]));
+      }
+#else
+//todo: squashed waveforms
 #endif
-  } else if (wavenum < 8) {
+    }
 /*
     uint32_t x0p;
     uint32_t x0;
@@ -505,9 +547,6 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 //todo: squashed waveforms
 #endif
     }
-#ifdef SAMPLE_GUARD
-    wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[0]);
-#endif
   } else if (wavenum < 36) {
     wavenum -= 29;
     waves = wt_par_lut_f;
@@ -525,9 +564,6 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 //todo: squashed waveforms
 #endif
     }
-#ifdef SAMPLE_GUARD
-    wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[0]);
-#endif
   } else if (wavenum < 126) {
     wavenum -= 36;
     if (wavenum < k_waves_a_cnt)
@@ -554,10 +590,10 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 //todo: squashed waveforms
 #endif
     }
-#ifdef SAMPLE_GUARD
-    wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[k_waves_size]);
-#endif
   }
+#ifdef SAMPLE_GUARD
+  wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[0]);
+#endif
 }
 
 #if WAVE_COUNT_Y != 1

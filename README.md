@@ -95,7 +95,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |FMxx features|FM48|FM64|FM65|FM66|FM67|FM68|FM69|
 |-|-|-|-|-|-|-|-|
-|Preset algorithm count|85|85|85|85|85|85|85|
+|Preset algorithm count|84|84|84|84|84|84|84|
 |User algorithm count|-|-|16|-|-|-|-|
 |Operators count|4|6|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|
@@ -253,15 +253,15 @@ For user-customizable oscillators, an online constructor is available at https:/
 |131|Waveform 1+2|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 1 and 2|
 |132|Waveform 3+4|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 3 and 4|
 |133|Waveform 5+6|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 5 and 6|
-|134|Waveform All|-15&hellip;15|Waveform offset for all operators|
-|135|Waveform Car|-15&hellip;15|Waveform offset for carriers|
-|136|Waveform Mod|-15&hellip;15|Waveform offset for modulators|
-|137|Waveform Op1|-15&hellip;15|Waveform offset for operator 1|
-|138|Waveform Op2|-15&hellip;15|Waveform offset for operator 2|
-|139|Waveform Op3|-15&hellip;15|Waveform offset for operator 3|
-|140|Waveform Op4|-15&hellip;15|Waveform offset for operator 4|
-|141|Waveform Op5|-15&hellip;15|Waveform offset for operator 5|
-|142|Waveform Op6|-15&hellip;15|Waveform offset for operator 6|
+|134|Waveform All|-90&hellip;35|Waveform select for all operators|
+|135|Waveform Car|-90&hellip;35|Waveform select for carriers|
+|136|Waveform Mod|-90&hellip;35|Waveform select for modulators|
+|137|Waveform Op1|-90&hellip;35|Waveform select for operator 1|
+|138|Waveform Op2|-90&hellip;35|Waveform select for operator 2|
+|139|Waveform Op3|-90&hellip;35|Waveform select for operator 3|
+|140|Waveform Op4|-90&hellip;35|Waveform select for operator 4|
+|141|Waveform Op5|-90&hellip;35|Waveform select for operator 5|
+|142|Waveform Op6|-90&hellip;35|Waveform select for operator 6|
 |143|WF pinch All|0&hellip;99|Waveform pinch for all operators|
 |144|WF pinch Car|0&hellip;99|Waveform pinch for carriers|
 |145|WF pinch Mod|0&hellip;99|Waveform pinch for modulatorss|

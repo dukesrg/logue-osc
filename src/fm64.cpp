@@ -86,8 +86,9 @@
   #define FORMAT_PCM16
   #define SAMPLE_COUNT 256
   #define SAMPLE_GUARD
-  #define WAVE_COUNT 6
-  #define WAVE_COUNT_X 6
+  #define WAVEBANK_NO_HOOKS
+  #define WAVE_COUNT OPERATOR_COUNT
+  #define WAVE_COUNT_X OPERATOR_COUNT
   #define WAVE_COUNT_Y 1
   #include "wavebank.h"
   #define WFBITS 7
