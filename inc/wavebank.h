@@ -470,8 +470,8 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
     }
   } else
 */
-  if (wavenum < 8) {
-    uint32_t k, dbl = wavenum >> 2;
+  if (wavenum < 9) {
+    uint32_t k, dbl = ((wavenum >> 2) + (wavenum >> 3)) & 0x01;
     float valf1, valf2, sign;
     for (uint32_t i = 0; i < k_wt_sine_size; i++) {
       k = i << dbl;
@@ -484,12 +484,12 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 #if SAMPLE_COUNT == (k_wt_sine_size * 2)
       valf1 = waves[k];
       valf2 = waves[k_wt_sine_size - k];
-      if (wavenum & 0x01) {
+      if ((wavenum & 0x01) != 0 || wavenum == 8) {
         valf1 *= valf1;
         valf2 *= valf2;
       }
       wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(valf1 * sign);
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = wavenum < 2 ? -from_f32(valf2) : (DATA_TYPE)0;
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = (wavenum < 2 || wavenum == 8) ? -from_f32(valf2) : (DATA_TYPE)0;
 #elif SAMPLE_COUNT > (k_wt_sine_size * 2)
       float delta = (float)(k_wt_sine_size * 2) / SAMPLE_COUNT;
 //todo: stretched DX11/TX81Z waveforms
