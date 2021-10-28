@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.9-0",
+        "version" : "1.9-5",
         "name" : "FM67",
         "num_param" : 6,
         "params" : [
@@ -15,12 +15,11 @@
             ["Rat offs All", -99, 99, "%"],
             ["Lvl offs Car", -99, 99, "%"],
             ["Alg offset", -83, 83, "%"],
-            ["Waveform C+M", -77, 77, "%"]
+            ["Waveform Car", -90, 35, "%"]
         ],
         "custom_data" : [
-          ["Raw 16-bit PCM waveforms", 64, 514, 16],
-          ["Yamaha DX7-series voice banks", 8288, 4096, 2],
-          ["custom_params", 16480, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 4],
+            ["custom_params", 16448, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -153,16 +152,19 @@
             ["Det scal Op4", -99, 100, "%"],
             ["Det scal Op5", -99, 100, "%"],
             ["Det scal Op6", -99, 100, "%"],
-            ["Waveform C+M", -77, 77, "%"],
-            ["Waveform 1+2", -77, 77, "%"],
-            ["Waveform 3+4", -77, 77, "%"],
-            ["Waveform 5+6", -77, 77, "%"],
-            ["Waveform Op1", -15, 15, "%"],
-            ["Waveform Op2", -15, 15, "%"],
-            ["Waveform Op3", -15, 15, "%"],
-            ["Waveform Op4", -15, 15, "%"],
-            ["Waveform Op5", -15, 15, "%"],
-            ["Waveform Op6", -15, 15, "%"]
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["Waveform All", -90, 35, "%"],
+            ["Waveform Car", -90, 35, "%"],
+            ["Waveform Mod", -90, 35, "%"],
+            ["Waveform Op1", -90, 35, "%"],
+            ["Waveform Op2", -90, 35, "%"],
+            ["Waveform Op3", -90, 35, "%"],
+            ["Waveform Op4", -90, 35, "%"],
+            ["Waveform Op5", -90, 35, "%"],
+            ["Waveform Op6", -90, 35, "%"]
         ]
     }
 }

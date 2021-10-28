@@ -95,14 +95,14 @@ For user-customizable oscillators, an online constructor is available at https:/
 
 |FMxx features|FM48|FM64|FM65|FM66|FM67|FM68|FM69|
 |-|-|-|-|-|-|-|-|
-|Preset algorithm count|85|85|85|85|85|85|85|
+|Preset algorithm count|84|84|84|84|84|84|84|
 |User algorithm count|-|-|16|-|-|-|-|
 |Operators count|4|6|6|6|6|6|6|
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|5|4|4|2|2|5|
 |Feedback count|1|1|2|1|2|1|1|
-|Waveform count|8|1|1|8|16|1|1|
-|Waveform customization||||+|+|||
+|Waveform count|8|1|1|8|126|1|1|
+|Waveform customization||||+||||
 |Waveform pinch|||+|||||
 |AMP LUT depth x witch, bits|11x16|11x16|11x16|11x16|11x16|13x16|11x16|
 |Mixing quality, bits|32|32|16|32|32|32|32|
@@ -253,21 +253,24 @@ For user-customizable oscillators, an online constructor is available at https:/
 |131|Waveform 1+2|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 1 and 2|
 |132|Waveform 3+4|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 3 and 4|
 |133|Waveform 5+6|-77&hellip;77 ⁽⁸⁾|Waveform offset for operators 5 and 6|
-|134|Waveform Op1|-7&hellip;7|Waveform offset for operator 1|
-|135|Waveform Op2|-7&hellip;7|Waveform offset for operator 2|
-|136|Waveform Op3|-7&hellip;7|Waveform offset for operator 3|
-|137|Waveform Op4|-7&hellip;7|Waveform offset for operator 4|
-|138|Waveform Op5|-7&hellip;7|Waveform offset for operator 5|
-|139|Waveform Op6|-7&hellip;7|Waveform offset for operator 6|
-|140|WF pinch All|0&hellip;99|Waveform pinch for all operators|
-|141|WF pinch Car|0&hellip;99|Waveform pinch for carriers|
-|142|WF pinch Mod|0&hellip;99|Waveform pinch for modulatorss|
-|143|WF pinch Op1|0&hellip;99|Waveform pinch for operator 1|
-|144|WF pinch Op2|0&hellip;99|Waveform pinch for operator 2|
-|145|WF pinch Op3|0&hellip;99|Waveform pinch for operator 3|
-|146|WF pinch Op4|0&hellip;99|Waveform pinch for operator 4|
-|147|WF pinch Op5|0&hellip;99|Waveform pinch for operator 5|
-|148|WF pinch Op6|0&hellip;99|Waveform pinch for operator 6|
+|134|Waveform All|-90&hellip;35|Waveform select for all operators|
+|135|Waveform Car|-90&hellip;35|Waveform select for carriers|
+|136|Waveform Mod|-90&hellip;35|Waveform select for modulators|
+|137|Waveform Op1|-90&hellip;35|Waveform select for operator 1|
+|138|Waveform Op2|-90&hellip;35|Waveform select for operator 2|
+|139|Waveform Op3|-90&hellip;35|Waveform select for operator 3|
+|140|Waveform Op4|-90&hellip;35|Waveform select for operator 4|
+|141|Waveform Op5|-90&hellip;35|Waveform select for operator 5|
+|142|Waveform Op6|-90&hellip;35|Waveform select for operator 6|
+|143|WF pinch All|0&hellip;99|Waveform pinch for all operators|
+|144|WF pinch Car|0&hellip;99|Waveform pinch for carriers|
+|145|WF pinch Mod|0&hellip;99|Waveform pinch for modulatorss|
+|146|WF pinch Op1|0&hellip;99|Waveform pinch for operator 1|
+|147|WF pinch Op2|0&hellip;99|Waveform pinch for operator 2|
+|148|WF pinch Op3|0&hellip;99|Waveform pinch for operator 3|
+|149|WF pinch Op4|0&hellip;99|Waveform pinch for operator 4|
+|150|WF pinch Op5|0&hellip;99|Waveform pinch for operator 5|
+|151|WF pinch Op6|0&hellip;99|Waveform pinch for operator 6|
 
 ⁽¹⁾ : 0...100 with the step of 1 when assigned to the oscillator parameter, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0..127 with the step of 0.125 when assigned to the Shape or Alt (Shift + Shape) <br/>

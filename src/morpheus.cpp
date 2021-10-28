@@ -111,7 +111,7 @@ float get_vco(vco_t &vco) {
         else if ((wave -= k_waves_b_cnt) < k_waves_c_cnt)
           waves = wavesC;
         else if ((wave -= k_waves_c_cnt) < k_waves_d_cnt)
-          waves = wavesE;
+          waves = wavesD;
         else if ((wave -= k_waves_d_cnt) < k_waves_e_cnt)
           waves = wavesE;
         else {
