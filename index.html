@@ -521,7 +521,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM64" || osc === "FM68" || osc === "FM69") {
+      } else if (osc === "FM64" || osc === "FM67" || osc === "FM68" || osc === "FM69") {
         if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
         } else {
@@ -613,7 +613,7 @@ function handleFiles(f) {
             }
           }
         }
-      } else if (osc === "FM66" || osc === "FM67") {
+      } else if (osc === "FM66") {
         if (array.length > 4104 || array.length < 4096) {
           if (String.fromCharCode.apply(String, array.slice(0, 4)) + String.fromCharCode.apply(String, array.slice(8, 12)) === "RIFFWAVE") {
             if (typeof data[0] !== 'undefined' && data[0].length >= count[osc][0]) {
@@ -1069,7 +1069,7 @@ function handleFiles(f) {
         }
       }
       status.innerHTML += "<br/>";
-      if (data[(osc === "FM65" || osc === "FM66" || osc === "FM67") ? 1 : 0].length > 0) {
+      if (data[(osc === "FM65" || osc === "FM66") ? 1 : 0].length > 0) {
         document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
         name.disabled = false;
       }
