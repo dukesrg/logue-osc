@@ -73,7 +73,11 @@
     CUSTOM_PARAM_ID(24),
     CUSTOM_PARAM_ID(22),
 #ifdef WFBITS
+#ifdef WFGEN
+    CUSTOM_PARAM_ID(136),
+#else
     CUSTOM_PARAM_ID(131),
+#endif
 #else
     CUSTOM_PARAM_ID(25),
 #endif

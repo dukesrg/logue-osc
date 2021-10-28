@@ -101,8 +101,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 |Voice bank type|DX21 / DX11|DX7|DX7|DX7|DX7|DX7|DX7|
 |Voice bank count|4|5|4|4|2|2|5|
 |Feedback count|1|1|2|1|2|1|1|
-|Waveform count|8|1|1|8|16|1|1|
-|Waveform customization||||+|+|||
+|Waveform count|8|1|1|8|126|1|1|
+|Waveform customization||||+||||
 |Waveform pinch|||+|||||
 |AMP LUT depth x witch, bits|11x16|11x16|11x16|11x16|11x16|13x16|11x16|
 |Mixing quality, bits|32|32|16|32|32|32|32|

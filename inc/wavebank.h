@@ -452,27 +452,10 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
 static inline __attribute__((always_inline, optimize("Ofast")))
 void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
   const float *waves = wt_sine_lut_f;
-/*
-  if (wavenum == 0) {
-    for (uint32_t i = 0; i < k_wt_sine_size; i++) {
-#if SAMPLE_COUNT == (k_wt_sine_size * 2)
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[i]);
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = -from_f32(waves[k_wt_sine_size - i]);
-#elif SAMPLE_COUNT > (k_wt_sine_size * 2)
-      float delta = (float)(k_wt_sine_size * 2) / SAMPLE_COUNT;
-      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_sine_size * 2); j++) {
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j] = from_f32(linintf(delta * j, waves[i], waves[i + 1]));
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j + k_wt_sine_size] = -from_f32(linintf(delta * j, waves[k_wt_sine_size - i], waves[k_wt_sine_size - i - 1]));
-      }
-#else
-//todo: squashed waveforms
-#endif
-    }
-  } else
-*/
+  float sign;
   if (wavenum < 17) {
     uint32_t k, dbl = (((wavenum > 3) && (wavenum < 10)) || wavenum > 12) ? 1 : 0;
-    float valf1, valf2, sign;
+    float valf1, valf2;
     for (uint32_t i = 0; i < k_wt_sine_size; i++) {
       k = i << dbl;
       sign = 1.f;
@@ -509,64 +492,45 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
           valf2 = 1.f;
       }
       wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(valf1 * sign);
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = (wavenum < 2 || wavenum == 8 || wavenum > 10) ? -from_f32(valf2) : (DATA_TYPE)0;
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = (wavenum < 2 || wavenum == 8 || wavenum > 10) ? from_f32(-valf2) : (DATA_TYPE)0;
 #elif SAMPLE_COUNT > (k_wt_sine_size * 2)
       float delta = (float)(k_wt_sine_size * 2) / SAMPLE_COUNT;
 //todo: stretched DX11/TX81Z waveforms
       for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_sine_size * 2); j++) {
         wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j] = from_f32(linintf(delta * j, waves[i], waves[i + 1]));
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j + k_wt_sine_size] = -from_f32(linintf(delta * j, waves[k_wt_sine_size - i], waves[k_wt_sine_size - i - 1]));
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j + k_wt_sine_size] = from_f32(-linintf(delta * j, waves[k_wt_sine_size - i], waves[k_wt_sine_size - i - 1]));
+      }
+#else
+//todo: squashed waveforms
+#endif
+    }
+  } else if (wavenum < 36) {
+    wavenum -= 17;
+    sign = -1.f;
+    if (wavenum < k_wt_saw_notes_cnt - 1)
+      waves = wt_saw_lut_f;
+    else if ((wavenum -= k_wt_saw_notes_cnt - 1) < k_wt_sqr_notes_cnt - 1)
+      waves = wt_sqr_lut_f;
+    else {
+      wavenum -= k_wt_sqr_notes_cnt - 1;
+      waves = wt_par_lut_f;
+      sign = 1.f;
+    }
+    for (uint32_t i = 0; i < k_wt_saw_size; i++) {
+#if SAMPLE_COUNT == (k_wt_saw_size * 2)
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[wavenum * k_wt_saw_lut_size + i]);
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_saw_size] = from_f32(sign * waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i]);
+#elif SAMPLE_COUNT > (k_wt_saw_size * 2)
+      float delta = (float)(k_wt_saw_size * 2) / SAMPLE_COUNT;
+      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_saw_size * 2); j++) {
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_saw_size * 2)) + j] = from_f32(linintf(delta * j, waves[wavenum * k_wt_saw_lut_size + i], waves[wavenum * k_wt_saw_lut_size + i + 1]));
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_saw_size * 2)) + j + k_wt_saw_size] = from_f32(sign * linintf(delta * j, waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i], waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i - 1]));
       }
 #else
 //todo: squashed waveforms
 #endif
     }
 /*
-    uint32_t x0p;
-    uint32_t x0;
-    uint32_t x1;
-    q31_t fr;
-    q31_t y0 = 0;
-    if (waveform & 0x04)
-      x0p = ubfx(x, 31 - k_wt_sine_size_exp - 2, k_wt_sine_size_exp + 2);
-    else
-      x0p = ubfx(x, 31 - k_wt_sine_size_exp - 1, k_wt_sine_size_exp + 1);
-    if (waveform < 2 || !(x & 0x40000000)) {
-      x0 = x0p & k_wt_sine_mask;
-      x1 = x0 + 1;
-      fr = (x << (k_wt_sine_size_exp + 1)) & 0x7FFFFFFF;
-      y0 = linintq(fr, wt_sine_lut_q[x0], wt_sine_lut_q[x1]);
-    }
-    if (waveform & 0x01)
-      y0 = smmul(y0, y0) << 1;
-    if (!(waveform & 0x02))
-      y0 = (x0p < k_wt_sine_size)?y0:-y0;
-    return y0;
-*/
-  } else if (wavenum < 17) {
-
-  } else if (wavenum < 29) {
-    wavenum -= 17;
-    if (wavenum < k_wt_saw_notes_cnt - 1)
-      waves = wt_saw_lut_f;
-    else {
-      wavenum -= k_wt_saw_notes_cnt - 1;
-      waves = wt_sqr_lut_f;
-    }
-    for (uint32_t i = 0; i < k_wt_saw_size; i++) {
-#if SAMPLE_COUNT == (k_wt_saw_size * 2)
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[wavenum * k_wt_saw_lut_size + i]);
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_saw_size] = -from_f32(waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i]);
-#elif SAMPLE_COUNT > (k_wt_saw_size * 2)
-      float delta = (float)(k_wt_saw_size * 2) / SAMPLE_COUNT;
-      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_saw_size * 2); j++) {
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_saw_size * 2)) + j] = from_f32(linintf(delta * j, waves[wavenum * k_wt_saw_lut_size + i], waves[wavenum * k_wt_saw_lut_size + i + 1]));
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_saw_size * 2)) + j + k_wt_saw_size] = -from_f32(linintf(delta * j, waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i], waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i - 1]));
-      }
-#else
-//todo: squashed waveforms
-#endif
-    }
   } else if (wavenum < 36) {
     wavenum -= 29;
     waves = wt_par_lut_f;
@@ -584,7 +548,7 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 //todo: squashed waveforms
 #endif
     }
-  } else if (wavenum < 126) {
+*/  } else if (wavenum < 126) {
     wavenum -= 36;
     if (wavenum < k_waves_a_cnt)
       waves = wavesA[wavenum];
