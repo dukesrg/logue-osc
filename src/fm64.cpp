@@ -19,6 +19,8 @@
 //#define WF8 //all 8 DX11 waveforms runtime generated from half-sine
 //#define WF4 //4 first DX11 waveforms runtime generated from half-sine
 //#define WF2 //2 first DX11 waveforms runtime generated from half-sine
+//#define WFROM //logue SDK wave banks A-F
+//#define WFGEN //generated waveforms
 //#define OPSIX //enable KORG Opsix extensions
 //#define SY77 //enable SY77 extensions
 #define TWEAK_ALG //use reserved bits for extended algorithms count support
@@ -71,7 +73,11 @@
     CUSTOM_PARAM_ID(24),
     CUSTOM_PARAM_ID(22),
 #ifdef WFBITS
+#ifdef WFGEN
+    CUSTOM_PARAM_ID(136),
+#else
     CUSTOM_PARAM_ID(131),
+#endif
 #else
     CUSTOM_PARAM_ID(25),
 #endif
@@ -80,7 +86,20 @@
     CUSTOM_PARAM_ID(17)
   );
 
-#if defined(WF16x2)
+#if defined(WFGEN)
+  #define FORMAT_PCM16
+  #define SAMPLE_COUNT 256
+  #define SAMPLE_GUARD
+  #define WAVEBANK_NO_HOOKS
+  #define WAVE_COUNT OPERATOR_COUNT
+  #define WAVE_COUNT_X OPERATOR_COUNT
+  #define WAVE_COUNT_Y 1
+  #include "wavebank.h"
+  #define WFBITS 7
+#elif defined(WFROM)
+  #define WAVE_COUNT k_waves_all_cnt
+  #define WFBITS 7
+#elif defined(WF16x2)
   #include "waveforms16x2.h"
   #define WFBITS 4
 #elif defined(WF32)
@@ -106,6 +125,12 @@
   #define WFBITS 1
 #endif
 
+#ifdef WFGEN
+  #define WAVEFORM_COUNT 126
+#else
+  #define WAVEFORM_COUNT WAVE_COUNT
+#endif
+
 #ifdef WAVE_PINCH
   #define WAVE_PINCH_PARAMS , s_wavewidth[i * 2], s_wavewidth[i * 2 + 1]
 #else
@@ -113,7 +138,13 @@
 #endif
 
 #ifdef WFBITS
+#if defined(WFROM)
+  #define OSC_FUNC(a) osc_wave_scanf(s_waveform[i], a)
+#elif defined(WFGEN)
+  #define OSC_FUNC(a) osc_wavebank(a, i WAVE_PINCH_PARAMS)
+#else
   #define OSC_FUNC(a) osc_wavebank(a, s_waveform[i] WAVE_PINCH_PARAMS)
+#endif
 #else
   #define OSC_FUNC(a) osc_sinq(a WAVE_PINCH_PARAMS)
   #if defined(WFSIN32)
@@ -288,9 +319,9 @@ static uint8_t s_feedback_route[FEEDBACK_COUNT] = {0};
 static uint8_t s_feedback_level[FEEDBACK_COUNT] = {0};
 #ifdef WFBITS
 #ifdef OP6
-static int8_t s_waveform_offset[OPERATOR_COUNT + 4] = {0};
+static int8_t s_waveform_offset[OPERATOR_COUNT + 3 + 4] = {0};
 #else
-static int8_t s_waveform_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_waveform_offset[OPERATOR_COUNT + 3 + 3] = {0};
 #endif
 #endif
 static int8_t s_left_depth[OPERATOR_COUNT];
@@ -313,7 +344,18 @@ static int8_t s_op_level[OPERATOR_COUNT];
 static float s_op_rate_scale[OPERATOR_COUNT];
 #ifdef WFBITS
 static uint8_t s_op_waveform[OPERATOR_COUNT];
+#ifdef WFROM
+static const float * s_waveform[OPERATOR_COUNT];
+#else
 static uint32_t s_waveform[OPERATOR_COUNT];
+#ifdef WFGEN
+#ifdef OP6
+static uint32_t s_waveform_current[OPERATOR_COUNT] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+#else
+static uint32_t s_waveform_current[OPERATOR_COUNT] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+#endif
+#endif
+#endif
 #endif
 static uint8_t s_egrate[OPERATOR_COUNT][EG_STAGE_COUNT];
 static q31_t s_egsrate[OPERATOR_COUNT][EG_STAGE_COUNT * 2];
@@ -369,10 +411,15 @@ static q31_t s_phase[OPERATOR_COUNT];
 
 enum {
   state_running = 0,
-  state_noteon,
-  state_noteoff,
+  state_noteon = 1,
+  state_noteoff = 2,
+  state_wave_changed = 4
 };
+#ifdef WFGEN
+static uint32_t s_state = state_wave_changed;
+#else
 static uint32_t s_state = 0;
+#endif
 
 float paramScale(uint8_t *param, uint32_t opidx) {
   return .000001f * param[opidx] * param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] * param[OPERATOR_COUNT + 2];
@@ -424,14 +471,29 @@ void setLevel() {
 */
 #ifdef WFBITS
 void setWaveform() {
-  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+#ifdef WFROM
+    s_waveform[i] = wavesAll[clipminmaxi32(
+      0, s_op_waveform[i] +
+      paramOffset(s_waveform_offset, i) +
+      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] % 10)) +
+      ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
+      WAVEFORM_COUNT - 1
+    )];
+#else
     s_waveform[i] = clipminmaxi32(
       0, s_op_waveform[i] +
-      s_waveform_offset[i] +
-      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + (i >> 1)] % 10)) +
+      paramOffset(s_waveform_offset, i) +
+      (i & 0x01 ? (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] / 10) : (s_waveform_offset[OPERATOR_COUNT + 3 + (i >> 1)] % 10)) +
       ((s_algorithm[i] & ALG_OUT_MASK) ? (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] / 10) : (s_waveform_offset[sizeof(s_waveform_offset) / sizeof(*s_waveform_offset) - 1] % 10)),
-      WAVE_COUNT - 1
+      WAVEFORM_COUNT - 1
     );
+#ifdef WFGEN
+    if (s_waveform[i] != s_waveform_current[i])
+      s_state |= state_wave_changed;
+#endif
+#endif
+  }
 }
 #endif
 
@@ -723,15 +785,42 @@ void initvoice(int32_t voice_index) {
   s_pegval = 0;
 #endif
 }
-/*
+
+#ifdef WFROM
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
-
+  osc_wave_init_all();
 }
-*/
+#endif
+
 void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_t frames)
 {
   if (s_state) {
+#ifdef WFGEN
+    if ((s_state & state_wave_changed) != 0) {
+      uint32_t i = 0;
+      for (i = 0; i < OPERATOR_COUNT && s_waveform[i] == s_waveform_current[i]; i++);
+      if (i < OPERATOR_COUNT) {
+        osc_wavebank_preload(i, s_waveform[i]);
+        s_waveform_current[i] = s_waveform[i];
+        for (uint32_t f = frames; f--; *yn++ = 0);
+      } else
+        s_state &= ~state_wave_changed;
+      return;
+
+/*
+      for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+        if (s_waveform[i] != s_waveform_current[i]) {
+          osc_wavebank_preload(i, s_waveform[i]);
+          s_waveform_current[i] = s_waveform[i];
+        }
+      }
+      for (uint32_t f = frames; f--; *yn++ = 0);
+      s_state &= ~state_wave_changed;
+      return;
+*/
+    }
+#endif
   if (s_state == state_noteon) {
     for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
       for (uint32_t j = 0; j < EG_STAGE_COUNT - 1; j++) {
@@ -1331,7 +1420,7 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 //    setOpLevel(i);
   }
   s_zone_transposed += s_transpose;
-  s_state = state_noteon;
+  s_state |= state_noteon;
 }
 
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
@@ -1342,7 +1431,7 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
     s_egsrate_recip[i][0] = 1.f / s_egsrate[i][EG_STAGE_COUNT - 1];
     s_egsrate_recip[i][1] = 1.f / s_egsrate[i][EG_STAGE_COUNT * 2 - 1];
   }
-  s_state = state_noteoff;
+  s_state |= state_noteoff;
 }
 
 void OSC_PARAM(uint16_t index, uint16_t value)
@@ -1362,7 +1451,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)
 #ifdef WAVE_PINCH
 //      && index != CUSTOM_PARAM_ID(141)
-      && !(index >= CUSTOM_PARAM_ID(141) && index <= CUSTOM_PARAM_ID(149))
+      && !(index >= CUSTOM_PARAM_ID(144) && index <= CUSTOM_PARAM_ID(152))
 #endif
     ) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
@@ -1634,6 +1723,7 @@ setkvslevel:
       break;
 #endif
 #ifdef WFBITS
+#ifndef WFGEN
     case CUSTOM_PARAM_ID(131):
 #ifdef OP6
     case CUSTOM_PARAM_ID(132):
@@ -1642,35 +1732,43 @@ setkvslevel:
 #endif
     case CUSTOM_PARAM_ID(133):
     case CUSTOM_PARAM_ID(134):
-#ifdef OP6
+#endif
     case CUSTOM_PARAM_ID(135):
     case CUSTOM_PARAM_ID(136):
+    case CUSTOM_PARAM_ID(137):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(138):
+    case CUSTOM_PARAM_ID(139):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(137):
-    case CUSTOM_PARAM_ID(138):
-    case CUSTOM_PARAM_ID(139):
     case CUSTOM_PARAM_ID(140):
-      s_waveform_offset[CUSTOM_PARAM_ID(140) - index] = value - 100;
+    case CUSTOM_PARAM_ID(141):
+    case CUSTOM_PARAM_ID(142):
+    case CUSTOM_PARAM_ID(143):
+#ifdef WFGEN
+      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = value >= 100 ? (value - 100) : (35 + 100 - value);
+#else
+      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = value - 100;
+#endif
       setWaveform();
       break;
 #endif
 #ifdef WAVE_PINCH
-    case CUSTOM_PARAM_ID(141):
-    case CUSTOM_PARAM_ID(142):
-    case CUSTOM_PARAM_ID(143):
-#ifdef OP6
     case CUSTOM_PARAM_ID(144):
     case CUSTOM_PARAM_ID(145):
+    case CUSTOM_PARAM_ID(146):
+#ifdef OP6
+    case CUSTOM_PARAM_ID(147):
+    case CUSTOM_PARAM_ID(148):
 #else
       index += 2;
 #endif
-    case CUSTOM_PARAM_ID(146):
-    case CUSTOM_PARAM_ID(147):
-    case CUSTOM_PARAM_ID(148):
     case CUSTOM_PARAM_ID(149):
-      s_waveform_pinch[CUSTOM_PARAM_ID(149) - index] = value;
+    case CUSTOM_PARAM_ID(150):
+    case CUSTOM_PARAM_ID(151):
+    case CUSTOM_PARAM_ID(152):
+      s_waveform_pinch[CUSTOM_PARAM_ID(152) - index] = value;
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
         value = clipminmaxi32(1, 100 - paramOffset(s_waveform_pinch, i), 100);
         s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh

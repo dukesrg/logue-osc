@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.9-0",
+        "version" : "1.9-5",
         "name" : "FM48",
         "num_param" : 6,
         "params" : [
@@ -156,6 +156,9 @@
             ["-", 0, 0, ""],
             ["Waveform 1+2", -77, 77, "%"],
             ["Waveform 3+4", -77, 77, "%"],
+            ["Waveform All", -7, 7, "%"],
+            ["Waveform Car", -7, 7, "%"],
+            ["Waveform Mod", -7, 7, "%"],
             ["-", 0, 0, ""],
             ["-", 0, 0, ""],
             ["Waveform Op1", -7, 7, "%"],

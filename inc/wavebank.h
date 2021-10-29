@@ -14,6 +14,7 @@
  *   - FORMAT_FLOAT32: Single precision floating point
  * - SAMPLE_COUNT: samples per waveform, must be power of 2
  * - SAMPLE_GUARD: additional guard sample at the end of each waveform equal to starting sample for optimized output
+ * - WAVEBANK_NO_HOOKS: do not place wavebank in .hooks section
  * - WAVE_COUNT: total number of waveforms in wavetable, must be power of 2
  * - for grid mode only
  *   - WAVE_COUNT_X: number of waveforms in wavetable dimention X, must be power of 2
@@ -30,53 +31,83 @@
 
 #include "fixed_mathq.h"
 #include "g711_decode.h"
+#include "osc_api.h"
 
 #if !defined(FORMAT_ALAW) && !defined(FORMAT_ULAW) && !defined(FORMAT_PCM8) && !defined(FORMAT_PCM12) && !defined(FORMAT_PCM16) && !defined(FORMAT_PCM32) && !defined(FORMAT_FLOAT32)
-  #pragma message "FORMAT not defined, enforcing u-Law"
-  #define FORMAT_ULAW
+  #pragma message "FORMAT not defined, enforcing 16-bit linear PCM"
+  #define FORMAT_PCM16
 #endif
 
+#ifdef SAMPLE_GUARD
+  #define SAMPLE_COUNT_TOTAL (SAMPLE_COUNT + 1)
+  #define NEXT_SAMPLE(x) (x + 1)
+#else
+  #define SAMPLE_COUNT_TOTAL SAMPLE_COUNT
+  #define NEXT_SAMPLE(x) ((x + 1) & (SAMPLE_COUNT - 1))
+#endif
+
+#ifdef FORMAT_PCM12
+  #define FORMAT_PREFIX "p12"
+  #define DATA_TYPE uint8_t
+  #define to_f32(a) q11_to_f32(a)
+  #define to_q31(a) q11_to_q31(a)
+  #define from_f32(a) f32_to_q11(a)
+  #define from_q31(a) q11_to_q31(a)
+  #ifdef SAMPLE_GUARD
+    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1) + 2)
+  #else
+    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1))
+  #endif
+#else
+  #define DATA_TYPE_COUNT SAMPLE_COUNT_TOTAL
+#endif
 #ifdef FORMAT_ALAW
   #define FORMAT_PREFIX "a8"
   #define DATA_TYPE uint8_t
   #define to_f32(a) alaw_to_f32(a)
   #define to_q31(a) alaw_to_q31(a)
+  #define from_f32(a) (a)
+  #define from_q31(a) (a)
 #endif
 #ifdef FORMAT_ULAW
   #define FORMAT_PREFIX "u8"
   #define DATA_TYPE uint8_t
   #define to_f32(a) ulaw_to_f32(a)
   #define to_q31(a) ulaw_to_q31(a)
+  #define from_f32(a) (a)
+  #define from_q31(a) (a)
 #endif
 #ifdef FORMAT_PCM8
   #define FORMAT_PREFIX "p8"
   #define DATA_TYPE q7_t
   #define to_f32(a) q7_to_f32(a)
   #define to_q31(a) q7_to_q31(a)
-#endif
-#ifdef FORMAT_PCM12
-  #define FORMAT_PREFIX "p12"
-  #define DATA_TYPE uint8_t
-  #define to_f32(a) q11_to_f32(a)
-  #define to_q31(a) q11_to_q31(a)
+  #define from_f32(a) f32_to_q7(a)
+  #define from_q31(a) q7_to_q31(a)
 #endif
 #ifdef FORMAT_PCM16
   #define FORMAT_PREFIX "p16"
   #define DATA_TYPE q15_t
   #define to_f32(a) q15_to_f32(a)
   #define to_q31(a) q15_to_q31(a)
+  #define from_f32(a) f32_to_q15(a)
+  #define from_q31(a) q32_to_q15(a)
 #endif
 #ifdef FORMAT_PCM32
   #define FORMAT_PREFIX "p32"
   #define DATA_TYPE q31_t
   #define to_f32(a) q31_to_f32(a)
   #define to_q31(a) (a)
+  #define from_f32(a) f32_to_q31(a)
+  #define from_q31(a) (a)
 #endif
 #ifdef FORMAT_FLOAT32
   #define FORMAT_PREFIX "f32"
   #define DATA_TYPE float
   #define to_f32(a) (a)
-  #define to_q31(a) f32_to_q31(a)
+  #define to_q31(a) f31_to_q31(a)
+  #define from_f32(a) (a)
+  #define from_q31(a) q31_to_f32(a)
 #endif
 
 #define STR_(s) #s
@@ -119,14 +150,6 @@
   #error "Unsupported SAMPLE_COUNT"
 #endif
 
-#ifdef SAMPLE_GUARD
-  #define SAMPLE_COUNT_TOTAL (SAMPLE_COUNT + 1)
-  #define NEXT_SAMPLE(x) (x + 1);
-#else
-  #define SAMPLE_COUNT_TOTAL SAMPLE_COUNT
-  #define NEXT_SAMPLE(x) ((x + 1) & (SAMPLE_COUNT - 1));
-#endif
-
 #if WAVE_COUNT_X == 64
   #define WAVE_COUNT_X_EXP 6
 #elif WAVE_COUNT_X == 32
@@ -141,7 +164,7 @@
   #define WAVE_COUNT_X_EXP 1
 #elif WAVE_COUNT_X == 1
   #define WAVE_COUNT_X_EXP 0
-#else
+#elif WAVE_COUNT_Y != 1
   #error "Unsupported WAVE_COUNT_X"
 #endif
 
@@ -165,19 +188,24 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnarrowing"
+#ifdef WAVEBANK_NO_HOOKS
+static
+#else
 static const __attribute__((used, section(".hooks")))
+#endif
 #ifdef WAVEBANK
-  DATA_TYPE wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT] = {WAVEBANK};
+  DATA_TYPE wave_bank[WAVE_COUNT * DATA_TYPE_COUNT] = {WAVEBANK};
 #else
-#ifdef FORMAT_PCM12
-  uint8_t wave_bank[(SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1)) * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+  uint8_t wave_bank[WAVE_COUNT * DATA_TYPE_COUNT * sizeof(DATA_TYPE)] =
+#ifdef WAVEBANK_NO_HOOKS
+  {0};
 #else
-  uint8_t wave_bank[SAMPLE_COUNT_TOTAL * WAVE_COUNT * sizeof(DATA_TYPE)] = "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+ "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
 #endif
 #endif
 #pragma GCC diagnostic pop
 
-static const DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
+static DATA_TYPE *wavebank = (DATA_TYPE*)wave_bank;
 
   /**
    * Floating point linear wavetable lookup.
@@ -215,19 +243,6 @@ float osc_wavebank(float x, uint32_t idx) {
 #else
   return linintf(x0f - (uint32_t)x0f, to_f32(wt[x0]), to_f32(wt[x1]));
 #endif
-}
-
-  /**
-   * Floating point grid wavetable lookup.
-   *
-   * @param   x  Phase in [0, 1.0).
-   * @param   idx_x  Wave index X.
-   * @param   idx_y  Wave index Y.
-   * @return     Wave sample.
-   */
-static inline __attribute__((always_inline, optimize("Ofast")))
-float osc_wavebank(float x, uint32_t idx_x, uint32_t idx_y) {
-  return osc_wavebank(x, idx_x + (idx_y << WAVE_COUNT_X_EXP));
 }
 
   /**
@@ -294,21 +309,6 @@ float osc_wavebank(float x, float idx) {
   const float y1 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
 #endif
   return linintf((idx - (uint32_t)idx), y0, y1);
-}
-
-  /**
-   * Floating point grid wavetable lookup, interpolated version.
-   *
-   * @param   x  Phase in [0, 1.0) in Q31, [-1.0, 1.0).
-   * @param   idx_x  Wave index X.
-   * @param   idx_y  Wave index Y.
-   * @return     Wave sample.
-   */
-static inline __attribute__((always_inline, optimize("Ofast")))
-float osc_wavebank(float x, float idx_x, float idx_y) {
-  const uint32_t y0p = (uint32_t)idx_y;
-  const float fr = idx_y - y0p;
-  return linintf(fr, osc_wavebank(x, idx_x + (y0p << WAVE_COUNT_X_EXP)), osc_wavebank(x, idx_x + (((y0p + 1) & (WAVE_COUNT_Y - 1)) << WAVE_COUNT_X_EXP)));
 }
 
   /**
@@ -395,19 +395,6 @@ q31_t osc_wavebank(q31_t x, uint32_t idx, q31_t width_recip, q31_t width) {
 #endif
 
   /**
-   * Fixed point grid wavetable lookup.
-   *
-   * @param   x  Phase in [0, 1.0) in Q31.
-   * @param   idx_x  Wave index X.
-   * @param   idx_y  Wave index Y.
-   * @return     Wave sample.
-   */
-static inline __attribute__((always_inline, optimize("Ofast")))
-q31_t osc_wavebank(q31_t x, uint32_t idx_x, uint32_t idx_y) {
-  return osc_wavebank(x, idx_x + (idx_y << WAVE_COUNT_X_EXP));
-}
-
-  /**
    * Fixed point linear wavetable lookup, interpolated version.
    *
    * @param   x  Phase in [0, 1.0) in Q31.
@@ -457,6 +444,185 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
 }
 
   /**
+   * Waveform generator 
+   *
+   * @param   idx  Wave index.
+   * @param   wavenum  Source waveform.
+   */
+static inline __attribute__((always_inline, optimize("Ofast")))
+void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
+  const float *waves = wt_sine_lut_f;
+  float sign;
+  if (wavenum < 17) {
+    uint32_t k, dbl = (((wavenum > 3) && (wavenum < 10)) || wavenum > 12) ? 1 : 0;
+    float valf1, valf2;
+    for (uint32_t i = 0; i < k_wt_sine_size; i++) {
+      k = i << dbl;
+      sign = 1.f;
+      if (k > k_wt_sine_size) {
+        k = 2 * k_wt_sine_size - k;
+        if (wavenum < 6 || wavenum == 9 || wavenum > 12)
+          sign = -1.f;
+      }
+#if SAMPLE_COUNT == (k_wt_sine_size * 2)
+      valf1 = waves[k];
+      valf2 = waves[k_wt_sine_size - k];
+      if ((wavenum < 8 && (wavenum & 0x01) != 0) || wavenum == 8 || wavenum == 14) {
+        valf1 *= valf1;
+        valf2 *= valf2;
+      }
+      if (wavenum > 8 && wavenum < 12) {
+        if (k < (k_wt_sine_size >> 1))
+          valf1 *= valf1;
+        else
+          valf2 *= valf2;
+      }
+      if (wavenum == 15 && i > (k_wt_sine_size >> 2)) {
+        valf1 *= valf1;
+        valf2 *= valf2;
+      }
+      if (wavenum == 16 && i > (k_wt_sine_size >> 2))
+        valf1 *= valf1;
+      if (wavenum == 12)
+        valf2 *= valf2;
+      if (wavenum > 12) {
+        if (i > (k_wt_sine_size >> 1) + (k_wt_sine_size >> 2))
+          valf1 = 1.f;
+        else
+          valf2 = 1.f;
+      }
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(valf1 * sign);
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_sine_size] = (wavenum < 2 || wavenum == 8 || wavenum > 10) ? from_f32(-valf2) : (DATA_TYPE)0;
+#elif SAMPLE_COUNT > (k_wt_sine_size * 2)
+      float delta = (float)(k_wt_sine_size * 2) / SAMPLE_COUNT;
+//todo: stretched DX11/TX81Z waveforms
+      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_sine_size * 2); j++) {
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j] = from_f32(linintf(delta * j, waves[i], waves[i + 1]));
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_sine_size * 2)) + j + k_wt_sine_size] = from_f32(-linintf(delta * j, waves[k_wt_sine_size - i], waves[k_wt_sine_size - i - 1]));
+      }
+#else
+//todo: squashed waveforms
+#endif
+    }
+  } else if (wavenum < 36) {
+    wavenum -= 17;
+    sign = -1.f;
+    if (wavenum < k_wt_saw_notes_cnt - 1)
+      waves = wt_saw_lut_f;
+    else if ((wavenum -= k_wt_saw_notes_cnt - 1) < k_wt_sqr_notes_cnt - 1)
+      waves = wt_sqr_lut_f;
+    else {
+      wavenum -= k_wt_sqr_notes_cnt - 1;
+      waves = wt_par_lut_f;
+      sign = 1.f;
+    }
+    for (uint32_t i = 0; i < k_wt_saw_size; i++) {
+#if SAMPLE_COUNT == (k_wt_saw_size * 2)
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[wavenum * k_wt_saw_lut_size + i]);
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_saw_size] = from_f32(sign * waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i]);
+#elif SAMPLE_COUNT > (k_wt_saw_size * 2)
+      float delta = (float)(k_wt_saw_size * 2) / SAMPLE_COUNT;
+      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_saw_size * 2); j++) {
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_saw_size * 2)) + j] = from_f32(linintf(delta * j, waves[wavenum * k_wt_saw_lut_size + i], waves[wavenum * k_wt_saw_lut_size + i + 1]));
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_saw_size * 2)) + j + k_wt_saw_size] = from_f32(sign * linintf(delta * j, waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i], waves[wavenum * k_wt_saw_lut_size + k_wt_saw_size - i - 1]));
+      }
+#else
+//todo: squashed waveforms
+#endif
+    }
+/*
+  } else if (wavenum < 36) {
+    wavenum -= 29;
+    waves = wt_par_lut_f;
+    for (uint32_t i = 0; i < k_wt_par_size; i++) {
+#if SAMPLE_COUNT == (k_wt_par_size * 2)
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[wavenum * k_wt_par_lut_size + i]);
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_par_size] = from_f32(waves[wavenum * k_wt_par_lut_size + k_wt_par_size - i]);
+#elif SAMPLE_COUNT > (k_wt_par_size * 2)
+      float delta = (float)(k_wt_par_size * 2) / SAMPLE_COUNT;
+      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_par_size * 2); j++) {
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_par_size * 2)) + j] = from_f32(linintf(delta * j, waves[wavenum * k_wt_par_lut_size + i], waves[wavenum * k_wt_par_lut_size + i + 1]));
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_par_size * 2)) + j + k_wt_par_size] = from_f32(linintf(delta * j, waves[wavenum * k_wt_par_lut_size + k_wt_par_size - i], waves[wavenum * k_wt_par_lut_size + k_wt_par_size - i - 1]));
+      }
+#else
+//todo: squashed waveforms
+#endif
+    }
+*/  } else if (wavenum < 126) {
+    wavenum -= 36;
+    if (wavenum < k_waves_a_cnt)
+      waves = wavesA[wavenum];
+    else if ((wavenum -= k_waves_a_cnt) < k_waves_b_cnt)
+      waves = wavesB[wavenum];
+    else if ((wavenum -= k_waves_b_cnt) < k_waves_c_cnt)
+      waves = wavesC[wavenum];
+    else if ((wavenum -= k_waves_c_cnt) < k_waves_d_cnt)
+      waves = wavesD[wavenum];
+    else if ((wavenum -= k_waves_d_cnt) < k_waves_e_cnt)
+      waves = wavesE[wavenum];
+    else
+      waves = wavesF[wavenum -= k_waves_e_cnt];
+    for (uint32_t i = 0; i < k_waves_size; i++) {
+#if SAMPLE_COUNT == k_waves_size
+      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[i]);
+#elif SAMPLE_COUNT > k_waves_size
+      float delta = (float)k_waves_size / SAMPLE_COUNT;
+      for (uint32_t j = 0; j < SAMPLE_COUNT / k_waves_size; j++) {
+        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / k_waves_size) + j] = from_f32(linintf(delta * j, waves[i], waves[i + 1]));
+      }
+#else
+//todo: squashed waveforms
+#endif
+    }
+  }
+#ifdef SAMPLE_GUARD
+  wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[0]);
+#endif
+}
+
+#if WAVE_COUNT_Y != 1
+  /**
+   * Floating point grid wavetable lookup.
+   *
+   * @param   x  Phase in [0, 1.0).
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
+static inline __attribute__((always_inline, optimize("Ofast")))
+float osc_wavebank(float x, uint32_t idx_x, uint32_t idx_y) {
+  return osc_wavebank(x, idx_x + (idx_y << WAVE_COUNT_X_EXP));
+}
+
+  /**
+   * Floating point grid wavetable lookup, interpolated version.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31, [-1.0, 1.0).
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
+static inline __attribute__((always_inline, optimize("Ofast")))
+float osc_wavebank(float x, float idx_x, float idx_y) {
+  const uint32_t y0p = (uint32_t)idx_y;
+  const float fr = idx_y - y0p;
+  return linintf(fr, osc_wavebank(x, idx_x + (y0p << WAVE_COUNT_X_EXP)), osc_wavebank(x, idx_x + (((y0p + 1) & (WAVE_COUNT_Y - 1)) << WAVE_COUNT_X_EXP)));
+}
+
+  /**
+   * Fixed point grid wavetable lookup.
+   *
+   * @param   x  Phase in [0, 1.0) in Q31.
+   * @param   idx_x  Wave index X.
+   * @param   idx_y  Wave index Y.
+   * @return     Wave sample.
+   */
+static inline __attribute__((always_inline, optimize("Ofast")))
+q31_t osc_wavebank(q31_t x, uint32_t idx_x, uint32_t idx_y) {
+  return osc_wavebank(x, idx_x + (idx_y << WAVE_COUNT_X_EXP));
+}
+
+  /**
    * Fixed point grid wavetable lookup, interpolated version.
    *
    * @param   x  Phase in [0, 1.0) in Q31.
@@ -470,3 +636,4 @@ q31_t osc_wavebank(q31_t x, q31_t idx_x, q31_t idx_y) {
   const q31_t y1 = q31add(y0, (0x7FFFFFFF >> (31 - WAVE_COUNT_X_EXP)));
   return linintq((idx_y * (WAVE_COUNT_Y - 1)) & 0x7FFFFFFF, osc_wavebank(x, y0), osc_wavebank(x, y1));
 }
+#endif
