@@ -256,20 +256,19 @@ static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank(float x, float idx) {
   const float p = x - (uint32_t)x;
   const float x0f = p * SAMPLE_COUNT;
-  uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
-  uint32_t x1 = NEXT_SAMPLE(x0);
   const float fr = x0f - (uint32_t)x0f;
+  uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
 #if defined(FORMAT_PCM12) && defined(SAMPLE_GUARD)
+  uint32_t x1;
   q31_t a0, a1;
   __asm__ volatile ( \
-"tst %[x0], #0x1\n" \
-"mov %[x0], %[x0], lsr #1\n" \
 "add %[x0], %[x0], %[x0], lsl #1\n" \
+"lsrs %[x0], %[x0], #1\n" \
 "ldr %[a0], [%[wt0], %[x0]]\n" \
 "ldr %[x0], [%[wt1], %[x0]]\n" \
-"itt eq\n" \
-"moveq %[a0], %[a0], lsr #4\n" \
-"moveq %[x0], %[x0], lsr #4\n" \
+"itt cs\n" \
+"movcs %[a0], %[a0], lsr #4\n" \
+"movcs %[x0], %[x0], lsr #4\n" \
 "sbfx %[a1], %[a0], #12, #12\n" \
 "sbfx %[a0], %[a0], #0, #12\n" \
 "sbfx %[x1], %[x0], #12, #12\n" \
@@ -281,6 +280,7 @@ float osc_wavebank(float x, float idx) {
   const float y0 = linintf(fr, to_f32(a0), to_f32(a1));
   const float y1 = linintf(fr, to_f32(x0), to_f32(x1));
 #else
+  uint32_t x1 = NEXT_SAMPLE(x0);
   const DATA_TYPE *wt = &wavebank[(uint32_t)idx * SAMPLE_COUNT_TOTAL];
   const float y0 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
   wt += SAMPLE_COUNT_TOTAL;
