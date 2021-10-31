@@ -54,7 +54,7 @@
   #define from_f32(a) f32_to_q11(a)
   #define from_q31(a) q11_to_q31(a)
   #ifdef SAMPLE_GUARD
-    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1) + 2)
+    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1) + 3)
   #else
     #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1))
   #endif
@@ -259,26 +259,24 @@ float osc_wavebank(float x, float idx) {
   const float fr = x0f - (uint32_t)x0f;
   uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
 #if defined(FORMAT_PCM12) && defined(SAMPLE_GUARD)
-  uint32_t x1;
-  q31_t a0, a1;
+  q31_t a0, a1, b0, b1;
   __asm__ volatile ( \
-"add %[x0], %[x0], %[x0], lsl #1\n" \
-"lsrs %[x0], %[x0], #1\n" \
-"ldr %[a0], [%[wt0], %[x0]]\n" \
-"ldr %[x0], [%[wt1], %[x0]]\n" \
+"lsrs %[b0], %[x0], #1\n" \
+"ldr %[a0], [%[wt0], %[b0]]\n" \
+"ldr %[b0], [%[wt1], %[b0]]\n" \
 "itt cs\n" \
 "movcs %[a0], %[a0], lsr #4\n" \
-"movcs %[x0], %[x0], lsr #4\n" \
+"movcs %[b0], %[b0], lsr #4\n" \
 "sbfx %[a1], %[a0], #12, #12\n" \
 "sbfx %[a0], %[a0], #0, #12\n" \
-"sbfx %[x1], %[x0], #12, #12\n" \
-"sbfx %[x0], %[x0], #0, #12\n" \
-: [a0] "=&r" (a0), [a1] "=r" (a1), [x0] "+r" (x0), [x1] "=r" (x1) \
-: [wt0] "r" (&wavebank[(uint32_t)idx * DATA_TYPE_COUNT]), [wt1] "r" (&wavebank[((uint32_t)idx + 1) * DATA_TYPE_COUNT]) \
+"sbfx %[b1], %[b0], #12, #12\n" \
+"sbfx %[b0], %[b0], #0, #12\n" \
+: [a0] "=&r" (a0), [a1] "=r" (a1), [b0] "=&r" (b0), [b1] "=r" (b1) \
+: [x0] "r" (x0 * 3), [wt0] "r" (&wavebank[(uint32_t)idx * DATA_TYPE_COUNT]), [wt1] "r" (&wavebank[((uint32_t)idx + 1) * DATA_TYPE_COUNT]) \
 : \
   );
   const float y0 = linintf(fr, to_f32(a0), to_f32(a1));
-  const float y1 = linintf(fr, to_f32(x0), to_f32(x1));
+  const float y1 = linintf(fr, to_f32(b0), to_f32(b1));
 #else
   uint32_t x1 = NEXT_SAMPLE(x0);
   const DATA_TYPE *wt = &wavebank[(uint32_t)idx * SAMPLE_COUNT_TOTAL];
