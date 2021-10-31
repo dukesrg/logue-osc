@@ -54,7 +54,7 @@
   #define from_f32(a) f32_to_q11(a)
   #define from_q31(a) q11_to_q31(a)
   #ifdef SAMPLE_GUARD
-    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1) + 2)
+    #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1) + 3)
   #else
     #define DATA_TYPE_COUNT (SAMPLE_COUNT + (SAMPLE_COUNT >> 1))
   #endif
@@ -256,53 +256,29 @@ static inline __attribute__((always_inline, optimize("Ofast")))
 float osc_wavebank(float x, float idx) {
   const float p = x - (uint32_t)x;
   const float x0f = p * SAMPLE_COUNT;
-  uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
-  uint32_t x1 = NEXT_SAMPLE(x0);
   const float fr = x0f - (uint32_t)x0f;
-#ifdef FORMAT_PCM12
-  q31_t a0, a1;
+  uint32_t x0 = ((uint32_t)x0f) & (SAMPLE_COUNT - 1);
+#if defined(FORMAT_PCM12) && defined(SAMPLE_GUARD)
+  q31_t a0, a1, b0, b1;
   __asm__ volatile ( \
-"tst %[x0], #0x1\n" \
-"mov %[x0], %[x0], lsr #1\n" \
-"add %[x0], %[x0], %[x0], lsl #1\n" \
-"ldr %[a0], [%[wt0], %[x0]]\n" \
-"ldr %[x0], [%[wt1], %[x0]]\n" \
-"ittee ne\n" \
-"sbfxeq %[a1], %[a1], #12, #12\n" \
-"sbfxeq %[x1], %[x1], #12, #12\n" \
-
-"ldr %[a0], [%[wt0], %[x0]]\n" \
-"ldr %[x0], [%[wt1], %[x0]]\n" \
-"ldr %[a1], [%[wt0], %[x1]]\n" \
-"ldr %[x1], [%[wt1], %[x1]]\n" \
-: [a0] "=r" (a0), [a1] "=r" (a1), [x0] "+r" (x0), [x1] "=r" (x1) \
-: [wt0] "r" (&wavebank[(uint32_t)idx * (SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))]), [wt1] "r" (&wavebank[((uint32_t)idx + 1) * (SAMPLE_COUNT_TOTAL + (SAMPLE_COUNT_TOTAL >> 1))]) \
+"lsrs %[b0], %[x0], #1\n" \
+"ldr %[a0], [%[wt0], %[b0]]\n" \
+"ldr %[b0], [%[wt1], %[b0]]\n" \
+"itt cs\n" \
+"movcs %[a0], %[a0], lsr #4\n" \
+"movcs %[b0], %[b0], lsr #4\n" \
+"sbfx %[a1], %[a0], #12, #12\n" \
+"sbfx %[a0], %[a0], #0, #12\n" \
+"sbfx %[b1], %[b0], #12, #12\n" \
+"sbfx %[b0], %[b0], #0, #12\n" \
+: [a0] "=&r" (a0), [a1] "=r" (a1), [b0] "=&r" (b0), [b1] "=r" (b1) \
+: [x0] "r" (x0 * 3), [wt0] "r" (&wavebank[(uint32_t)idx * DATA_TYPE_COUNT]), [wt1] "r" (&wavebank[((uint32_t)idx + 1) * DATA_TYPE_COUNT]) \
 : \
   );
-/*
-"tst %[x0], #0x1\n" \
-"mov %[x0], %[x0], lsr #1\n" \
-"add %[x0], %[x0], %[x0], lsl #1\n" \
-"mov %[x1], %[x1], lsr #1\n" \
-"add %[x1], %[x1], %[x1], lsl #1\n" \
-"ldr %[a0], [%[wt0], %[x0]]\n" \
-"ldr %[x0], [%[wt1], %[x0]]\n" \
-"ldr %[a1], [%[wt0], %[x1]]\n" \
-"ldr %[x1], [%[wt1], %[x1]]\n" \
-"ittee ne\n" \
-"sbfxne %[a0], %[a0], #12, #12\n" \
-"sbfxne %[x0], %[x0], #12, #12\n" \
-"sbfxeq %[a1], %[a1], #12, #12\n" \
-"sbfxeq %[x1], %[x1], #12, #12\n" \
-"ittee eq\n" \
-"sbfxeq %[a0], %[a0], #0, #12\n" \
-"sbfxeq %[x0], %[x0], #0, #12\n" \
-"sbfxne %[a1], %[a1], #0, #12\n" \
-"sbfxne %[x1], %[x1], #0, #12\n" \
-*/
   const float y0 = linintf(fr, to_f32(a0), to_f32(a1));
-  const float y1 = linintf(fr, to_f32(x0), to_f32(x1));
+  const float y1 = linintf(fr, to_f32(b0), to_f32(b1));
 #else
+  uint32_t x1 = NEXT_SAMPLE(x0);
   const DATA_TYPE *wt = &wavebank[(uint32_t)idx * SAMPLE_COUNT_TOTAL];
   const float y0 = linintf(fr, to_f32(wt[x0]), to_f32(wt[x1]));
   wt += SAMPLE_COUNT_TOTAL;
@@ -408,7 +384,7 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
   uint32_t x1 = NEXT_SAMPLE(x0);
   const q31_t fr = (x << SAMPLE_COUNT_EXP) & 0x7FFFFFFF;
   const DATA_TYPE *wt = &wavebank[q31mul(idx, (WAVE_COUNT - 1)) * SAMPLE_COUNT_TOTAL];
-#ifdef FORMAT_PCM121
+#ifdef FORMAT_PCM12
   q31_t a0, a1;
   __asm__ volatile ( \
 "tst %[x0], #0x1\n" \
@@ -449,6 +425,7 @@ q31_t osc_wavebank(q31_t x, q31_t idx) {
    * @param   idx  Wave index.
    * @param   wavenum  Source waveform.
    */
+#ifndef FORMAT_PCM12
 static inline __attribute__((always_inline, optimize("Ofast")))
 void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
   const float *waves = wt_sine_lut_f;
@@ -530,25 +507,7 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
 //todo: squashed waveforms
 #endif
     }
-/*
-  } else if (wavenum < 36) {
-    wavenum -= 29;
-    waves = wt_par_lut_f;
-    for (uint32_t i = 0; i < k_wt_par_size; i++) {
-#if SAMPLE_COUNT == (k_wt_par_size * 2)
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i] = from_f32(waves[wavenum * k_wt_par_lut_size + i]);
-      wavebank[idx * SAMPLE_COUNT_TOTAL + i + k_wt_par_size] = from_f32(waves[wavenum * k_wt_par_lut_size + k_wt_par_size - i]);
-#elif SAMPLE_COUNT > (k_wt_par_size * 2)
-      float delta = (float)(k_wt_par_size * 2) / SAMPLE_COUNT;
-      for (uint32_t j = 0; j < SAMPLE_COUNT / (k_wt_par_size * 2); j++) {
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_par_size * 2)) + j] = from_f32(linintf(delta * j, waves[wavenum * k_wt_par_lut_size + i], waves[wavenum * k_wt_par_lut_size + i + 1]));
-        wavebank[idx * SAMPLE_COUNT_TOTAL + i * (SAMPLE_COUNT / (k_wt_par_size * 2)) + j + k_wt_par_size] = from_f32(linintf(delta * j, waves[wavenum * k_wt_par_lut_size + k_wt_par_size - i], waves[wavenum * k_wt_par_lut_size + k_wt_par_size - i - 1]));
-      }
-#else
-//todo: squashed waveforms
-#endif
-    }
-*/  } else if (wavenum < 126) {
+  } else if (wavenum < 126) {
     wavenum -= 36;
     if (wavenum < k_waves_a_cnt)
       waves = wavesA[wavenum];
@@ -579,6 +538,7 @@ void osc_wavebank_preload(uint32_t idx, uint32_t wavenum) {
   wavebank[idx * SAMPLE_COUNT_TOTAL + SAMPLE_COUNT] = from_f32(waves[0]);
 #endif
 }
+#endif
 
 #if WAVE_COUNT_Y != 1
   /**
