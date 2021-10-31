@@ -991,29 +991,23 @@ function handleFiles(f) {
                   if (size < 32768) {
                     status.innerHTML += "skipped (sample count too small)";
                   } else {
-                    status.innerHTML += "added transcoded from 16-bit PCM to 8-bit linear PCM";
+                    status.innerHTML += "added transcoded from 16-bit PCM to 12-bit linear PCM";
                     if (size > 32768) {
                       status.innerHTML += ", truncated to 16384 samples";
                     }
-                    var newarray = new Uint8Array(16384);
-                    for (i = 0; i < newarray.length; i++)
-                      newarray[i] = array[45 + i * 2];
-                    data[0].push(newarray);
-                    name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
-                  }
-                  break;
-                case "1080": //PCM8
-                  var size = array[0x28] + (array[0x29] << 8) + (array[0x2A] << 16) + (array[0x2B] << 24);
-                  if (size < 16384) {
-                    status.innerHTML += "skipped (sample count too small)";
-                  } else {
-                    status.innerHTML += "added 8-bit linear PCM file";
-                    if (size > 16384) {
-                      status.innerHTML += ", truncated to 16384 samples";
+                    var newarray = new Uint8Array((256+128+3)*64);
+                    var j, k;
+                    for (k=0, j = 0; j < newarray.length; k++, j += 3) {
+                      newarray[j] = (array[44 + k * 4] >> 4) | ((array[44 + k * 4 + 1] & 0x0F) << 4);
+                      newarray[j + 1] = (array[44 + k * 4 + 1] >> 4) | (array[44 + k * 4 + 2] & 0xF0);
+                      newarray[j + 2] = array[44 + k * 4 + 3];
+                      if (k % 128 == 127) {
+                        j += 3;
+                        newarray[j] = newarray[j - 256 - 128];
+                        newarray[j + 1] = newarray[j - 256 - 128 + 1] & 0x0F;
+                        newarray[j + 2] = 0;
+                      }
                     }
-                    var newarray = new Uint8Array(16384);
-                    for (i = 0; i < newarray.length; i++)
-                      newarray[i] = (array[44 + i] + 0x80) & 0xFF;
                     data[0].push(newarray);
                     name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
                   }
@@ -1095,7 +1089,7 @@ function onLoad() {
   offset = new Array();
   count = new Array();
   maxsize = new Array();
-  ["FM48", "FM64", "FM65", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Morpheus-U", "Morpheus-A", "Anthologue"].map((e, i) => getInfo(e, i));
+  ["FM48", "FM64", "FM65", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
 }
 
 function setParam(param) {
