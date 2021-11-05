@@ -27,6 +27,7 @@
 #define TWEAK_WF //use reserved bits for extended waveforms count support
 
 //#define SHAPE_LFO //map Shape LFO to parameters (~28-40 bytes)
+//#define SHAPE_LFO_ROUTE //map Shape LFO any parameter
 //#define PEG //pitch EG enable (~530-600 bytes)
 //#define PEG_RATE_LUT //PEG Rate from LUT close to DX7, instead of approximated function (~44-176 bytes)
 #define FINE_TUNE //16-bit precision for cents/detune
@@ -877,6 +878,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_state &= ~(state_noteoff | state_noteon);
   }
   }
+#ifdef SHAPE_LFO_ROUTE
+  _hook_param(k_user_osc_param_shiftshape + 1, smmul(params->shape_lfo, 200) + 100);
+#endif
   q31_t osc_out, modw0;
   q31_t opw0[OPERATOR_COUNT];
 #ifdef FINE_TUNE
@@ -1774,6 +1778,11 @@ setkvslevel:
         s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh
         s_wavewidth[i * 2 + 1] = 0x64000000 / value; // (100 >> 7) / width
       }
+      break;
+#endif
+#ifdef SHAPE_LFO_ROUTE
+    case CUSTOM_PARAM_ID(153):
+      CUSTOM_PARAM_SET(k_user_osc_param_shiftshape + 1, value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
 #endif
     default:
