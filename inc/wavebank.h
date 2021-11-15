@@ -200,7 +200,7 @@ static const __attribute__((used, section(".hooks")))
 #ifdef WAVEBANK_NO_HOOKS
   {0};
 #else
- "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
+  "WAVEBANK" FORMAT_PREFIX "x" STR(WAVE_COUNT) "x" STR(SAMPLE_COUNT_TOTAL);
 #endif
 #endif
 #pragma GCC diagnostic pop

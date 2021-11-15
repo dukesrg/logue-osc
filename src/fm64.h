@@ -195,7 +195,7 @@ static const uint8_t level_lut[] = {
 
 static inline __attribute__((optimize("Ofast"), always_inline))
 uint8_t scale_level(uint8_t x) {
-    return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
+  return x < sizeof(level_lut) ? level_lut[x] : x + (127 - 99);
 }
 
 static const int8_t pitch_level_lut_low[] = {
@@ -242,6 +242,53 @@ static const float dx11_ratio_lut[64] = {
   15.7f, 16.96f, 17.27f, 17.3f, 18.37f, 18.84f, 19.03f, 19.78f,
   20.41f, 20.76f, 21.20f, 21.98f, 22.49f, 23.55f, 24.22f, 25.95f
 };
+
+static const uint8_t dx11_r1_lut[] = {
+  0, 15, 18, 21, 24, 27, 31, 34, 37, 40, 44, 47, 51, 54, 57, 60,
+  64, 67, 71, 74, 77, 80, 83, 85, 87, 89, 91, 93, 95, 96, 98, 99
+};
+
+static const uint8_t dx11_r2_lut[] = {
+  0, 10, 13, 16, 19, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51,
+  54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99
+};
+
+static const uint8_t dx11_r4_lut[] = {
+  0, 21, 27, 32, 38, 43, 49, 54, 60, 65, 71, 76, 82, 87, 94, 99
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+uint8_t dx11_rate(uint32_t r, uint8_t x) {
+  switch(r) {
+    case 0:
+      x = dx11_r1_lut[x];
+      break;
+    case 3:
+      x = dx11_r4_lut[x];
+      break;
+    default:
+      x = dx11_r2_lut[x];
+  }
+    return x;
+}
+
+static const uint8_t dx11_d1l_lut[] = {
+  0, 35, 39, 44, 48, 53, 57, 62, 66, 71, 75, 80, 84, 89, 93, 99
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+uint8_t dx11_d1l(uint8_t x) {
+  return dx11_d1l_lut[x];
+}
+
+static const uint8_t dx11_level_lut[] = {
+  0, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 24, 25
+};
+
+static inline __attribute__((optimize("Ofast"), always_inline))
+uint8_t scale_dx11_level(uint8_t x) {
+  return x < sizeof(dx11_level_lut) ? dx11_level_lut[x] : x < 92 ? x + 7: 99;
+}
 #endif
 
 struct dx7_operator_t {

@@ -25,6 +25,7 @@
 //#define SY77 //enable SY77 extensions
 #define TWEAK_ALG //use reserved bits for extended algorithms count support
 #define TWEAK_WF //use reserved bits for extended waveforms count support
+//#define CUSTOM_PARAMS_CYCLE //process OSC_CYCLE params as oscillator params
 
 //#define SHAPE_LFO //map Shape LFO to parameters (~28-40 bytes)
 //#define SHAPE_LFO_ROUTE //map Shape LFO any parameter
@@ -85,6 +86,14 @@
 #endif
     CUSTOM_PARAM_ID(1),
     CUSTOM_PARAM_ID(17)
+#ifdef CUSTOM_PARAMS_CYCLE
+    ,CUSTOM_PARAM_NO_ROUTE
+    ,CUSTOM_PARAM_NO_ROUTE
+    ,CUSTOM_PARAM_NO_ROUTE
+    ,CUSTOM_PARAM_NO_ROUTE
+    ,CUSTOM_PARAM_NO_ROUTE
+    ,CUSTOM_PARAM_NO_ROUTE
+#endif
   );
 
 #if defined(WFGEN)
@@ -201,14 +210,20 @@
 #define EG_FREQ_CORRECT .0325870980969347836053763275142f // log2(1/DX7_TO_LOGUE_FREQ)
 
 #define DX7_RATE_EXP_FACTOR .16f // ? 16/99 = .16(16)
-#define DX11_RATE_EXP_FACTOR .505f
-#define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
+//#define DX11_RATE_EXP_FACTOR .505f
+//#define DX11_RELEASE_RATE_EXP_FACTOR 1.04f
+//#define DX11_ATTACK_RATE_EXP_FACTOR .5f
+//#define DX11_DECAY_RATE_EXP_FACTOR .47f
+//#define DX11_RELEASE_RATE_EXP_FACTOR .9f
 //#define DX7_ATTACK_RATE_FACTOR 5.0200803e-7f // 1/(41.5*48000)
 //#define DX7_DECAY_RATE_FACTOR -5.5778670e-8f // -1/(9*41.5*48000)
 //#define DX7_ATTACK_RATE1_FACTOR 5.0261359e-7f // 1/(41.45*48000)
 //#define DX7_DECAY_RATE1_FACTOR -8.3768932e-8f // -1/(6*41.45*48000)
 #define DX7_ATTACK_RATE_FACTOR 3.3507573e-7f // 1/(1.5*41.45*48000)
 #define DX7_DECAY_RATE_FACTOR -5.5845955e-8f // -1/(1.5*6*41.45*48000)
+//#define DX11_ATTACK_RATE_FACTOR 1.26262626e-6f // 1/(1.5*11*48000)
+//#define DX11_DECAY_RATE_FACTOR -1.18371212e-7f // -1/(16*11*48000)
+//#define DX11_RELEASE_RATE_FACTOR -2.91375291e-7f // -1/(6.5*11*48000)
 #define DX7_RATE1_FACTOR 1.5f
 //#define DX7_ATTACK_RATE_FACTOR 4.8773035424164220513138759143079e-7f // 1/(2^21 * DX7_TO_LOGUE_FREQ) = 1/(2^(21 - EG_FREQ_CORRECT)
 //#define DX7_ATTACK_RATE_FACTOR 20.9674129f
@@ -234,8 +249,8 @@
 //#define LEVEL_SCALE_FACTORF 0.0078740157f // 1/127
 #define LEVEL_SCALE_FACTORF 0.0078125f // 1/128
 #define LEVEL_SCALE_FACTOR_DB 0.0103810253f // 1/96dB
-#define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
-#define DX11_MAX_LEVEL 15
+//#define DX11_TO_DX7_LEVEL_SCALE_FACTOR 6.6f //99/15
+//#define DX11_MAX_LEVEL 15
 
 //#define FREQ_FACTOR .08860606f // (9.772 - 1)/99
 #define PEG_SCALE 0x00600000 // 48/128 * 256 * 65536
@@ -386,10 +401,11 @@ static float s_krsoffset[OPERATOR_COUNT] = {0.f};
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_kvslevel[OPERATOR_COUNT];
 static q31_t s_velocitylevel[OPERATOR_COUNT];
-
+/*
 static float s_attack_rate_exp_factor;
+//static float s_decay_rate_exp_factor;
 static float s_release_rate_exp_factor;
-
+*/
 static float s_level_scale_factor;
 
 static q31_t s_feedback[FEEDBACK_COUNT];
@@ -673,8 +689,11 @@ void initvoice(int32_t voice_index) {
         s_right_curve[i] = 5 - voice->op[i].rc;
       }
     }
+/*
     s_attack_rate_exp_factor = DX7_RATE_EXP_FACTOR;
+//    s_decay_rate_exp_factor = DX7_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX7_RATE_EXP_FACTOR;
+*/
     s_level_scale_factor = DX7_LEVEL_SCALE_FACTOR;
 #endif
   } else {
@@ -712,8 +731,10 @@ void initvoice(int32_t voice_index) {
 
 //todo: check dx11 rates
       for (uint32_t j = 0; j < EG_STAGE_COUNT; j++) {
-        s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TX81Z
-        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
+//        s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : voice->op[i].r[j]; //zero release rate workaround from TX81Z
+//        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(voice->op[i].d1l * DX11_TO_DX7_LEVEL_SCALE_FACTOR) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
+        s_egrate[i][j] = j == (EG_STAGE_COUNT - 1) && voice->op[i].r[j] == 0 ? 1 : dx11_rate(j, voice->op[i].r[j]); //zero release rate workaround from TX81Z
+        s_eglevel[i][j] = f32_to_q31(1.f - (1.f - (j == 0 ? 1.f : (j == 1 || (j == 2 && voice->op[i].r[j] == 0)) ? scale_level(dx11_d1l(voice->op[i].d1l)) * LEVEL_SCALE_FACTOR : 0.f)) / (1 << (i != 3 ? voice->opadd[i].egsft : 0)));
       }
 
 //todo: Fine freq ratio
@@ -729,15 +750,18 @@ void initvoice(int32_t voice_index) {
 
       s_kvs[i] = voice->op[i].kvs;
       s_op_rate_scale[i] = voice->op[i].rs * DX11_RATE_SCALING_FACTOR;
-      s_op_level[i] = voice->op[i].out;
+      s_op_level[i] = scale_dx11_level(voice->op[i].out);
       s_left_depth[i] = 0;
       s_right_depth[i] = - voice->op[i].ls;
       s_left_curve[i] = 0;
       s_right_curve[i] = 0;
       s_break_point[i] = NOTE_C1;
     }
-    s_attack_rate_exp_factor = DX11_RATE_EXP_FACTOR;
+/*
+    s_attack_rate_exp_factor = DX11_ATTACK_RATE_EXP_FACTOR;
+//    s_decay_rate_exp_factor = DX11_DECAY_RATE_EXP_FACTOR;
     s_release_rate_exp_factor = DX11_RELEASE_RATE_EXP_FACTOR;
+*/
     s_level_scale_factor = DX11_LEVEL_SCALE_FACTOR;
 #ifdef OP6
     s_op_level[4] = 0;
@@ -1356,12 +1380,13 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 }
 
-q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
+//q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, float rate_exp_factor, int32_t note) {
+q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, int32_t note) {
   if (j == 0)
     rate_factor *= DX7_RATE1_FACTOR;
   float rscale = (note - NOTE_A_1) * clipminmaxf(0.f, s_op_rate_scale[i] + s_krsoffset[i], 7.f) * s_krslevel[i];
   float rate = clipminmaxi32(0, s_egrate[i][j] + s_egrateoffset[i], 99) * s_egratelevel[i];
-  return f32_to_q31(rate_factor * POW2F(rate_exp_factor * (rate + rscale)));
+  return f32_to_q31(rate_factor * POW2F(DX7_RATE_EXP_FACTOR * (rate + rscale)));
 }
 
 void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
@@ -1398,7 +1423,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
         } else {
           rate_factor = DX7_ATTACK_RATE_FACTOR;
         }
-        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, note);
+//        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, s_attack_rate_exp_factor, note);
+        s_egsrate[i][j + EG_STAGE_COUNT] = calc_rate(i, j, rate_factor, note);
         samples += dl / s_egsrate[i][j + EG_STAGE_COUNT];
       } else {
         s_egsrate[i][j + EG_STAGE_COUNT] = 0;
@@ -1430,8 +1456,10 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
 void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 {
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
-    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch >> 8);
-    s_egsrate[i][EG_STAGE_COUNT * 2 - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, s_attack_rate_exp_factor, params->pitch >> 8);
+//    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, s_release_rate_exp_factor, params->pitch >> 8);
+//    s_egsrate[i][EG_STAGE_COUNT * 2 - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, s_attack_rate_exp_factor, params->pitch >> 8);
+    s_egsrate[i][EG_STAGE_COUNT - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_DECAY_RATE_FACTOR, params->pitch >> 8);
+    s_egsrate[i][EG_STAGE_COUNT * 2 - 1] = calc_rate(i, EG_STAGE_COUNT - 1, DX7_ATTACK_RATE_FACTOR, params->pitch >> 8);
     s_egsrate_recip[i][0] = 1.f / s_egsrate[i][EG_STAGE_COUNT - 1];
     s_egsrate_recip[i][1] = 1.f / s_egsrate[i][EG_STAGE_COUNT * 2 - 1];
   }
@@ -1440,7 +1468,8 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
-  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
+//  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
+  uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
   int16_t uvalue = value;
   index = CUSTOM_PARAM_GET(index);
