@@ -308,6 +308,7 @@ static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
 #ifdef WAVE_PINCH
+static int8_t s_waveform_pinch_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_waveform_pinch[OPERATOR_COUNT + 3] = {0};
 #endif
 #ifdef OP6
@@ -385,14 +386,16 @@ static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FA
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f, 1.f, 1.f};
 #ifdef WAVE_PINCH
-static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+//static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0};
 #endif
 #else
 static float s_klslevel[OPERATOR_COUNT] = {LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB, LEVEL_SCALE_FACTOR_DB};
 static float s_krslevel[OPERATOR_COUNT] = {RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR, RATE_SCALING_FACTOR};
 static float s_egratelevel[OPERATOR_COUNT] = {1.f, 1.f, 1.f, 1.f};
 #ifdef WAVE_PINCH
-static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+//static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000, 0x7FFFFFFF, 0x01000000};
+static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0};
 #endif
 #endif
 static int16_t s_klsoffset[OPERATOR_COUNT] = {0};
@@ -514,6 +517,17 @@ void setWaveform() {
 }
 #endif
 
+#ifdef WAVE_PINCH
+void setWaveformPinch() {
+  uint32_t value;
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    value = clipminmaxi32(1, 100 - (s_waveform_pinch[i] + paramOffset(s_waveform_pinch_offset, i)), 100);
+    s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh
+    s_wavewidth[i * 2 + 1] = 0x64000000 / value; // (100 >> 7) / width
+  }
+}
+#endif
+
 void setFeedback(uint32_t idx) {
   float value = clipmaxf(s_feedback_level[idx] + s_feedback_offset[idx], 7.f);
   s_feedback[idx] = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
@@ -611,11 +625,20 @@ void setAlgorithm() {
 #endif
     if (s_algorithm[i] & ALG_OUT_MASK)
       s_comp[i] = compensation[comp - 1];
+#ifdef WAVE_PINCH
+    s_waveform_pinch[i] = 0;
+#endif
 #ifdef CUSTOM_ALGORITHM_COUNT
     } else {
       if (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] != 0)
         s_comp[i] = compensation[comp - 1];
+#ifdef WAVE_PINCH
+      s_waveform_pinch[i] = custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT + 1];
+#endif
     }
+#endif
+#ifdef WAVE_PINCH
+    setWaveformPinch();
 #endif
   }
 #ifdef WFBITS
@@ -1478,10 +1501,10 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     if (tenbits)
       value >>= 3;
     if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)
-#ifdef WAVE_PINCH
-//      && index != CUSTOM_PARAM_ID(141)
-      && !(index >= CUSTOM_PARAM_ID(144) && index <= CUSTOM_PARAM_ID(152))
-#endif
+//#ifdef WAVE_PINCH
+////      && index != CUSTOM_PARAM_ID(141)
+//      && !(index >= CUSTOM_PARAM_ID(144) && index <= CUSTOM_PARAM_ID(152))
+//#endif
     ) && (tenbits || value == 0))
       value = 100 + (negative ? - value : value);
     uvalue = value; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
@@ -1797,12 +1820,16 @@ setkvslevel:
     case CUSTOM_PARAM_ID(150):
     case CUSTOM_PARAM_ID(151):
     case CUSTOM_PARAM_ID(152):
+/*
       s_waveform_pinch[CUSTOM_PARAM_ID(152) - index] = value;
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
         value = clipminmaxi32(1, 100 - paramOffset(s_waveform_pinch, i), 100);
         s_wavewidth[i * 2] = 0x0147AE14 * value; // 1/100 * witdh
         s_wavewidth[i * 2 + 1] = 0x64000000 / value; // (100 >> 7) / width
       }
+*/
+      s_waveform_pinch_offset[CUSTOM_PARAM_ID(152) - index] = value - 100;
+      setWaveformPinch();
       break;
 #endif
 #ifdef SHAPE_LFO_ROUTE

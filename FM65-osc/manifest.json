@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.9-7",
+        "version" : "1.9-8",
         "name" : "FM65",
         "num_param" : 6,
         "params" : [
@@ -18,9 +18,9 @@
             ["Lvl offs Mod", -99, 99, "%"]
         ],
         "custom_data" : [
-            ["Korg opsix user algorithm modulation matrices", 64, 42, 16],
-            ["Yamaha DX7-series voice banks", 736, 4096, 4],
-            ["custom_params", 17120, 2, 8, 256]
+            ["Korg opsix user algorithm modulation matrices", 64, 48, 16],
+            ["Yamaha DX7-series voice banks", 832, 4096, 4],
+            ["custom_params", 17216, 2, 8, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -166,15 +166,15 @@
             ["-", 0, 0, ""],
             ["-", 0, 0, ""],
             ["-", 0, 0, ""],
-            ["WF pinch All", 0, 99, "%"],
-            ["WF pinch Car", 0, 99, "%"],
-            ["WF pinch Mod", 0, 99, "%"],
-            ["WF pinch Op1", 0, 99, "%"],
-            ["WF pinch Op2", 0, 99, "%"],
-            ["WF pinch Op3", 0, 99, "%"],
-            ["WF pinch Op4", 0, 99, "%"],
-            ["WF pinch Op5", 0, 99, "%"],
-            ["WF pinch Op6", 0, 99, "%"]
+            ["WF pinch All", -99, 99, "%"],
+            ["WF pinch Car", -99, 99, "%"],
+            ["WF pinch Mod", -99, 99, "%"],
+            ["WF pinch Op1", -99, 99, "%"],
+            ["WF pinch Op2", -99, 99, "%"],
+            ["WF pinch Op3", -99, 99, "%"],
+            ["WF pinch Op4", -99, 99, "%"],
+            ["WF pinch Op5", -99, 99, "%"],
+            ["WF pinch Op6", -99, 99, "%"]
         ]
     }
 }

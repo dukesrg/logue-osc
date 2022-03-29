@@ -262,15 +262,15 @@ For user-customizable oscillators, an online constructor is available at https:/
 |140|Waveform Op4|-90&hellip;35|Waveform select for operator 4|
 |141|Waveform Op5|-90&hellip;35|Waveform select for operator 5|
 |142|Waveform Op6|-90&hellip;35|Waveform select for operator 6|
-|143|WF pinch All|0&hellip;99|Waveform pinch for all operators|
-|144|WF pinch Car|0&hellip;99|Waveform pinch for carriers|
-|145|WF pinch Mod|0&hellip;99|Waveform pinch for modulatorss|
-|146|WF pinch Op1|0&hellip;99|Waveform pinch for operator 1|
-|147|WF pinch Op2|0&hellip;99|Waveform pinch for operator 2|
-|148|WF pinch Op3|0&hellip;99|Waveform pinch for operator 3|
-|149|WF pinch Op4|0&hellip;99|Waveform pinch for operator 4|
-|150|WF pinch Op5|0&hellip;99|Waveform pinch for operator 5|
-|151|WF pinch Op6|0&hellip;99|Waveform pinch for operator 6|
+|143|WF pinch All|-99&hellip;99|Waveform pinch offset for all operators|
+|144|WF pinch Car|-99&hellip;99|Waveform pinch offset for carriers|
+|145|WF pinch Mod|-99&hellip;99|Waveform pinch offset for modulatorss|
+|146|WF pinch Op1|-99&hellip;99|Waveform pinch offset for operator 1|
+|147|WF pinch Op2|-99&hellip;99|Waveform pinch offset for operator 2|
+|148|WF pinch Op3|-99&hellip;99|Waveform pinch offset for operator 3|
+|149|WF pinch Op4|-99&hellip;99|Waveform pinch offset for operator 4|
+|150|WF pinch Op5|-99&hellip;99|Waveform pinch offset for operator 5|
+|151|WF pinch Op6|-99&hellip;99|Waveform pinch offset for operator 6|
 
 ⁽¹⁾ : 0...100 with the step of 1 when assigned to the oscillator parameter, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0..127 with the step of 0.125 when assigned to the Shape or Alt (Shift + Shape) <br/>

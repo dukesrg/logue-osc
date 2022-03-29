@@ -421,7 +421,7 @@ union {
 } dx_voices[BANK_COUNT][BANK_SIZE] = {};
 
 #ifdef CUSTOM_ALGORITHM_COUNT
-//6xMod, 1xOut per Op
+//6xMod, 1xOut, 1xWaveWidth per Op
 static const __attribute__((used, section(".hooks")))
-uint8_t custom_algorithm[CUSTOM_ALGORITHM_COUNT][DX7_OPERATOR_COUNT][DX7_OPERATOR_COUNT + 1] = {};
+uint8_t custom_algorithm[CUSTOM_ALGORITHM_COUNT][DX7_OPERATOR_COUNT][DX7_OPERATOR_COUNT + 2] = {};
 #endif
