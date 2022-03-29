@@ -590,12 +590,12 @@ function handleFiles(f) {
               status.innerHTML += "skipped (maximum op6program file limit reached)";
             } else {
               data[0].push(Uint8Array.from([
-                op6data.op6ModOp6, op6data.op6ModOp5, op6data.op6ModOp4, op6data.op6ModOp3, op6data.op6ModOp2, op6data.op6ModOp1, op6data.op6Level,
-                op6data.op5ModOp6, op6data.op5ModOp5, op6data.op5ModOp4, op6data.op5ModOp3, op6data.op5ModOp2, op6data.op5ModOp1, op6data.op4Level,
-                op6data.op4ModOp6, op6data.op4ModOp5, op6data.op4ModOp4, op6data.op4ModOp3, op6data.op4ModOp2, op6data.op4ModOp1, op6data.op3Level,
-                op6data.op3ModOp6, op6data.op3ModOp5, op6data.op3ModOp4, op6data.op3ModOp3, op6data.op3ModOp2, op6data.op3ModOp1, op6data.op2Level,
-                op6data.op2ModOp6, op6data.op2ModOp5, op6data.op2ModOp4, op6data.op2ModOp3, op6data.op2ModOp2, op6data.op2ModOp1, op6data.op2Level,
-                op6data.op1ModOp6, op6data.op1ModOp5, op6data.op1ModOp4, op6data.op1ModOp3, op6data.op1ModOp2, op6data.op1ModOp1, op6data.op1Level
+                op6data.op6ModOp6, op6data.op6ModOp5, op6data.op6ModOp4, op6data.op6ModOp3, op6data.op6ModOp2, op6data.op6ModOp1, op6data.op6Out, op6data.op6WaveWidth >> 1,
+                op6data.op5ModOp6, op6data.op5ModOp5, op6data.op5ModOp4, op6data.op5ModOp3, op6data.op5ModOp2, op6data.op5ModOp1, op6data.op5Out, op6data.op5WaveWidth >> 1,
+                op6data.op4ModOp6, op6data.op4ModOp5, op6data.op4ModOp4, op6data.op4ModOp3, op6data.op4ModOp2, op6data.op4ModOp1, op6data.op4Out, op6data.op4WaveWidth >> 1,
+                op6data.op3ModOp6, op6data.op3ModOp5, op6data.op3ModOp4, op6data.op3ModOp3, op6data.op3ModOp2, op6data.op3ModOp1, op6data.op3Out, op6data.op3WaveWidth >> 1,
+                op6data.op2ModOp6, op6data.op2ModOp5, op6data.op2ModOp4, op6data.op2ModOp3, op6data.op2ModOp2, op6data.op2ModOp1, op6data.op2Out, op6data.op2WaveWidth >> 1,
+                op6data.op1ModOp6, op6data.op1ModOp5, op6data.op1ModOp4, op6data.op1ModOp3, op6data.op1ModOp2, op6data.op1ModOp1, op6data.op1Out, op6data.op1WaveWidth >> 1
               ]));
               status.innerHTML += "added opsix user algorithm";
             }
