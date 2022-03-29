@@ -578,7 +578,8 @@ void setAlgorithm() {
       comp++;
 #ifdef CUSTOM_ALGORITHM_COUNT
       } else {
-         comp += custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT];
+        if (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] != 0)
+          comp++;
       }
 #endif
 
@@ -603,22 +604,17 @@ void setAlgorithm() {
 #if FEEDBACK_COUNT == 2
   setFeedbackRoute(1);
 #endif
-#ifdef CUSTOM_ALGORITHM_COUNT
-  if (algidx >= ALGORITHM_COUNT)
-    comp = 0x7FFFFFFF / comp;
-#endif
   for (uint32_t i = 0; i < OPERATOR_COUNT; i++) {
+    s_comp[i] = 0;
 #ifdef CUSTOM_ALGORITHM_COUNT
     if (algidx < ALGORITHM_COUNT) {
 #endif
     if (s_algorithm[i] & ALG_OUT_MASK)
       s_comp[i] = compensation[comp - 1];
-    else
-      s_comp[i] = 0;
 #ifdef CUSTOM_ALGORITHM_COUNT
     } else {
-//      s_comp[i] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] * CUSTOM_OUT_SCALE_FACTOR) >> 16;
-      s_comp[i] = (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] * comp) >> 16;
+      if (custom_algorithm[algidx - ALGORITHM_COUNT][i][OPERATOR_COUNT] != 0)
+        s_comp[i] = compensation[comp - 1];
     }
 #endif
   }
