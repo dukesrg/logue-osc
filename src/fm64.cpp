@@ -87,7 +87,8 @@
     CUSTOM_PARAM_ID(1),
     CUSTOM_PARAM_ID(17)
 #ifdef CUSTOM_PARAMS_CYCLE
-    ,CUSTOM_PARAM_NO_ROUTE
+//    ,CUSTOM_PARAM_NO_ROUTE
+    ,CUSTOM_PARAM_ID(1)
     ,CUSTOM_PARAM_NO_ROUTE
     ,CUSTOM_PARAM_NO_ROUTE
     ,CUSTOM_PARAM_NO_ROUTE
@@ -922,7 +923,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
   }
 #ifdef SHAPE_LFO_ROUTE
-  _hook_param(k_user_osc_param_shiftshape + 1, smmul(params->shape_lfo, 200) + 100);
+  _hook_param(k_user_osc_param_shape_lfo, smmul(params->shape_lfo, 200) + 100);
 #endif
   q31_t osc_out, modw0;
   q31_t opw0[OPERATOR_COUNT];
@@ -1487,8 +1488,8 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
-//  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
-  uint8_t tenbits = index >= k_user_osc_param_shape;
+  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
+//  uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
   int16_t uvalue = value;
   index = CUSTOM_PARAM_GET(index);
@@ -1834,7 +1835,7 @@ setkvslevel:
 #endif
 #ifdef SHAPE_LFO_ROUTE
     case CUSTOM_PARAM_ID(153):
-      CUSTOM_PARAM_SET(k_user_osc_param_shiftshape + 1, value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
 #endif
     default:
