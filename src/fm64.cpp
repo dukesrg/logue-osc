@@ -923,7 +923,8 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
   }
 #ifdef SHAPE_LFO_ROUTE
-  _hook_param(k_user_osc_param_shape_lfo, smmul(params->shape_lfo, 200) + 100);
+//  _hook_param(k_user_osc_param_shape_lfo, smmul(params->shape_lfo, 200) + 100);
+  _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 21);
 #endif
   q31_t osc_out, modw0;
   q31_t opw0[OPERATOR_COUNT];
@@ -1488,8 +1489,8 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
-  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
-//  uint8_t tenbits = index >= k_user_osc_param_shape;
+//  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
+  uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
   int16_t uvalue = value;
   index = CUSTOM_PARAM_GET(index);
@@ -1500,7 +1501,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   if (index > CUSTOM_PARAM_ID(1)
   ) {
     if (tenbits)
-      value >>= 3;
+      value = (int16_t)value >> 3;
     if ((index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)
 //#ifdef WAVE_PINCH
 ////      && index != CUSTOM_PARAM_ID(141)
@@ -1512,7 +1513,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   }
   switch (index) {
     case CUSTOM_PARAM_ID(1):
-      s_velocity = f32_to_q31((POWF(value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .0625f * LEVEL_SCALE_FACTOR_DB);
+      s_velocity = f32_to_q31((POWF((int16_t)value * (tenbits ? .124144672f : 1.f), .27f) * 60.f - 208.f) * .0625f * LEVEL_SCALE_FACTOR_DB);
 //                                           10->7bit^         exp^curve^mult  ^zero thd ^downscale 1/16 ^linear 96 dB normalize
       setVelocityLevel();
       break;
