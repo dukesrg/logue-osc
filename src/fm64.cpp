@@ -430,6 +430,13 @@ static uint8_t s_peg_stage_start;
 static pitch_t s_oppitch[OPERATOR_COUNT];
 static q31_t s_phase[OPERATOR_COUNT];
 
+#ifdef OSC_PARAM_CYCLE
+#ifdef SHAPE_LFO_ROUTE
+static int16_t a_shape_lfo_value;
+static int16_t a_shape_lfo_carrier;
+#endif
+#endif
+
 enum {
   state_running = 0,
   state_noteon = 1,
@@ -922,9 +929,18 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
     s_state &= ~(state_noteoff | state_noteon);
   }
   }
+
+#ifdef OSC_PARAM_CYCLE
 #ifdef SHAPE_LFO_ROUTE
 //  _hook_param(k_user_osc_param_shape_lfo, smmul(params->shape_lfo, 200) + 100);
   _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 21);
+#endif
+#ifdef CUTOFF_ROUTE
+  _hook_param(k_user_osc_param_shape_cutoff, params->cutoff >> 3);
+#endif
+#ifdef RESONANCE_ROUTE
+  _hook_param(k_user_osc_param_shape_resonance, params->resonance >> 3);
+#endif
 #endif
   q31_t osc_out, modw0;
   q31_t opw0[OPERATOR_COUNT];
@@ -1493,6 +1509,19 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
   int16_t uvalue = value;
+#ifdef OSC_PARAM_CYCLE
+#ifdef SHAPE_LFO_ROUTE
+  if (index == k_user_osc_param_shape_lfo) {
+    s_shape_lfo_value = value;
+  } else if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo) || index == - CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
+    if (!tenbits) {
+      value <<= 3;
+      tenbits = 1;
+    }
+    value += s_shape_lfo_value;
+  }
+#endif
+#endif
   index = CUSTOM_PARAM_GET(index);
   if (tenbits && (int16_t)index < 0) {
     index = - (int16_t)index;
@@ -1834,10 +1863,13 @@ setkvslevel:
       setWaveformPinch();
       break;
 #endif
+#ifdef OSC_PARAM_CYCLE
 #ifdef SHAPE_LFO_ROUTE
     case CUSTOM_PARAM_ID(153):
       CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+      s_shape_lfo_value = 0;
       break;
+#endif
 #endif
     default:
       break;
