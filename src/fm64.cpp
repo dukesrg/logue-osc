@@ -432,7 +432,7 @@ static q31_t s_phase[OPERATOR_COUNT];
 
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
-static q31_t s_shape_lfo_scale = 0x40000000;
+static float s_shape_lfo_scale = 1.f;
 static int16_t s_shape_lfo_value;
 #endif
 #endif
@@ -931,7 +931,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
-  _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 19); // 10 bit + 2 bit for scale multiply
+  _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 21); // 10 bit
 #endif
 #ifdef CUTOFF_ROUTE
   _hook_param(k_user_osc_param_shape_cutoff, params->cutoff >> 3);
@@ -1515,7 +1515,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
       index = - (int16_t)index;
       negative = 1;
     }
-    value = s_shape_lfo_value + (negative ? - smmul(value, s_shape_lfo_scale) : smmul(value, s_shape_lfo_scale));
+    value = s_shape_lfo_value + s_shape_lfo_scale * (negative ? - value : value);
     negative = 0;
     tenbits = 1;
   } else { 
@@ -1531,8 +1531,14 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #ifdef SHAPE_LFO_ROUTE
     if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
       s_shape_lfo_value = value;
-      if (!tenbits)
-        s_shape_lfo_value = (s_shape_lfo_value - 100) << 3;
+      if (!tenbits) {
+        if (index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)) {
+          s_shape_lfo_value -= 100;
+          if (negative)
+            s_shape_lfo_value = - s_shape_lfo_value;
+        }
+        s_shape_lfo_value <<= 3;
+      }
       return;
     }
   }
@@ -1877,7 +1883,7 @@ setkvslevel:
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
     case CUSTOM_PARAM_ID(153):
-      s_shape_lfo_scale = value * 0x00A3D70A; // 1/200
+      s_shape_lfo_scale = value * .01f;
       break;
     case CUSTOM_PARAM_ID(154):
       CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
