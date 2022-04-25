@@ -3,7 +3,7 @@
  *
  * DX7/DX21/DX11-series data structures
  * 
- * 2020-2021 (c) Oleg Burdaev
+ * 2020-2022 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */

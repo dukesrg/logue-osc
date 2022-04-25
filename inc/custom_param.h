@@ -3,7 +3,7 @@
  *
  * User customizable oscillator parameter wrapper
  * 
- * 2021 (c) Oleg Burdaev
+ * 2021-2022 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */

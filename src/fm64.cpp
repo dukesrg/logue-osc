@@ -3,7 +3,7 @@
  *
  * DX7/DX21/DX11-series compatible FM oscillator
  * 
- * 2020-2021 (c) Oleg Burdaev
+ * 2020-2022 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */
@@ -425,15 +425,15 @@ static int32_t s_pegval;
 static float s_pegrate_releaserecip;
 static uint8_t s_pegstage;
 static uint8_t s_peg_stage_start;
-#endif 
+#endif
 
 static pitch_t s_oppitch[OPERATOR_COUNT];
 static q31_t s_phase[OPERATOR_COUNT];
 
-#ifdef OSC_PARAM_CYCLE
+#ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
-static int16_t a_shape_lfo_value;
-static int16_t a_shape_lfo_carrier;
+static q31_t s_shape_lfo_scale = 0x40000000;
+static int16_t s_shape_lfo_value;
 #endif
 #endif
 
@@ -537,8 +537,7 @@ void setWaveformPinch() {
 #endif
 
 void setFeedback(uint32_t idx) {
-  float value = clipmaxf(s_feedback_level[idx] + s_feedback_offset[idx], 7.f);
-  s_feedback[idx] = value <= 0.f ? 0 : f32_to_q31(POW2F(value * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
+  s_feedback[idx] = f32_to_q31(POW2F(clipminmaxf(0.f, s_feedback_level[idx] + s_feedback_offset[idx], 7.f) * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
 }
 
 void setFeedbackRoute(uint32_t idx) {
@@ -930,10 +929,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
   }
 
-#ifdef OSC_PARAM_CYCLE
+#ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
-//  _hook_param(k_user_osc_param_shape_lfo, smmul(params->shape_lfo, 200) + 100);
-  _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 21);
+  _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 19); // 10 bit + 2 bit for scale multiply
 #endif
 #ifdef CUTOFF_ROUTE
   _hook_param(k_user_osc_param_shape_cutoff, params->cutoff >> 3);
@@ -1509,24 +1507,37 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
   int16_t uvalue = value;
-#ifdef OSC_PARAM_CYCLE
+#ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
   if (index == k_user_osc_param_shape_lfo) {
-    s_shape_lfo_value = value;
-  } else if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo) || index == - CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
-    if (!tenbits) {
-      value <<= 3;
-      tenbits = 1;
+    index = CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo);
+    if ((int16_t)index < 0) {
+      index = - (int16_t)index;
+      negative = 1;
     }
-    value += s_shape_lfo_value;
-  }
+    value = s_shape_lfo_value + (negative ? - smmul(value, s_shape_lfo_scale) : smmul(value, s_shape_lfo_scale));
+    negative = 0;
+    tenbits = 1;
+  } else { 
 #endif
 #endif
   index = CUSTOM_PARAM_GET(index);
-  if (tenbits && (int16_t)index < 0) {
+//  if (tenbits && (int16_t)index < 0) {
+  if ((int16_t)index < 0) {
     index = - (int16_t)index;
     negative = 1;
   }
+#ifdef CUSTOM_PARAMS_CYCLE
+#ifdef SHAPE_LFO_ROUTE
+    if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
+      s_shape_lfo_value = value;
+      if (!tenbits)
+        s_shape_lfo_value = (s_shape_lfo_value - 100) << 3;
+      return;
+    }
+  }
+#endif
+#endif
   if (index > CUSTOM_PARAM_ID(1)
   ) {
     if (tenbits)
@@ -1863,10 +1874,13 @@ setkvslevel:
       setWaveformPinch();
       break;
 #endif
-#ifdef OSC_PARAM_CYCLE
+#ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
     case CUSTOM_PARAM_ID(153):
-      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+      s_shape_lfo_scale = value * 0x00A3D70A; // 1/200
+      break;
+    case CUSTOM_PARAM_ID(154):
+      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
       s_shape_lfo_value = 0;
       break;
 #endif

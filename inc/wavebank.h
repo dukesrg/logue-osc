@@ -22,7 +22,7 @@
  * 
  * Warning, lookup functions are overloaded, please take care of the parameter types.
  * 
- * 2020-2021 (c) Oleg Burdaev
+ * 2020-2022 (c) Oleg Burdaev
  * mailto: dukesrg@gmail.com
  *
  */

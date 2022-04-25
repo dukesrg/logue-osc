@@ -271,6 +271,8 @@ For user-customizable oscillators, an online constructor is available at https:/
 |149|WF pinch Op4|-99&hellip;99|Waveform pinch offset for operator 4|
 |150|WF pinch Op5|-99&hellip;99|Waveform pinch offset for operator 5|
 |151|WF pinch Op6|-99&hellip;99|Waveform pinch offset for operator 6|
+|152|S.LFO scale|-99&hellip;100⁽⁴⁾|Shape LFO scale|
+|153|S.LFO route|-99&hellip;100⁽⁹⁾|Route Shape LFO to custom parameter #|
 
 ⁽¹⁾ : 0...100 with the step of 1 when assigned to the oscillator parameter, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0..127 with the step of 0.125 when assigned to the Shape or Alt (Shift + Shape) <br/>
@@ -285,6 +287,7 @@ For user-customizable oscillators, an online constructor is available at https:/
 ⁽⁷⁾ : cents <br/>
 ⁽⁸⁾ : higher digit - carriers and odd operators, <br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;lower digit - modulators and even operators <br/>
+⁽⁹⁾ : 100 - unrouted <br/>
 
 
 |#|Anthologue<br>Assignable controllers 1&2|1x<br>(Main VCO 1)|2x<br>(Main VCO 2)|3x<br>(Main VCO 3)|4x<br>(Sub VCO 1)|5x<br>(Sub VCO 2)|6x<br>(Sub VCO 3)|7x<br>(Sub settings)|
