@@ -434,6 +434,7 @@ static q31_t s_phase[OPERATOR_COUNT];
 #ifdef SHAPE_LFO_ROUTE
 static float s_shape_lfo_scale = 1.f;
 static int16_t s_shape_lfo_value;
+static uint16_t s_shape_lfo_index;
 #endif
 #endif
 
@@ -841,6 +842,11 @@ void initvoice(int32_t voice_index) {
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
   osc_wave_init_all();
+#ifdef CUSTOM_PARAMS_CYCLE
+#ifdef SHAPE_LFO_ROUTE
+  s_shape_lfo_index = CUSTOM_PARAM_GET;
+#endif
+#endif
 }
 #endif
 
@@ -1510,7 +1516,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
   if (index == k_user_osc_param_shape_lfo) {
-    index = CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo);
+//    index = CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo);
+    index = s_shape_lfo_index;
     if ((int16_t)index < 0) {
       index = - (int16_t)index;
       negative = 1;
@@ -1529,7 +1536,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   }
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
-    if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
+//    if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
+    if (index == s_shape_lfo_index) {
       s_shape_lfo_value = value;
       if (!tenbits) {
         if (index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)) {
@@ -1886,7 +1894,8 @@ setkvslevel:
       s_shape_lfo_scale = value * .01f;
       break;
     case CUSTOM_PARAM_ID(154):
-      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
+//      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
+      s_shape_lfo_index = value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       s_shape_lfo_value = 0;
       break;
 #endif
