@@ -434,7 +434,6 @@ static q31_t s_phase[OPERATOR_COUNT];
 #ifdef SHAPE_LFO_ROUTE
 static float s_shape_lfo_scale = 1.f;
 static int16_t s_shape_lfo_value;
-static uint16_t s_shape_lfo_index;
 #endif
 #endif
 
@@ -842,11 +841,6 @@ void initvoice(int32_t voice_index) {
 void OSC_INIT(__attribute__((unused)) uint32_t platform, __attribute__((unused)) uint32_t api)
 {
   osc_wave_init_all();
-#ifdef CUSTOM_PARAMS_CYCLE
-#ifdef SHAPE_LFO_ROUTE
-  s_shape_lfo_index = CUSTOM_PARAM_GET;
-#endif
-#endif
 }
 #endif
 
@@ -1513,45 +1507,32 @@ void OSC_PARAM(uint16_t index, uint16_t value)
   uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
   int16_t uvalue = value;
-#ifdef CUSTOM_PARAMS_CYCLE
-#ifdef SHAPE_LFO_ROUTE
-  if (index == k_user_osc_param_shape_lfo) {
-//    index = CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo);
-    index = s_shape_lfo_index;
-    if ((int16_t)index < 0) {
-      index = - (int16_t)index;
-      negative = 1;
-    }
-    value = s_shape_lfo_value + s_shape_lfo_scale * (negative ? - value : value);
-    negative = 0;
-    tenbits = 1;
-  } else { 
-#endif
-#endif
-  index = CUSTOM_PARAM_GET(index);
-//  if (tenbits && (int16_t)index < 0) {
-  if ((int16_t)index < 0) {
-    index = - (int16_t)index;
+  int16_t paramindex = CUSTOM_PARAM_GET(index);
+  if (paramindex < 0) {
+    paramindex = - paramindex;
     negative = 1;
   }
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
-//    if (index == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
-    if (index == s_shape_lfo_index) {
-      s_shape_lfo_value = value;
-      if (!tenbits) {
-        if (index != CUSTOM_PARAM_ID(5) && index != CUSTOM_PARAM_ID(6) && index != CUSTOM_PARAM_ID(19) && index != CUSTOM_PARAM_ID(20) && index != CUSTOM_PARAM_ID(21)) {
-          s_shape_lfo_value -= 100;
-          if (negative)
-            s_shape_lfo_value = - s_shape_lfo_value;
-        }
-        s_shape_lfo_value <<= 3;
+  if (index == k_user_osc_param_shape_lfo) {
+    value = s_shape_lfo_value + s_shape_lfo_scale * (negative ? - value : value);
+    negative = 0;
+    tenbits = 1;
+  } else if (paramindex == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
+    s_shape_lfo_value = value;
+    if (!tenbits) {
+      if (paramindex != CUSTOM_PARAM_ID(5) && paramindex != CUSTOM_PARAM_ID(6) && paramindex != CUSTOM_PARAM_ID(19) && paramindex != CUSTOM_PARAM_ID(20) && paramindex != CUSTOM_PARAM_ID(21)) {
+        s_shape_lfo_value -= 100;
+        if (negative)
+          s_shape_lfo_value = - s_shape_lfo_value;
       }
-      return;
+      s_shape_lfo_value <<= 3;
     }
+    return;
   }
 #endif
 #endif
+  index = paramindex;
   if (index > CUSTOM_PARAM_ID(1)
   ) {
     if (tenbits)
@@ -1894,8 +1875,7 @@ setkvslevel:
       s_shape_lfo_scale = value * .01f;
       break;
     case CUSTOM_PARAM_ID(154):
-//      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
-      s_shape_lfo_index = value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
       s_shape_lfo_value = 0;
       break;
 #endif
