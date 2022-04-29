@@ -1503,10 +1503,9 @@ void OSC_NOTEOFF(__attribute__((unused)) const user_osc_param_t * const params)
 
 void OSC_PARAM(uint16_t index, uint16_t value)
 {
-//  uint8_t tenbits = index == k_user_osc_param_shape || index == k_user_osc_param_shiftshape;
   uint8_t tenbits = index >= k_user_osc_param_shape;
   uint8_t negative = 0;
-  int16_t uvalue = value;
+  int16_t svalue = value;
   int16_t paramindex = CUSTOM_PARAM_GET(index);
   if (paramindex < 0) {
     paramindex = - paramindex;
@@ -1515,14 +1514,14 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 #ifdef CUSTOM_PARAMS_CYCLE
 #ifdef SHAPE_LFO_ROUTE
   if (index == k_user_osc_param_shape_lfo) {
-    value = s_shape_lfo_value + s_shape_lfo_scale * (negative ? - value : value);
+    value = s_shape_lfo_value + s_shape_lfo_scale * (negative ? - (int16_t)value : (int16_t)value);
     negative = 0;
     tenbits = 1;
   } else if (paramindex == CUSTOM_PARAM_GET(k_user_osc_param_shape_lfo)) {
     s_shape_lfo_value = value;
     if (!tenbits) {
       if (paramindex != CUSTOM_PARAM_ID(5) && paramindex != CUSTOM_PARAM_ID(6) && paramindex != CUSTOM_PARAM_ID(19) && paramindex != CUSTOM_PARAM_ID(20) && paramindex != CUSTOM_PARAM_ID(21)) {
-        s_shape_lfo_value -= 100;
+        s_shape_lfo_value = (int16_t)value - 100;
         if (negative)
           s_shape_lfo_value = - s_shape_lfo_value;
       }
@@ -1543,8 +1542,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 //      && !(index >= CUSTOM_PARAM_ID(144) && index <= CUSTOM_PARAM_ID(152))
 //#endif
     ) && (tenbits || value == 0))
-      value = 100 + (negative ? - value : value);
-    uvalue = value; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
+      value = 100 + (negative ? - (int16_t)value : (int16_t)value);
+    svalue = value; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
   }
   switch (index) {
     case CUSTOM_PARAM_ID(1):
@@ -1775,7 +1774,7 @@ setkvslevel:
     case CUSTOM_PARAM_ID(110):
     case CUSTOM_PARAM_ID(111):
     case CUSTOM_PARAM_ID(112):
-      s_krs_scale[CUSTOM_PARAM_ID(112) - index] = uvalue;
+      s_krs_scale[CUSTOM_PARAM_ID(112) - index] = svalue;
       for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
         s_krslevel[i] = paramScale(s_krs_scale, i) * RATE_SCALING_FACTOR;
       break;
