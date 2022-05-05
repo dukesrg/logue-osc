@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.9-8",
+        "version" : "1.9-21",
         "name" : "FM65",
         "num_param" : 6,
         "params" : [
@@ -20,7 +20,7 @@
         "custom_data" : [
             ["Korg opsix user algorithm modulation matrices", 64, 48, 16],
             ["Yamaha DX7-series voice banks", 832, 4096, 4],
-            ["custom_params", 17216, 2, 8, 256]
+            ["custom_params", 17216, 2, 14, 256]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -174,7 +174,9 @@
             ["WF pinch Op3", -99, 99, "%"],
             ["WF pinch Op4", -99, 99, "%"],
             ["WF pinch Op5", -99, 99, "%"],
-            ["WF pinch Op6", -99, 99, "%"]
+            ["WF pinch Op6", -99, 99, "%"],
+            ["S.LFO scale", -99, 100, "%"],
+            ["S.LFO route", -99, 100, "%"]
         ]
     }
 }

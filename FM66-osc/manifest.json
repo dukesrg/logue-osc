@@ -6,7 +6,7 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "1.9-5",
+        "version" : "1.9-22",
         "name" : "FM66",
         "num_param" : 6,
         "params" : [
@@ -18,9 +18,9 @@
             ["Waveform C+M", -77, 77, "%"]
         ],
         "custom_data" : [
-            ["Raw 16-bit PCM waveforms", 64, 514, 8],
-            ["Yamaha DX7-series voice banks", 4176, 4096, 4],
-            ["custom_params", 20560, 2, 8, 256]
+            ["Yamaha DX7-series voice banks", 64, 4096, 4],
+            ["custom_params", 16448, 2, 14, 256],
+            ["Raw 16-bit PCM waveforms", 16476, 514, 8]
         ],
         "custom_params" : [
             ["Velocity", 0, 100, "%"],
@@ -165,7 +165,17 @@
             ["Waveform Op3", -7, 7, "%"],
             ["Waveform Op4", -7, 7, "%"],
             ["Waveform Op5", -7, 7, "%"],
-            ["Waveform Op6", -7, 7, "%"]
+            ["Waveform Op6", -7, 7, "%"],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["-", 0, 0, ""],
+            ["S.LFO scale", -99, 100, "%"]
         ]
     }
 }

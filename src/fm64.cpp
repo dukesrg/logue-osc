@@ -87,7 +87,6 @@
     CUSTOM_PARAM_ID(1),
     CUSTOM_PARAM_ID(17)
 #ifdef CUSTOM_PARAMS_CYCLE
-//    ,CUSTOM_PARAM_NO_ROUTE
     ,CUSTOM_PARAM_ID(1)
     ,CUSTOM_PARAM_NO_ROUTE
     ,CUSTOM_PARAM_NO_ROUTE
@@ -202,8 +201,9 @@
   #define pitch_to_phase(a) f32_to_q31(a)
   #define pitch_mul(a,b) ((a)*(b))
 #endif
-#define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
-#define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+//#define FEEDBACK_RECIP 0x00FFFFFF // <1/128 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+//#define FEEDBACK_RECIPF .00390625f // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
+#define FEEDBACK_RECIP_LOG2 (-8) // 1/256 - pre-multiplied by 2 for simplified Q31 multiply by always positive
 #define LEVEL_SCALE_FACTOR 0x01000000 // -0.7525749892dB/96dB === 1/128
 //#define DX7_SAMPLING_FREQ 49096.545017211284821233588006932f // 1/20.368032usec
 //#define DX7_TO_LOGUE_FREQ 0.977665536f // 48000/49096.545
@@ -308,30 +308,21 @@ static int8_t s_kvs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_egrate_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_krs_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_detune_offset[OPERATOR_COUNT + 3] = {0};
+static int8_t s_level_scale[OPERATOR_COUNT + 3] = {0};
+static int8_t s_kls_scale[OPERATOR_COUNT + 3] = {0};
+static int8_t s_kvs_scale[OPERATOR_COUNT + 3] = {0};
+static int8_t s_egrate_scale[OPERATOR_COUNT + 3] = {0};
+static int8_t s_krs_scale[OPERATOR_COUNT + 3] = {0};
+static int8_t s_detune_scale[OPERATOR_COUNT + 3] = {0};
 #ifdef WAVE_PINCH
 static int8_t s_waveform_pinch_offset[OPERATOR_COUNT + 3] = {0};
 static int8_t s_waveform_pinch[OPERATOR_COUNT + 3] = {0};
 #endif
-#ifdef OP6
-static uint8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100, 100, 100};
-#else
-static uint8_t s_level_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_kls_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_kvs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_egrate_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_krs_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-static uint8_t s_detune_scale[OPERATOR_COUNT + 3] = {100, 100, 100, 100, 100, 100, 100};
-#endif
-static float s_feedback_offset[FEEDBACK_COUNT] = {0.f};
+static int8_t s_feedback_offset[FEEDBACK_COUNT] = {0};
 #if FEEDBACK_COUNT == 2
-static float s_feedback_scale[FEEDBACK_COUNT] = {1.f, 1.f};
+static uint8_t s_feedback_scale[FEEDBACK_COUNT] = {100, 100};
 #else
-static float s_feedback_scale[FEEDBACK_COUNT] = {1.f};
+static uint8_t s_feedback_scale[FEEDBACK_COUNT] = {100};
 #endif
 static uint8_t s_feedback_route[FEEDBACK_COUNT] = {0};
 static uint8_t s_feedback_level[FEEDBACK_COUNT] = {0};
@@ -401,7 +392,7 @@ static q31_t s_wavewidth[OPERATOR_COUNT * 2] = {0};
 #endif
 static int16_t s_klsoffset[OPERATOR_COUNT] = {0};
 static int16_t s_egrateoffset[OPERATOR_COUNT] = {0};
-static float s_krsoffset[OPERATOR_COUNT] = {0.f};
+static int16_t s_krsoffset[OPERATOR_COUNT] = {0};
 static q31_t s_level_scaling[OPERATOR_COUNT];
 static q31_t s_kvslevel[OPERATOR_COUNT];
 static q31_t s_velocitylevel[OPERATOR_COUNT];
@@ -431,10 +422,10 @@ static pitch_t s_oppitch[OPERATOR_COUNT];
 static q31_t s_phase[OPERATOR_COUNT];
 
 #ifdef CUSTOM_PARAMS_CYCLE
-#ifdef SHAPE_LFO_ROUTE
+//#ifdef SHAPE_LFO_ROUTE
 static float s_shape_lfo_scale = 1.f;
 static int16_t s_shape_lfo_value;
-#endif
+//#endif
 #endif
 
 enum {
@@ -449,12 +440,22 @@ static uint32_t s_state = state_wave_changed;
 static uint32_t s_state = 0;
 #endif
 
-float paramScale(uint8_t *param, uint32_t opidx) {
-  return .000001f * param[opidx] * param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] * param[OPERATOR_COUNT + 2];
+float paramScale(int8_t *param, uint32_t opidx) {
+  return .000001f * (param[opidx] + 100) * (param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] + 100) * (param[OPERATOR_COUNT + 2] + 100);
 }
 
-int32_t paramOffset(int8_t *param, uint32_t opidx) {
+void setScales(float *dst, int8_t *src, float scale) {;
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+    dst[i] = paramScale(src, i) * scale;
+}
+
+int16_t paramOffset(int8_t *param, uint32_t opidx) {
   return param[opidx] + param[((s_algorithm[opidx] & ALG_OUT_MASK) >> 7) + OPERATOR_COUNT] + param[OPERATOR_COUNT + 2];
+}
+
+void setOffsets(int16_t *dst, int8_t *src) {
+  for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
+    dst[i] = paramOffset(src, i);
 }
 
 static inline __attribute__((optimize("Ofast"), always_inline))
@@ -537,7 +538,7 @@ void setWaveformPinch() {
 #endif
 
 void setFeedback(uint32_t idx) {
-  s_feedback[idx] = f32_to_q31(POW2F(clipminmaxf(0.f, s_feedback_level[idx] + s_feedback_offset[idx], 7.f) * s_feedback_scale[idx]) * FEEDBACK_RECIPF);
+  s_feedback[idx] = f32_to_q31(POW2F(clipminmaxf(0.f, s_feedback_level[idx] + s_feedback_offset[idx] * .07f, 7.f) * s_feedback_scale[idx] * .01f + FEEDBACK_RECIP_LOG2));
 }
 
 void setFeedbackRoute(uint32_t idx) {
@@ -930,9 +931,9 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   }
 
 #ifdef CUSTOM_PARAMS_CYCLE
-#ifdef SHAPE_LFO_ROUTE
+//#ifdef SHAPE_LFO_ROUTE
   _hook_param(k_user_osc_param_shape_lfo, params->shape_lfo >> 21); // 10 bit
-#endif
+//#endif
 #ifdef CUTOFF_ROUTE
   _hook_param(k_user_osc_param_shape_cutoff, params->cutoff >> 3);
 #endif
@@ -1419,7 +1420,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
 q31_t calc_rate(uint32_t i, uint32_t j, float rate_factor, int32_t note) {
   if (j == 0)
     rate_factor *= DX7_RATE1_FACTOR;
-  float rscale = (note - NOTE_A_1) * clipminmaxf(0.f, s_op_rate_scale[i] + s_krsoffset[i], 7.f) * s_krslevel[i];
+  float rscale = (note - NOTE_A_1) * clipminmaxf(0.f, s_op_rate_scale[i] + s_krsoffset[i] * .07f, 7.f) * s_krslevel[i];
   float rate = clipminmaxi32(0, s_egrate[i][j] + s_egrateoffset[i], 99) * s_egratelevel[i];
   return f32_to_q31(rate_factor * POW2F(DX7_RATE_EXP_FACTOR * (rate + rscale)));
 }
@@ -1512,7 +1513,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     negative = 1;
   }
 #ifdef CUSTOM_PARAMS_CYCLE
-#ifdef SHAPE_LFO_ROUTE
+//#ifdef SHAPE_LFO_ROUTE
   if (index == k_user_osc_param_shape_lfo) {
     value = s_shape_lfo_value + s_shape_lfo_scale * (negative ? - (int16_t)value : (int16_t)value);
     negative = 0;
@@ -1529,7 +1530,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     }
     return;
   }
-#endif
+//#endif
 #endif
   index = paramindex;
   if (index > CUSTOM_PARAM_ID(1)
@@ -1543,7 +1544,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
 //#endif
     ) && (tenbits || value == 0))
       value = 100 + (negative ? - (int16_t)value : (int16_t)value);
-    svalue = value; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
+    svalue = value - 100; //looks like optimizer is crazy: this saves over 100 bytes just by assigning to used valiable with sign conversion >%-O
   }
   switch (index) {
     case CUSTOM_PARAM_ID(1):
@@ -1555,7 +1556,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(2):
     case CUSTOM_PARAM_ID(3):
     case CUSTOM_PARAM_ID(4):
-      s_voice[index - CUSTOM_PARAM_ID(2)] = value - 100;
+      s_voice[index - CUSTOM_PARAM_ID(2)] = svalue;
       break;
 #endif
     case CUSTOM_PARAM_ID(5):
@@ -1565,23 +1566,23 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(7):
     case CUSTOM_PARAM_ID(8):
     case CUSTOM_PARAM_ID(9):
-      s_zone_transpose[index - CUSTOM_PARAM_ID(7)] = value - 100;
+      s_zone_transpose[index - CUSTOM_PARAM_ID(7)] = svalue;
       break;
     case CUSTOM_PARAM_ID(10):
     case CUSTOM_PARAM_ID(11):
     case CUSTOM_PARAM_ID(12):
-      s_zone_voice_shift[index - CUSTOM_PARAM_ID(10)] = value - 100;
+      s_zone_voice_shift[index - CUSTOM_PARAM_ID(10)] = svalue;
       break;
     case CUSTOM_PARAM_ID(13):
     case CUSTOM_PARAM_ID(14):
-      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(13), value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
+      CUSTOM_PARAM_SET(k_user_osc_param_shape + index - CUSTOM_PARAM_ID(13), svalue + (svalue >= 0 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1)));
       break;
     case CUSTOM_PARAM_ID(15):
 #if FEEDBACK_COUNT == 2
     case CUSTOM_PARAM_ID(16):
 #endif
       index -= CUSTOM_PARAM_ID(15);
-      s_feedback_offset[index] = (value - 100) * .07f;
+      s_feedback_offset[index] = svalue;
       goto setfeedback;
       break;
     case CUSTOM_PARAM_ID(17):
@@ -1589,7 +1590,7 @@ void OSC_PARAM(uint16_t index, uint16_t value)
     case CUSTOM_PARAM_ID(18):
 #endif
       index -= CUSTOM_PARAM_ID(17);
-      s_feedback_scale[index] = value * .01f;
+      s_feedback_scale[index] = value;
 setfeedback:
       setFeedback(index);
       break;
@@ -1606,7 +1607,7 @@ setfeedback:
       goto setalgorithm;
       break;
     case CUSTOM_PARAM_ID(22):
-      s_algorithm_offset = value - 100;
+      s_algorithm_offset = svalue;
 setalgorithm:
       setAlgorithm();
       break;
@@ -1623,7 +1624,7 @@ setalgorithm:
     case CUSTOM_PARAM_ID(29):
     case CUSTOM_PARAM_ID(30):
     case CUSTOM_PARAM_ID(31):
-      s_level_offset[CUSTOM_PARAM_ID(31) - index] = value - 100;
+      s_level_offset[CUSTOM_PARAM_ID(31) - index] = svalue;
       goto setoutlevel;
       break;
     case CUSTOM_PARAM_ID(32):
@@ -1639,7 +1640,7 @@ setalgorithm:
     case CUSTOM_PARAM_ID(38):
     case CUSTOM_PARAM_ID(39):
     case CUSTOM_PARAM_ID(40):
-      s_level_scale[CUSTOM_PARAM_ID(40) - index] = value;
+      s_level_scale[CUSTOM_PARAM_ID(40) - index] = svalue;
 setoutlevel:
       setOutLevel();
       break;
@@ -1656,9 +1657,8 @@ setoutlevel:
     case CUSTOM_PARAM_ID(47):
     case CUSTOM_PARAM_ID(48):
     case CUSTOM_PARAM_ID(49):
-      s_kls_offset[CUSTOM_PARAM_ID(49) - index] = value - 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_klsoffset[i] = paramOffset(s_kls_offset, i);
+      s_kls_offset[CUSTOM_PARAM_ID(49) - index] = svalue;
+      setOffsets(s_klsoffset, s_kls_offset);
       break;
     case CUSTOM_PARAM_ID(50):
     case CUSTOM_PARAM_ID(51):
@@ -1673,9 +1673,8 @@ setoutlevel:
     case CUSTOM_PARAM_ID(56):
     case CUSTOM_PARAM_ID(57):
     case CUSTOM_PARAM_ID(58):
-      s_kls_scale[CUSTOM_PARAM_ID(58) - index] = value;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_klslevel[i] = paramScale(s_kls_scale, i) * LEVEL_SCALE_FACTOR_DB;
+      s_kls_scale[CUSTOM_PARAM_ID(58) - index] = svalue;
+      setScales(s_klslevel, s_kls_scale, LEVEL_SCALE_FACTOR_DB);
       break;
     case CUSTOM_PARAM_ID(59):
     case CUSTOM_PARAM_ID(60):
@@ -1690,7 +1689,7 @@ setoutlevel:
     case CUSTOM_PARAM_ID(65):
     case CUSTOM_PARAM_ID(66):
     case CUSTOM_PARAM_ID(67):
-      s_kvs_offset[CUSTOM_PARAM_ID(67) - index] = value - 100;
+      s_kvs_offset[CUSTOM_PARAM_ID(67) - index] = svalue;
       goto setkvslevel;
       break;
     case CUSTOM_PARAM_ID(68):
@@ -1706,7 +1705,7 @@ setoutlevel:
     case CUSTOM_PARAM_ID(74):
     case CUSTOM_PARAM_ID(75):
     case CUSTOM_PARAM_ID(76):
-      s_kvs_scale[CUSTOM_PARAM_ID(76) - index] = value;
+      s_kvs_scale[CUSTOM_PARAM_ID(76) - index] = svalue;
 setkvslevel:
       setKvsLevel();
       break;
@@ -1723,9 +1722,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(83):
     case CUSTOM_PARAM_ID(84):
     case CUSTOM_PARAM_ID(85):
-      s_egrate_offset[CUSTOM_PARAM_ID(85) - index] = value - 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_egrateoffset[i] = paramOffset(s_egrate_offset, i);
+      s_egrate_offset[CUSTOM_PARAM_ID(85) - index] = svalue;
+      setOffsets(s_egrateoffset, s_egrate_offset);
       break;
     case CUSTOM_PARAM_ID(86):
     case CUSTOM_PARAM_ID(87):
@@ -1740,9 +1738,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(92):
     case CUSTOM_PARAM_ID(93):
     case CUSTOM_PARAM_ID(94):
-      s_egrate_scale[CUSTOM_PARAM_ID(94) - index] = value;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_egratelevel[i] = paramScale(s_egrate_scale, i);
+      s_egrate_scale[CUSTOM_PARAM_ID(94) - index] = svalue;
+      setScales(s_egratelevel, s_egrate_scale, 1.f);
       break;
     case CUSTOM_PARAM_ID(95):
     case CUSTOM_PARAM_ID(96):
@@ -1757,9 +1754,8 @@ setkvslevel:
     case CUSTOM_PARAM_ID(101):
     case CUSTOM_PARAM_ID(102):
     case CUSTOM_PARAM_ID(103):
-      s_krs_offset[CUSTOM_PARAM_ID(103) - index] = value - 100;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_krsoffset[i] = paramOffset(s_krs_offset, i) * .07f;
+      s_krs_offset[CUSTOM_PARAM_ID(103) - index] = svalue;
+      setOffsets(s_krsoffset, s_krs_offset);
       break;
     case CUSTOM_PARAM_ID(104):
     case CUSTOM_PARAM_ID(105):
@@ -1775,8 +1771,7 @@ setkvslevel:
     case CUSTOM_PARAM_ID(111):
     case CUSTOM_PARAM_ID(112):
       s_krs_scale[CUSTOM_PARAM_ID(112) - index] = svalue;
-      for (uint32_t i = 0; i < OPERATOR_COUNT; i++)
-        s_krslevel[i] = paramScale(s_krs_scale, i) * RATE_SCALING_FACTOR;
+      setScales(s_krslevel, s_krs_scale, RATE_SCALING_FACTOR);
       break;
     case CUSTOM_PARAM_ID(113):
     case CUSTOM_PARAM_ID(114):
@@ -1791,7 +1786,7 @@ setkvslevel:
     case CUSTOM_PARAM_ID(119):
     case CUSTOM_PARAM_ID(120):
     case CUSTOM_PARAM_ID(121):
-      s_detune_offset[CUSTOM_PARAM_ID(121) - index] = value - 100;
+      s_detune_offset[CUSTOM_PARAM_ID(121) - index] = svalue;
       break;
 #ifdef FINE_TUNE
     case CUSTOM_PARAM_ID(122):
@@ -1807,7 +1802,7 @@ setkvslevel:
     case CUSTOM_PARAM_ID(128):
     case CUSTOM_PARAM_ID(129):
     case CUSTOM_PARAM_ID(130):
-      s_detune_scale[CUSTOM_PARAM_ID(130) - index] = value;
+      s_detune_scale[CUSTOM_PARAM_ID(130) - index] = svalue;
       break;
 #endif
 #ifdef WFBITS
@@ -1835,9 +1830,9 @@ setkvslevel:
     case CUSTOM_PARAM_ID(142):
     case CUSTOM_PARAM_ID(143):
 #ifdef WFGEN
-      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = value >= 100 ? (value - 100) : (35 + 100 - value);
+      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = svalue >= 0 ? svalue : (35 - svalue);
 #else
-      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = value - 100;
+      s_waveform_offset[CUSTOM_PARAM_ID(143) - index] = svalue;
 #endif
       setWaveform();
       break;
@@ -1864,17 +1859,17 @@ setkvslevel:
         s_wavewidth[i * 2 + 1] = 0x64000000 / value; // (100 >> 7) / width
       }
 */
-      s_waveform_pinch_offset[CUSTOM_PARAM_ID(152) - index] = value - 100;
+      s_waveform_pinch_offset[CUSTOM_PARAM_ID(152) - index] = svalue;
       setWaveformPinch();
       break;
 #endif
 #ifdef CUSTOM_PARAMS_CYCLE
-#ifdef SHAPE_LFO_ROUTE
     case CUSTOM_PARAM_ID(153):
       s_shape_lfo_scale = value * .01f;
       break;
+#ifdef SHAPE_LFO_ROUTE
     case CUSTOM_PARAM_ID(154):
-      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (value - 100 + (value >= 100 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
+      CUSTOM_PARAM_SET(k_user_osc_param_shape_lfo, value == 200 ? CUSTOM_PARAM_NO_ROUTE : (svalue + (svalue >= 0 ? CUSTOM_PARAM_ID(1) : - CUSTOM_PARAM_ID(1))));
       s_shape_lfo_value = 0;
       break;
 #endif
