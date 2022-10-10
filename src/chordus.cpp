@@ -15,7 +15,8 @@
 static uint32_t s_chord = 0;
 static uint32_t s_chord_notes = 1;
 static float s_chord_notes_recip = 1.f;
-static uint16_t s_detunes[MAX_CHORD_NOTES] = {0};
+//static uint16_t s_detunes[MAX_CHORD_NOTES] = {0};
+static float s_detunes[MAX_CHORD_NOTES] = {0.f};
 static float s_detune = 0.f;
 static float s_phase[MAX_CHORD_NOTES] = {0.f};
 
@@ -29,7 +30,7 @@ void OSC_CYCLE(const user_osc_param_t * const params, int32_t *yn, const uint32_
   float w0[MAX_CHORD_NOTES];
   uint16_t pitch;
   for (uint32_t i = 0; i < s_chord_notes; i++) {
-    pitch = params->pitch + s_detunes[i];
+    pitch = params->pitch + (uint16_t)(s_detunes[i] * s_detune) - 255;
     w0[i] = osc_w0f_for_note((pitch >> 8) + chords[s_chord][i], pitch & 0xFF);
   }
 
@@ -50,7 +51,8 @@ void OSC_NOTEON(__attribute__((unused)) const user_osc_param_t * const params)
   for (uint32_t i = 0; i < MAX_CHORD_NOTES; i++) {
     s_phase[i] = 0.f;
     if (i > 0) {
-      s_detunes[i] = (uint16_t)(osc_rand() * s_detune) - 255;
+//      s_detunes[i] = (uint16_t)(osc_rand() * s_detune) - 255;
+      s_detunes[i] = osc_rand();
     }
   }
 }
