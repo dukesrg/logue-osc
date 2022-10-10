@@ -6,11 +6,11 @@
         "api" : "1.1-0",
         "dev_id" : 1701541188,
         "prg_id" : 0,
-        "version" : "0.1-0",
+        "version" : "0.2-0",
         "name" : "Chordus",
         "num_param" : 2,
         "params" : [
-            ["Poly", 0, 12, "%"],
+            ["Chord", 0, 50, ""],
             ["Detune", 0, 100, "%"]
         ]
     }
