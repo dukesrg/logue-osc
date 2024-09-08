@@ -129,7 +129,11 @@
 var custom_count;
 var custom_params;
 var custom_params_data_offset;
+var custom_params_data_count;
 var custom_params_value_offset;
+var custom_param_offset;
+var param_offset;
+var custom_names_offset;
 var offset;
 var data;
 var count;
@@ -220,6 +224,63 @@ var op6fields = {
 function inject(osc) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
+  if (platform == 'drmlgunit' || platform == 'nts1mkiiunit') {
+    name = name.substring(0, {'drmlgunit': 13, 'nts1mkiiunit': 19}[platform] - 1);
+    var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.'}[platform];
+    fetch("dev/" + osc.name + suffix + platform)
+    .then((response) => {
+      if (response.status === 200 || response.status === 0) {
+        return Promise.resolve(response.arrayBuffer());
+      } else {
+          return Promise.reject(new Error(response.statusText));
+      }
+    })
+    .catch(() => {})
+    .then(buffer => new Uint8Array(buffer))
+    .then(payload => {
+      var offs;
+      for (var k = 0; k < 1; k++) {
+        if (typeof data[k] !== 'undefined') {
+          offs = offset[osc.name];
+          for (var i = 0; i < data[k].length; i++) {
+            for (var j = 0; j < data[k][i].length; j++) {
+              payload[offs++] = data[k][i][j];
+            }
+          }
+        }
+      }
+      offs = custom_names_offset[osc.name];
+      for (var i = 0; i < 13; i++, offs++) {
+        payload[offs] = (i < name.length) ? name.charCodeAt(i) : 0;
+      }
+
+      if (typeof custom_params_data_offset[osc.name] !== 'undefined') {
+        for (var i = 0; i < custom_params_data_count[osc.name]; i++) {
+          var param = document.querySelector('#' + osc.name + '-param' + (i + 1));
+          if (param != null) {
+            var param_num = custom_params[osc.name].indexOf(param.innerHTML);
+            if (param_num >= 0) {
+              custom_param_offset
+              var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32}[platform];
+              for (var j = 0; j < param_size; j++) {
+                payload[param_offset[osc.name] + param_size * i + j] = payload[custom_param_offset[osc.name] + param_size * param_num + j];
+              }
+              param_num += custom_params_value_offset[osc.name];
+              payload[custom_params_data_offset[osc.name] + i * 2] = param_num & 0xFF;
+              payload[custom_params_data_offset[osc.name] + i * 2 + 1] = param_num >> 8;
+
+            } else if (param.innerHTML === "Unrouted") {
+              payload[custom_params_data_offset[osc.name] + i * 2] = 0xFF;
+              payload[custom_params_data_offset[osc.name] + i * 2 + 1] = 0x3F;
+            }
+          }
+        }
+      }
+
+      saveAs(new Blob([payload]), osc.name + "-" + name + "." + platform);
+    });
+    return;
+  }
   fetch("dev/" + osc.name + "-osc." + platform)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
@@ -291,12 +352,165 @@ function inject(osc) {
 
 function getInfo(osc, rowindex) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
+  var table = document.querySelector('.list');
+  var row = document.createElement('tr');
+  if (platform == 'drmlgunit' || platform == 'nts1mkiiunit') {
+    var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.'}[platform];
+    fetch("dev/" + osc + suffix + platform)
+    .then((response) => {
+      if (response.status === 200 || response.status === 0) {
+        return Promise.resolve(response.arrayBuffer());
+      } else {
+        return Promise.reject(new Error(response.statusText));
+      }
+    })
+    .catch(() => {
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      row.appendChild(document.createElement('td'));
+      table.childNodes[1].replaceChild(row, table.childNodes[1].childNodes[rowindex + 1]);
+    })
+    .then(buffer => new Uint8Array(buffer))
+    .then(data => {
+      if (data.slice(0,4).join("") == 127697670) { // ELF
+        offset[osc] = new Array()
+        count[osc] = new Array();
+        maxsize[osc] = new Array();
+
+        custom_params[osc] = new Array();
+
+
+        row.appendChild(document.createElement('td'));
+        row.appendChild(document.createElement('td')).id = osc + '-name';
+        row.appendChild(document.createElement('td')).id = osc + '-version';
+        row.appendChild(document.createElement('td')).id = osc + '-api';
+        var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10}[platform];
+        for (var i = 0; i < param_count; i++) {
+          row.appendChild(document.createElement('td')).id = osc + '-param' + (i + 1);
+        }
+//        row.appendChild(document.createElement('td'));
+
+        var col;
+        col = row.appendChild(document.createElement('td')).appendChild(document.createElement('label'));
+        col.className = 'button';
+        col.innerHTML = 'Upload';
+        col = col.appendChild(document.createElement('input'));
+        col.type = 'file';
+        col.name = osc;
+        col.accept = '.syx,.dx7,.32';
+        col.multiple = true;
+        col.addEventListener('change', function() { handleFiles(this); }, true);
+        col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
+        col.type = 'text';
+        col.name = osc;
+        col.disabled = true;
+        col.maxLength = {'drmlgunit': 13, 'nts1mkiiunit': 19}[platform];
+        col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
+        col.type = 'button';
+        col.name = osc;
+        col.disabled = true;
+        col.value = 'Download';
+        col.addEventListener('click', function() { inject(this); }, false);
+        row.appendChild(document.createElement('td')).id = osc + '-size';
+        row.appendChild(document.createElement('td')).id = osc + '-description';
+        table.childNodes[1].replaceChild(row, table.childNodes[1].childNodes[rowindex + 1]);
+        document.querySelector('#' + osc + '-name').innerHTML = osc;
+
+        var sectionOffs = new Uint32Array(data.buffer, 0x20, 1)[0];
+        var sectionSize = new Uint16Array(data.buffer, 0x2E, 1)[0];
+        var sectionCount = new Uint16Array(data.buffer, 0x30, 1)[0];
+        var sectionNames = new Uint16Array(data.buffer, 0x32, 1)[0];
+
+        var namesOffset = new Uint32Array(data.buffer, sectionOffs + sectionSize * sectionNames + 0x10, 1)[0];
+        var namesSize = new Uint32Array(data.buffer, sectionOffs + sectionSize * sectionNames + 0x14, 1)[0];
+        var dataIdx = 0;
+        for (var i = 0; i < sectionCount; i++) {
+          var secNameOffset = new Uint32Array(data.buffer, sectionOffs + sectionSize * i + 0x0, 1)[0];
+          var secOffset = new Uint32Array(data.buffer, sectionOffs + sectionSize * i + 0x10, 1)[0];
+          var secSize = new Uint32Array(data.buffer, sectionOffs + sectionSize * i + 0x14, 1)[0];
+          var names = new Uint8Array(data.buffer, namesOffset + secNameOffset, namesSize - secNameOffset);
+          var name = String.fromCharCode.apply(String, new Uint8Array(names.buffer, namesOffset + secNameOffset, names.indexOf(0)));
+          if (name == ".unit_header") {
+            custom_names_offset[osc] = secOffset + {'drmlgunit': 22, 'nts1mkiiunit': 24}[platform];
+            var apiOffset = secOffset + {'drmlgunit': 6, 'nts1mkiiunit': 8}[platform];
+            var versionOffset = secOffset + {'drmlgunit': 18, 'nts1mkiiunit': 20}[platform];
+            document.querySelector('#' + osc + '-api').innerHTML += (data[apiOffset + 3] << 8) + data[apiOffset + 2] + '.' + data[apiOffset + 1] + '-' + data[apiOffset];
+            document.querySelector('#' + osc + '-version').innerHTML += (data[versionOffset + 3] << 8) + data[versionOffset + 2] + '.' + data[versionOffset + 1] + '-' + data[versionOffset];
+
+            param_offset[osc] = secOffset + {'drmlgunit': 44, 'nts1mkiiunit': 56}[platform];
+            var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32}[platform];
+            var param_name_offset = param_offset[osc] + {'drmlgunit': 10, 'nts1mkiiunit': 10}[platform];
+            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21}[platform];
+            var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10}[platform];
+
+            for (var j = 0; j < param_count; j++) {
+              var col = document.querySelector('#' + osc + '-param' + (j + 1));
+              if (col) {
+                col.innerHTML = String.fromCharCode.apply(String, new Uint8Array(data.buffer, param_name_offset + param_size * j, param_name_len));
+                col.className = 'disabled';
+              }
+            };
+          } else if (name && name.startsWith('custom_params_mapping')) {
+            var desc = name.split(',').map(a => a.trim());
+            if (desc[2] == 2) {
+              custom_params_data_offset[osc] = secOffset;
+              custom_params_data_count[osc] = Number(desc[3]);
+              custom_params_value_offset[osc] = Number(desc[3]);
+              var custom_params_mapping = new Uint16Array(data.buffer, secOffset, desc[3]);
+              for (var j = 0; j < custom_params_mapping.length; j++) {
+                var col = document.querySelector('#' + osc + '-param' + (j + 1));
+                if (col) {
+                  col.addEventListener("click", function() { setParam(this, false); }, false);
+                  col.className = 'enabled';
+                }
+              }
+            }
+          } else if (name && name.startsWith('custom_params')) {
+            custom_param_offset[osc] = secOffset;
+            var desc = name.split(',').map(a => a.trim());
+            var param_name_offset = secOffset + {'drmlgunit': 10, 'nts1mkiiunit': 10}[platform];
+            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21}[platform];
+            for (var j = 0; j < desc[3]; j++) {
+              custom_params[osc].push(String.fromCharCode.apply(String, new Uint8Array(data.buffer, param_name_offset + desc[2] * j, param_name_len)).replace(/\u0000/g,''));
+            }
+          } else if (name && !name.startsWith('.')) {
+            var desc = name.split(',').map(a => a.trim());
+            offset[osc][dataIdx] = secOffset;
+            maxsize[osc][dataIdx] = secSize;
+            count[osc][i] = desc[3];
+            if (!count[osc][i])
+              count[osc][i] = 1;
+            document.querySelector('#' + osc + '-size').innerHTML += desc[2] + ' x ' + count[osc][i] + "<br>";
+            document.querySelector('#' + osc + '-description').innerHTML += desc[0]+"<br>";
+            dataIdx++;
+          }
+        }
+      }
+    });
+    return;
+  }
   fetch("dev/" + osc + "-osc." + platform)
   .then((response) => {
     if (response.status === 200 || response.status === 0) {
-        return Promise.resolve(response.blob());
+      return Promise.resolve(response.blob());
     } else {
-        return Promise.reject(new Error(response.statusText));
+      return Promise.reject(new Error(response.statusText));
     }
   })
   .then(JSZip.loadAsync)
@@ -495,6 +709,7 @@ function op6parse(array, position, end, address) {
 function handleFiles(f) {
   var files = f.files;
   var osc = f.name;
+  var platform = document.querySelector('input[name=platform]:checked').id;
   var rect = document.querySelector('#' + osc + '-size').getBoundingClientRect();
   var status = document.createElement('div');
   status.className = 'popup';
@@ -512,6 +727,42 @@ function handleFiles(f) {
     reader.onload = (event) => {
       status.innerHTML += event.target.filename + ": ";
       var array = new Uint8Array(event.target.result);
+      if (platform == 'drmlg') {
+        if (osc === "FM64") {
+        if (array.length > 4104 || array.length < 4096) {
+           status.innerHTML += "skipped (size mismatch)";
+        } else {
+          if (typeof data[0] !== 'undefined' && data[0].length >= count[osc][0]) {
+            status.innerHTML += "skipped (maximum voice bank limit reached)";
+          } else {
+            if (array.length == 4096) {
+              status.innerHTML += "added (assuming raw voice bank)";
+              name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+              data[0].push(array);
+            } else {
+              switch(array.slice(0, 6).join("")) {
+                case "2406709160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406709320":
+                  status.innerHTML += "added 6-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data[0].push(array.slice(6, 4102));
+                  break;
+                case "2406704160":
+                  status.innerHTML += "ignoring SysEx size mismatch, ";
+                case "2406704320":
+                  status.innerHTML += "added 4-operators voice bank";
+                  name.value += event.target.filename.substring(0, event.target.filename.lastIndexOf("."));
+                  data[0].push(array.slice(6, 4102));
+                  break;
+                default:
+                  status.innerHTML += "skipped unsupported SysEx";
+              }
+            }
+          }
+        }
+        }
+      } else
       if (osc === "FM48") {
         if (array.length > 4104 || array.length < 4096) {
            status.innerHTML += "skipped (size mismatch)";
@@ -1100,17 +1351,26 @@ function platformClick(platform) {
 }
 
 function onLoad() {
-  var platform = document.querySelector('#' + document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1])
+  var platformName = document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1];
+  var platform = document.querySelector('#' + platformName)
   if (platform)
     platform.checked = true;
   custom_count = new Array();
   custom_params = new Array();
   custom_params_data_offset = new Array();
+  custom_params_data_count = new Array();
   custom_params_value_offset = new Array();
+  custom_param_offset = new Array();
+  param_offset = new Array();
+  custom_names_offset = new Array();
   offset = new Array();
   count = new Array();
   maxsize = new Array();
   ["FM48", "FM64", "FM65", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
+  document.querySelector('.list').querySelectorAll("tr").forEach(row => {
+    row.childNodes[12].style['display'] = platformName == 'nts1mkii' ? 'table-cell' : 'none';
+    row.childNodes[13].style['display'] = platformName == 'nts1mkii' ? 'table-cell' : 'none';
+  });
 }
 
 function setParam(param) {
@@ -1145,6 +1405,7 @@ function setParam(param) {
   popup.style.left = rect.left;
   popup.style.top = rect.top;
   popup.style['max-height'] = document.getElementsByClassName("list")[0].getBoundingClientRect().bottom - rect.top;
+
   document.body.appendChild(popup);
 }
 
@@ -1161,28 +1422,29 @@ window.onclick = function(event) {
 </head>
 <body onload="onLoad();">
 <h3></h3>
-<label><input type="radio" id="prlg" name="platform" onchange="platformClick(this);"/><img src="prlg.png"/></label>
-<label><input type="radio" id="mnlgxd" name="platform" onchange="platformClick(this);"/><img src="mnlgxd.png"/></label>
-<label><input type="radio" id="ntkdig" name="platform" onchange="platformClick(this);"/><img src="ntkdig.png"/></label>
+<label><input type="radio" id="prlg" name="platform" onchange="platformClick(this);"/><img src="prlg.png" height=45px width=auto/></label>
+<label><input type="radio" id="mnlgxd" name="platform" onchange="platformClick(this);"/><img src="mnlgxd.png" height=45px width=auto/></label>
+<label><input type="radio" id="ntkdig" name="platform" onchange="platformClick(this);"/><img src="ntkdig.png" height=45px width=auto/></label>
+<label><input type="radio" id="nts1mkii" name="platform" onchange="platformClick(this);"/><img src="nts1mkii.png" height=45px width=auto/></label>
 <div style="width: 25%; height: 30px; line-height: 30px; font-size: small; color: #FFF; background-color: #222; text-align: center;">
 USER OSCILLATORS
 </div>
 <table class="list" rules="rows" cellpadding="6" border="2" width="100%">
-<tr><th width="40px"/><th width="100px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">SHAPE</th><th width="100px">ALT</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="100px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><th width="40px"/><th width="100px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">SHAPE / A</th><th width="100px">ALT / B</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="100px">PARAM 7</th><th width="100px">PARAM 8</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="100px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 </table>
 <div class="refer">
-Refer to <a href="FM64 Operations Manual.pdf">FM64 Operations Manual</a>, <a href="Morpheus Operations Manual.pdf">Morpheus Operations Manual</a> and <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
+Refer to <a href="FM64 Operations Manual.pdf">FM64 Operations Manual</a>, <a href="FM64 3.0 Operations Manual.pdf">FM64 3.0 Operations Manual</a>, <a href="Morpheus Operations Manual.pdf">Morpheus Operations Manual</a> and <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
 </div>
 </body>
 </html>
