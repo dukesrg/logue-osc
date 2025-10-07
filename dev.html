@@ -415,8 +415,8 @@ function getInfo(osc, rowindex) {
         col = col.appendChild(document.createElement('input'));
         col.type = 'file';
         col.name = osc;
-        col.accept = '.syx,.dx7,.32';
-        col.multiple = true;
+        col.accept = osc == 'Morpheus' ? '.wav' : '.syx,.dx7,.32';
+        col.multiple = osc == 'Morpheus' ? false : true;
         col.addEventListener('change', function() { handleFiles(this); }, true);
         col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
         col.type = 'text';
@@ -1265,21 +1265,46 @@ function handleFiles(f) {
                   if (size < 32768) {
                     status.innerHTML += "skipped (sample count too small)";
                   } else {
-                    status.innerHTML += "added transcoded from 16-bit PCM to 12-bit linear PCM";
                     if (size > 32768) {
                       status.innerHTML += ", truncated to 16384 samples";
                     }
-                    var newarray = new Uint8Array((256+128+3)*64);
+                    var newarray;
                     var j, k;
-                    for (k=0, j = 0; j < newarray.length; k++, j += 3) {
-                      newarray[j] = (array[44 + k * 4] >> 4) | ((array[44 + k * 4 + 1] & 0x0F) << 4);
-                      newarray[j + 1] = (array[44 + k * 4 + 1] >> 4) | (array[44 + k * 4 + 2] & 0xF0);
-                      newarray[j + 2] = array[44 + k * 4 + 3];
-                      if (k % 128 == 127) {
-                        j += 3;
-                        newarray[j] = newarray[j - 256 - 128];
-                        newarray[j + 1] = newarray[j - 256 - 128 + 1] & 0x0F;
-                        newarray[j + 2] = 0;
+                    var platform = document.querySelector('input[name=platform]:checked').id + "unit";
+                    if (platform == 'nts1mkiiunit') {
+                      newarray = new Uint8Array((256+1)*2*64);
+                      for (k = 0, j = 0; j < newarray.length; k++, j++) {
+                        newarray[j] = array[44 + k];
+                        if (k % 512 == 511) {
+                          j++;
+                          newarray[j] = newarray[j - 512];
+                          j++;
+                          newarray[j] = newarray[j - 512];
+                        }
+                      }
+                    } else if (platform == 'nts3unit') {
+                      status.innerHTML += "added transcoded from 16-bit PCM to 8-bit linear PCM";
+                      newarray = new Uint8Array((256+1)*64);
+                      for (k = 0, j = 0; j < newarray.length; k++, j++) {
+                        newarray[j] = array[44 + k * 2 + 1];
+                        if (k % 256 == 255) {
+                          j++;
+                          newarray[j] = newarray[j - 256];
+                        }
+                      }
+                    } else {
+                      status.innerHTML += "added transcoded from 16-bit PCM to 12-bit linear PCM";
+                      newarray = new Uint8Array((256+128+3)*64);
+                      for (k = 0, j = 0; j < newarray.length; k++, j += 3) {
+                        newarray[j] = (array[44 + k * 4] >> 4) | ((array[44 + k * 4 + 1] & 0x0F) << 4);
+                        newarray[j + 1] = (array[44 + k * 4 + 1] >> 4) | (array[44 + k * 4 + 2] & 0xF0);
+                        newarray[j + 2] = array[44 + k * 4 + 3];
+                        if (k % 128 == 127) {
+                          j += 3;
+                          newarray[j] = newarray[j - 256 - 128];
+                          newarray[j + 1] = newarray[j - 256 - 128 + 1] & 0x0F;
+                          newarray[j + 2] = 0;
+                        }
                       }
                     }
                     data[0].push(newarray);
