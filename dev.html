@@ -224,9 +224,9 @@ var op6fields = {
 function inject(osc) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
-  if (platform == 'drmlgunit' || platform == 'nts1mkiiunit' || platform == 'nts3unit') {
-    name = name.substring(0, {'drmlgunit': 13, 'nts1mkiiunit': 19, 'nts3unit': 19}[platform] - 1);
-    var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.', 'nts3unit': '-genericfx.'}[platform];
+  if (platform == 'drmlgunit' || platform == 'nts1mkiiunit' || platform == 'nts3unit' || platform == 'mk2unit') {
+    name = name.substring(0, {'drmlgunit': 13, 'nts1mkiiunit': 19, 'nts3unit': 19, 'mk2unit': 8}[platform] - 1);
+    var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.', 'nts3unit': '-genericfx.', 'mk2unit': '-osc.'}[platform];
     fetch("dev/" + osc.name + suffix + platform)
     .then((response) => {
       if (response.status === 200 || response.status === 0) {
@@ -261,7 +261,7 @@ function inject(osc) {
             var param_num = custom_params[osc.name].indexOf(param.innerHTML);
             if (param_num >= 0) {
               custom_param_offset
-              var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32, 'nts3unit': 32}[platform];
+              var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32, 'nts3unit': 32, 'mk2unit': 19}[platform];
               for (var j = 0; j < param_size; j++) {
                 payload[param_offset[osc.name] + param_size * i + j] = payload[custom_param_offset[osc.name] + param_size * param_num + j];
               }
@@ -354,8 +354,8 @@ function getInfo(osc, rowindex) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   var table = document.querySelector('.list');
   var row = document.createElement('tr');
-  if (platform == 'drmlgunit' || platform == 'nts1mkiiunit' || platform == 'nts3unit') {
-    var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.', 'nts3unit': '-genericfx.'}[platform];
+  if (platform == 'drmlgunit' || platform == 'nts1mkiiunit' || platform == 'nts3unit' || platform == 'mk2unit') {
+    var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.', 'nts3unit': '-genericfx.', 'mk2unit': '-osc.'}[platform];
     fetch("dev/" + osc + suffix + platform)
     .then((response) => {
       if (response.status === 200 || response.status === 0) {
@@ -386,6 +386,13 @@ function getInfo(osc, rowindex) {
       row.appendChild(document.createElement('td'));
       row.appendChild(document.createElement('td'));
       row.appendChild(document.createElement('td'));
+      if (platform == 'mk2unit') {
+        row.appendChild(document.createElement('td'));
+        row.appendChild(document.createElement('td'));
+        row.appendChild(document.createElement('td'));
+        row.appendChild(document.createElement('td'));
+        row.appendChild(document.createElement('td'));
+      }
       table.childNodes[1].replaceChild(row, table.childNodes[1].childNodes[rowindex + 1]);
     })
     .then(buffer => new Uint8Array(buffer))
@@ -402,7 +409,7 @@ function getInfo(osc, rowindex) {
         row.appendChild(document.createElement('td')).id = osc + '-name';
         row.appendChild(document.createElement('td')).id = osc + '-version';
         row.appendChild(document.createElement('td')).id = osc + '-api';
-        var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10, 'nts3unit': 8}[platform];
+        var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10, 'nts3unit': 8, 'mk2unit': 13}[platform];
         for (var i = 0; i < param_count; i++) {
           row.appendChild(document.createElement('td')).id = osc + '-param' + (i + 1);
         }
@@ -422,7 +429,7 @@ function getInfo(osc, rowindex) {
         col.type = 'text';
         col.name = osc;
         col.disabled = true;
-        col.maxLength = {'drmlgunit': 13, 'nts1mkiiunit': 19, 'nts3unit': 19}[platform];
+        col.maxLength = {'drmlgunit': 13, 'nts1mkiiunit': 19, 'nts3unit': 19, 'mk2unit': 8}[platform];
         col = row.appendChild(document.createElement('td')).appendChild(document.createElement('input'));
         col.type = 'button';
         col.name = osc;
@@ -449,17 +456,17 @@ function getInfo(osc, rowindex) {
           var names = new Uint8Array(data.buffer, namesOffset + secNameOffset, namesSize - secNameOffset);
           var name = String.fromCharCode.apply(String, new Uint8Array(names.buffer, namesOffset + secNameOffset, names.indexOf(0)));
           if (name == ".unit_header") {
-            custom_names_offset[osc] = secOffset + {'drmlgunit': 22, 'nts1mkiiunit': 24, 'nts3unit': 24}[platform];
-            var apiOffset = secOffset + {'drmlgunit': 6, 'nts1mkiiunit': 8, 'nts3unit': 8}[platform];
-            var versionOffset = secOffset + {'drmlgunit': 18, 'nts1mkiiunit': 20, 'nts3unit': 20}[platform];
+            custom_names_offset[osc] = secOffset + {'drmlgunit': 22, 'nts1mkiiunit': 24, 'nts3unit': 24, 'mk2unit': 22}[platform];
+            var apiOffset = secOffset + {'drmlgunit': 6, 'nts1mkiiunit': 8, 'nts3unit': 8, 'mk2unit': 6}[platform];
+            var versionOffset = secOffset + {'drmlgunit': 18, 'nts1mkiiunit': 20, 'nts3unit': 20, 'mk2unit': 18}[platform];
             document.querySelector('#' + osc + '-api').innerHTML += (data[apiOffset + 3] << 8) + data[apiOffset + 2] + '.' + data[apiOffset + 1] + '-' + data[apiOffset];
             document.querySelector('#' + osc + '-version').innerHTML += (data[versionOffset + 3] << 8) + data[versionOffset + 2] + '.' + data[versionOffset + 1] + '-' + data[versionOffset];
 
-            param_offset[osc] = secOffset + {'drmlgunit': 44, 'nts1mkiiunit': 56, 'nts3unit': 56}[platform];
-            var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32, 'nts3unit': 32}[platform];
-            var param_name_offset = param_offset[osc] + {'drmlgunit': 10, 'nts1mkiiunit': 10, 'nts3unit': 10}[platform];
-            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21, 'nts3unit': 21}[platform];
-            var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10, 'nts3unit': 8}[platform];
+            param_offset[osc] = secOffset + {'drmlgunit': 44, 'nts1mkiiunit': 56, 'nts3unit': 56, 'mk2unit': 38}[platform];
+            var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32, 'nts3unit': 32, 'mk2unit': 19}[platform];
+            var param_name_offset = param_offset[osc] + {'drmlgunit': 10, 'nts1mkiiunit': 10, 'nts3unit': 10, 'mk2unit': 10}[platform];
+            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21, 'nts3unit': 21, 'mk2unit': 9}[platform];
+            var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10, 'nts3unit': 8, 'mk2unit': 13}[platform];
 
             for (var j = 0; j < param_count; j++) {
               var col = document.querySelector('#' + osc + '-param' + (j + 1));
@@ -486,8 +493,8 @@ function getInfo(osc, rowindex) {
           } else if (name && name.startsWith('custom_params')) {
             custom_param_offset[osc] = secOffset;
             var desc = name.split(',').map(a => a.trim());
-            var param_name_offset = secOffset + {'drmlgunit': 10, 'nts1mkiiunit': 10, 'nts3unit': 10}[platform];
-            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21, 'nts3unit': 21}[platform];
+            var param_name_offset = secOffset + {'drmlgunit': 10, 'nts1mkiiunit': 10, 'nts3unit': 10, 'mk2unit': 10}[platform];
+            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21, 'nts3unit': 21, 'mk2unit': 9}[platform];
             for (var j = 0; j < desc[3]; j++) {
               custom_params[osc].push(String.fromCharCode.apply(String, new Uint8Array(data.buffer, param_name_offset + desc[2] * j, param_name_len)).replace(/\u0000/g,''));
             }
@@ -1271,7 +1278,7 @@ function handleFiles(f) {
                     var newarray;
                     var j, k;
                     var platform = document.querySelector('input[name=platform]:checked').id + "unit";
-                    if (platform == 'nts1mkiiunit') {
+                    if (platform == 'nts1mkiiunit' || platform == 'mk2unit') {
                       newarray = new Uint8Array((256+1)*2*64);
                       for (k = 0, j = 0; j < newarray.length; k++, j++) {
                         newarray[j] = array[44 + k];
@@ -1395,10 +1402,17 @@ function onLoad() {
   maxsize = new Array();
   ["FM48", "FM64", "FM65", "FM66", "FM67", "FM68", "FM69", "Morpheus", "Anthologue"].map((e, i) => getInfo(e, i));
   document.querySelector('.list').querySelectorAll("tr").forEach(row => {
-    row.childNodes[4].style['display'] = platformName != 'nts3' ? 'table-cell' : 'none';
-    row.childNodes[5].style['display'] = platformName != 'nts3' ? 'table-cell' : 'none';
-    row.childNodes[12].style['display'] = (platformName == 'nts1mkii' || platformName == 'nts3') ? 'table-cell' : 'none';
-    row.childNodes[13].style['display'] = (platformName == 'nts1mkii' || platformName == 'nts3') ? 'table-cell' : 'none';
+    row.childNodes[4].style['display'] = (platformName != 'nts3' && platformName != 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[5].style['display'] = (platformName != 'nts3' && platformName != 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[12].style['display'] = (platformName == 'nts1mkii' || platformName == 'nts3' || platformName == 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[13].style['display'] = (platformName == 'nts1mkii' || platformName == 'nts3' || platformName == 'mk2') ? 'table-cell' : 'none';
+    try {
+    row.childNodes[14].style['display'] = (platformName == 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[15].style['display'] = (platformName == 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[16].style['display'] = (platformName == 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[17].style['display'] = (platformName == 'mk2') ? 'table-cell' : 'none';
+    row.childNodes[18].style['display'] = (platformName == 'mk2') ? 'table-cell' : 'none';
+    } catch (e) {}
   });
 }
 
@@ -1456,22 +1470,23 @@ window.onclick = function(event) {
 <label><input type="radio" id="ntkdig" name="platform" onchange="platformClick(this);"/><img src="ntkdig.png" height=45px width=auto/></label>
 <label><input type="radio" id="nts1mkii" name="platform" onchange="platformClick(this);"/><img src="nts1mkii.png" height=45px width=auto/></label>
 <label><input type="radio" id="nts3" name="platform" onchange="platformClick(this);"/><img src="nts3.png" height=45px width=auto/></label>
+<label><input type="radio" id="mk2" name="platform" onchange="platformClick(this);"/><img src="mk2.png" height=45px width=auto/></label>
 <div style="width: 25%; height: 30px; line-height: 30px; font-size: small; color: #FFF; background-color: #222; text-align: center;">
 USER OSCILLATORS
 </div>
 <table class="list" rules="rows" cellpadding="6" border="2" width="100%">
-<tr><th width="40px"/><th width="100px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">SHAPE / A</th><th width="100px">ALT / B</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="100px">PARAM 7</th><th width="100px">PARAM 8</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="100px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
-<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><th width="40px"/><th width="100px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">SHAPE / A</th><th width="100px">ALT / B</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="100px">PARAM 7</th><th width="100px">PARAM 8</th><th width="100px">PARAM 9</th><th width="100px">PARAM 10</th><th width="100px">PARAM 11</th><th width="100px">PARAM 12</th><th width="100px">PARAM 13</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="100px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
+<tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
 </table>
 <div class="refer">
 Refer to <a href="FM64 Operations Manual.pdf">FM64 Operations Manual</a>, <a href="FM64 3.0 Operations Manual.pdf">FM64 3.0 Operations Manual</a>, <a href="Morpheus Operations Manual.pdf">Morpheus Operations Manual</a> and <a href="https://github.com/dukesrg/logue-osc">https://github.com/dukesrg/logue-osc</a> for more details on user-customizable oscillators.
