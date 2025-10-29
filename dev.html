@@ -50,6 +50,23 @@
   .list td {
     background-color: #000;
   }
+  .tab {
+    width: 20%;
+    height: 30px;
+    line-height: 30px;
+    font-size: small;
+    color: #EEE;
+    background-color: #222;
+    text-align: center;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+  }
+  .activetab {
+    background: radial-gradient(circle, #AAA, #222);
+  }
+  .disabledtab {
+    color: #444;
+  }
   input {
     border: 0;
   }
@@ -1388,8 +1405,14 @@ function platformClick(platform) {
 function onLoad() {
   var platformName = document.cookie.substring(document.cookie.indexOf("platform=")).split(";")[0].split("=")[1];
   var platform = document.querySelector('#' + platformName)
-  if (platform)
-    platform.checked = true;
+  if (!platform)
+    return;
+  platform.checked = true;
+  Array.from(document.getElementsByClassName("tab")).map(tab => {
+    var activate = (platform.id != "nts3" && tab.id == "tab-osc") || (platform.id == "nts3" && tab.id == "tab-genericfx");
+    tab.classList.remove(activate ? "disabledtab" : "activetab")
+    tab.classList.add(activate ? "activetab" : "disabledtab");
+  });
   custom_count = new Array();
   custom_params = new Array();
   custom_params_data_offset = new Array();
@@ -1472,9 +1495,13 @@ window.onclick = function(event) {
 <label><input type="radio" id="nts1mkii" name="platform" onchange="platformClick(this);"/><img src="nts1mkii.png" height=45px width=auto/></label>
 <label><input type="radio" id="nts3" name="platform" onchange="platformClick(this);"/><img src="nts3.png" height=45px width=auto/></label>
 <label><input type="radio" id="mk2" name="platform" onchange="platformClick(this);"/><img src="mk2.png" height=45px width=auto/></label>
-<div style="width: 25%; height: 30px; line-height: 30px; font-size: small; color: #FFF; background-color: #222; text-align: center;">
-USER OSCILLATORS
-</div>
+<table style="width: 100%;"><tr>
+<td class="tab disabledtab" id="tab-osc">OSCILLATORS</td>
+<td class="tab disabledtab" id="tab-modfx">MODULATION FX</td>
+<td class="tab disabledtab" id="tab-delfx">DELAY FX</td>
+<td class="tab disabledtab" id="tab-revfx">REVERB FX</td>
+<td class="tab disabledtab" id="tab-genericfx">GENERIC FX</td>
+</tr></table>
 <table class="list" rules="rows" cellpadding="6" border="2" width="100%">
 <tr><th width="40px"/><th width="100px">NAME</th><th width="70px">VERSION</th><th width="70px">API</th><th width="100px">SHAPE / A</th><th width="100px">ALT / B</th><th width="100px">PARAM 1</th><th width="100px">PARAM 2</th><th width="100px">PARAM 3</th><th width="100px">PARAM 4</th><th width="100px">PARAM 5</th><th width="100px">PARAM 6</th><th width="100px">PARAM 7</th><th width="100px">PARAM 8</th><th width="100px">PARAM 9</th><th width="100px">PARAM 10</th><th width="100px">PARAM 11</th><th width="100px">PARAM 12</th><th width="100px">PARAM 13</th><th width="70px">CUSTOM&nbsp;DATA</th><th width="100px">CUSTOM&nbsp;NAME</th><th width="70px">CUSTOM&nbsp;UNIT</th><th width="70px">SIZE</th><th width="*">DESCRIPTION</th></tr>
 <tr><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/><td/></tr>
