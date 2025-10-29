@@ -225,7 +225,7 @@ function inject(osc) {
   var platform = document.querySelector('input[name=platform]:checked').id + "unit";
   var name = document.querySelector('input[type=text][name=' + osc.name + ']').value;
   if (platform == 'drmlgunit' || platform == 'nts1mkiiunit' || platform == 'nts3unit' || platform == 'mk2unit') {
-    name = name.substring(0, {'drmlgunit': 13, 'nts1mkiiunit': 19, 'nts3unit': 19, 'mk2unit': 8}[platform] - 1);
+    name = name.substring(0, {'drmlgunit': 13, 'nts1mkiiunit': 19, 'nts3unit': 19, 'mk2unit': 8}[platform]);
     var suffix = {'drmlgunit': '-synth.', 'nts1mkiiunit': '-osc.', 'nts3unit': '-genericfx.', 'mk2unit': '-osc.'}[platform];
     fetch("dev/" + osc.name + suffix + platform)
     .then((response) => {
@@ -261,7 +261,7 @@ function inject(osc) {
             var param_num = custom_params[osc.name].indexOf(param.innerHTML);
             if (param_num >= 0) {
               custom_param_offset
-              var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32, 'nts3unit': 32, 'mk2unit': 19}[platform];
+              var param_size = {'drmlgunit': 23, 'nts1mkiiunit': 32, 'nts3unit': 32, 'mk2unit': 19}[platform];
               for (var j = 0; j < param_size; j++) {
                 payload[param_offset[osc.name] + param_size * i + j] = payload[custom_param_offset[osc.name] + param_size * param_num + j];
               }
@@ -462,10 +462,10 @@ function getInfo(osc, rowindex) {
             document.querySelector('#' + osc + '-api').innerHTML += (data[apiOffset + 3] << 8) + data[apiOffset + 2] + '.' + data[apiOffset + 1] + '-' + data[apiOffset];
             document.querySelector('#' + osc + '-version').innerHTML += (data[versionOffset + 3] << 8) + data[versionOffset + 2] + '.' + data[versionOffset + 1] + '-' + data[versionOffset];
 
-            param_offset[osc] = secOffset + {'drmlgunit': 44, 'nts1mkiiunit': 56, 'nts3unit': 56, 'mk2unit': 38}[platform];
-            var param_size = {'drmlgunit': 24, 'nts1mkiiunit': 32, 'nts3unit': 32, 'mk2unit': 19}[platform];
+            param_offset[osc] = secOffset + {'drmlgunit': 44, 'nts1mkiiunit': 56, 'nts3unit': 56, 'mk2unit': 39}[platform];
+            var param_size = {'drmlgunit': 23, 'nts1mkiiunit': 32, 'nts3unit': 32, 'mk2unit': 19}[platform];
             var param_name_offset = param_offset[osc] + {'drmlgunit': 10, 'nts1mkiiunit': 10, 'nts3unit': 10, 'mk2unit': 10}[platform];
-            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21, 'nts3unit': 21, 'mk2unit': 9}[platform];
+            var param_name_len = {'drmlgunit': 12, 'nts1mkiiunit': 21, 'nts3unit': 21, 'mk2unit': 8}[platform];
             var param_count = {'drmlgunit': 24, 'nts1mkiiunit': 10, 'nts3unit': 8, 'mk2unit': 13}[platform];
 
             for (var j = 0; j < param_count; j++) {
@@ -494,7 +494,7 @@ function getInfo(osc, rowindex) {
             custom_param_offset[osc] = secOffset;
             var desc = name.split(',').map(a => a.trim());
             var param_name_offset = secOffset + {'drmlgunit': 10, 'nts1mkiiunit': 10, 'nts3unit': 10, 'mk2unit': 10}[platform];
-            var param_name_len = {'drmlgunit': 13, 'nts1mkiiunit': 21, 'nts3unit': 21, 'mk2unit': 9}[platform];
+            var param_name_len = {'drmlgunit': 12, 'nts1mkiiunit': 21, 'nts3unit': 21, 'mk2unit': 8}[platform];
             for (var j = 0; j < desc[3]; j++) {
               custom_params[osc].push(String.fromCharCode.apply(String, new Uint8Array(data.buffer, param_name_offset + desc[2] * j, param_name_len)).replace(/\u0000/g,''));
             }
@@ -1373,6 +1373,7 @@ function handleFiles(f) {
         document.querySelector('input[type=button][name=' + osc + ']').disabled = false;
         name.disabled = false;
       }
+      name.value = name.value.substring(0, name.maxLength);
     }
     reader.filename = files[i].name;
     reader.readAsArrayBuffer(files[i]);
